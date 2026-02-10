@@ -433,9 +433,6 @@ function HowItWorksSection() {
         </motion.div>
 
         <div className="relative mt-16">
-          {/* Connecting line (desktop) */}
-          <div className="absolute top-24 right-0 left-0 hidden h-0.5 bg-gradient-to-r from-primary-200 via-purple-200 to-accent-200 lg:block" />
-
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
             {steps.map((s, i) => (
               <motion.div
@@ -446,6 +443,16 @@ function HowItWorksSection() {
                 custom={i + 1}
                 className="relative flex flex-col items-center text-center"
               >
+                {/* Arrow connector between steps (desktop) */}
+                {i < steps.length - 1 && (
+                  <div className="absolute top-8 -right-3 z-20 hidden -translate-y-1/2 lg:flex items-center" style={{ right: '-1.25rem' }}>
+                    <div className="flex items-center gap-0.5">
+                      <div className="h-0.5 w-4 rounded-full bg-gradient-to-r from-slate-300 to-slate-200" />
+                      <ChevronRight className="h-5 w-5 text-slate-300" />
+                    </div>
+                  </div>
+                )}
+
                 {/* Step number badge */}
                 <div className="relative z-10 mb-4">
                   <div
