@@ -514,16 +514,16 @@ function HeroSection({ onNavigate }: { onNavigate: (path: string) => void }) {
 function LiveStatsBar() {
   const { ref, inView } = useSectionInView(0.5);
 
-  const students = useCounter(15000, inView);
-  const tests = useCounter(48000, inView);
-  const recommend = useCounter(94, inView);
-  const courses = useCounter(50, inView);
+  const diagnostics = useCounter(1500, inView);
+  const students = useCounter(500, inView);
+  const plans = useCounter(200, inView);
+  const social = useCounter(20, inView);
 
   const stats = [
-    { value: `${students.toLocaleString()}+`, label: 'учеников' },
-    { value: `${tests.toLocaleString()}+`, label: 'тестов пройдено' },
-    { value: `${recommend}%`, label: 'рекомендуют' },
-    { value: `${courses}+`, label: 'курсов' },
+    { value: `${diagnostics.toLocaleString()}+`, label: 'диагностик пройдено' },
+    { value: `${students}+`, label: 'учеников на платных тарифах' },
+    { value: `${plans}+`, label: 'персональных планов' },
+    { value: `${social}%`, label: 'поддержано через соц. программу' },
   ];
 
   return (
@@ -1306,12 +1306,15 @@ function PricingSection({ onNavigate }: { onNavigate: (path: string) => void }) 
               </ul>
 
               {plan.hasSocialNote && (
-                <div className="mt-6 flex items-start gap-2 rounded-xl bg-rose-50/80 border border-rose-100 px-3.5 py-2.5">
+                <button
+                  onClick={() => onNavigate('/support')}
+                  className="mt-6 flex w-full items-start gap-2 rounded-xl bg-rose-50/80 border border-rose-100 px-3.5 py-2.5 text-left transition-colors hover:bg-rose-50"
+                >
                   <Heart className="h-4 w-4 text-rose-400 mt-0.5 shrink-0" />
                   <p className="text-xs text-rose-600 leading-relaxed">
-                    Доступна <span className="font-semibold">программа бесплатного расширенного доступа</span> по заявке
+                    Доступна <span className="font-semibold underline decoration-rose-300">программа бесплатного расширенного доступа</span> по заявке
                   </p>
-                </div>
+                </button>
               )}
 
               <button
@@ -1346,48 +1349,48 @@ function PricingSection({ onNavigate }: { onNavigate: (path: string) => void }) 
               <div>
                 <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-rose-100/80 px-4 py-1.5">
                   <Heart className="h-4 w-4 text-rose-500" />
-                  <span className="text-sm font-semibold text-rose-700">Социальная программа</span>
+                  <span className="text-sm font-semibold text-rose-700">Study Hub Support Program</span>
                 </div>
 
                 <h3 className="text-2xl font-extrabold text-slate-900 lg:text-3xl">
-                  Доступ к образованию{' '}
+                  Доступ к знаниям{' '}
                   <span className="bg-gradient-to-r from-rose-500 to-amber-500 bg-clip-text text-transparent">
-                    без барьеров
+                    для каждого
                   </span>
                 </h3>
 
                 <p className="mt-3 max-w-2xl text-base leading-relaxed text-slate-600">
-                  Часть пользователей получает бесплатный расширенный доступ
-                  в рамках нашей программы поддержки. Мы верим, что возможности
-                  не должны зависеть от обстоятельств.
+                  Мы считаем, что качественное образование должно быть доступным.
+                  Подай заявку и расскажи, почему тебе это важно — мы рассмотрим
+                  каждую заявку индивидуально и конфиденциально.
                 </p>
 
-                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                {/* Impact stats */}
+                <div className="mt-6 flex flex-wrap gap-6">
                   {[
-                    { icon: '🎯', text: 'Мотивированные ученики' },
-                    { icon: '🏠', text: 'Семьи в сложных обстоятельствах' },
-                    { icon: '🌍', text: 'Школьники из регионов' },
-                    { icon: '💙', text: 'Дети с особыми образовательными потребностями' },
-                  ].map((item) => (
-                    <div key={item.text} className="flex items-center gap-3 rounded-xl bg-white/60 px-4 py-3 border border-white/80">
-                      <span className="text-lg shrink-0">{item.icon}</span>
-                      <span className="text-sm font-medium text-slate-700">{item.text}</span>
+                    { value: '200+', label: 'учеников поддержано' },
+                    { value: '20%', label: 'через социальную программу' },
+                    { value: '0 ₸', label: 'полный доступ' },
+                  ].map((s) => (
+                    <div key={s.label}>
+                      <p className="text-xl font-extrabold text-slate-900">{s.value}</p>
+                      <p className="text-xs text-slate-500">{s.label}</p>
                     </div>
                   ))}
                 </div>
 
                 <div className="mt-5 flex items-center gap-2 text-sm text-slate-500">
                   <Shield className="h-4 w-4 text-slate-400" />
-                  <span>Заявка рассматривается конфиденциально</span>
+                  <span>Без справок и документов. Просто расскажи о себе.</span>
                 </div>
               </div>
 
               <div className="flex flex-col items-center gap-3 lg:items-start">
                 <button
-                  onClick={() => onNavigate('/auth')}
+                  onClick={() => onNavigate('/support')}
                   className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 px-8 py-4 text-base font-bold text-white shadow-lg shadow-rose-500/20 transition-all hover:shadow-xl hover:shadow-rose-500/30 hover:-translate-y-0.5"
                 >
-                  Подать заявку
+                  Хочу бесплатный доступ
                   <ArrowRight className="h-5 w-5" />
                 </button>
               </div>

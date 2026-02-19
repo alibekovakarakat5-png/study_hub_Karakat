@@ -19,6 +19,7 @@ import CareerOrientation from '@/pages/CareerOrientation'
 import CareerTracker from '@/pages/CareerTracker'
 import Admission from '@/pages/Admission'
 import Internships from '@/pages/Internships'
+import Support from '@/pages/Support'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useStore()
@@ -76,6 +77,7 @@ export default function App() {
         <Route path="/internships" element={<ProtectedRoute><Internships /></ProtectedRoute>} />
         <Route path="/courses" element={<Courses />} />
         <Route path="/profile/:id" element={<PublicProfile />} />
+        <Route path="/support" element={<Support />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
