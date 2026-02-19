@@ -24,6 +24,8 @@ import {
   Send,
   Briefcase,
   MapPin,
+  Heart,
+  Shield,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -590,7 +592,17 @@ function ProblemSolutionSection() {
           </p>
         </motion.div>
 
-        <div className="grid gap-8 lg:grid-cols-2 lg:gap-16 items-start">
+        <div className="relative grid gap-8 lg:grid-cols-2 lg:gap-16 items-start">
+          {/* Arrow between columns (visible on lg) */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden lg:flex pointer-events-none z-10">
+            <motion.div
+              animate={{ x: [0, 8, 0] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <ArrowRight className="h-10 w-10 text-primary-400/40" />
+            </motion.div>
+          </div>
+
           {/* Problems */}
           <motion.div
             variants={slideFromLeft}
@@ -643,16 +655,6 @@ function ProblemSolutionSection() {
                 </motion.div>
               ))}
             </div>
-          </motion.div>
-        </div>
-
-        {/* Arrow between (visible on lg) */}
-        <div className="hidden lg:flex justify-center -mt-[11rem] pointer-events-none relative z-10">
-          <motion.div
-            animate={{ x: [0, 8, 0] }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-          >
-            <ArrowRight className="h-10 w-10 text-primary-400/40" />
           </motion.div>
         </div>
       </div>
@@ -1189,53 +1191,53 @@ function PricingSection({ onNavigate }: { onNavigate: (path: string) => void }) 
 
   const plans = [
     {
-      name: 'Бесплатно',
+      name: 'Free',
       price: '0 ₸',
       period: 'навсегда',
-      description: 'Попробуй платформу без ограничений по времени',
+      description: 'Социальный + демо доступ для знакомства',
       features: [
         'Диагностика уровня знаний',
-        'Базовый план подготовки',
-        '20 тестовых заданий',
-        'Общий прогноз поступления',
+        'Ограниченный банк тестов',
+        'Общий план подготовки',
+        'Базовый прогноз поступления',
       ],
       cta: 'Начать бесплатно',
       popular: false,
-      gradient: '',
+      hasSocialNote: true,
     },
     {
-      name: 'Стандарт',
-      price: '2,990 ₸',
+      name: 'Growth',
+      price: '4 990 ₸',
       period: '/мес',
       description: 'Для серьёзной подготовки к ЕНТ',
       features: [
-        'AI-ментор 24/7',
-        'Безлимитный банк тестов',
-        'Персональный план подготовки',
+        'AI-план подготовки',
+        'Полный банк тестов',
         'Детальная аналитика прогресса',
         'Родительская панель',
         'Портфолио достижений',
+        'AI-ментор 24/7',
       ],
-      cta: 'Выбрать Стандарт',
+      cta: 'Выбрать Growth',
       popular: true,
-      gradient: 'gradient-primary',
+      hasSocialNote: false,
     },
     {
-      name: 'Премиум',
-      price: '4,990 ₸',
+      name: 'Pro / Career',
+      price: '9 990 ₸',
       period: '/мес',
-      description: 'Максимум возможностей + карьерный навигатор',
+      description: 'Полная экосистема: от ЕНТ до карьеры',
       features: [
-        'Всё из тарифа Стандарт',
+        'Всё из тарифа Growth',
         'Карьерный навигатор',
-        'Персональные рекомендации по вузам',
+        'Рекомендации по вузам',
         'Подробный прогноз поступления',
+        'Индивидуальные рекомендации',
         'Приоритетная поддержка',
-        'Консультация с экспертом',
       ],
-      cta: 'Выбрать Премиум',
+      cta: 'Выбрать Pro',
       popular: false,
-      gradient: '',
+      hasSocialNote: false,
     },
   ];
 
@@ -1305,6 +1307,15 @@ function PricingSection({ onNavigate }: { onNavigate: (path: string) => void }) 
                 ))}
               </ul>
 
+              {plan.hasSocialNote && (
+                <div className="mt-6 flex items-start gap-2 rounded-xl bg-rose-50/80 border border-rose-100 px-3.5 py-2.5">
+                  <Heart className="h-4 w-4 text-rose-400 mt-0.5 shrink-0" />
+                  <p className="text-xs text-rose-600 leading-relaxed">
+                    Доступна <span className="font-semibold">программа бесплатного расширенного доступа</span> по заявке
+                  </p>
+                </div>
+              )}
+
               <button
                 onClick={() => onNavigate('/diagnostic')}
                 className={`mt-8 flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-4 text-base font-bold transition-all duration-200 hover:-translate-y-0.5 ${
@@ -1319,6 +1330,72 @@ function PricingSection({ onNavigate }: { onNavigate: (path: string) => void }) 
             </motion.div>
           ))}
         </div>
+
+        {/* Social Support Program */}
+        <motion.div
+          variants={fadeUp}
+          initial="hidden"
+          animate={inView ? 'visible' : 'hidden'}
+          custom={4}
+          className="mx-auto mt-16 max-w-4xl"
+        >
+          <div className="relative overflow-hidden rounded-3xl border border-rose-100 bg-gradient-to-br from-rose-50 via-amber-50/50 to-orange-50/30 p-8 lg:p-10">
+            {/* Decorative */}
+            <div className="pointer-events-none absolute -top-10 -right-10 h-40 w-40 rounded-full bg-rose-200/20 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-amber-200/20 blur-3xl" />
+
+            <div className="relative grid gap-8 lg:grid-cols-[1fr,auto] lg:items-center">
+              <div>
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-rose-100/80 px-4 py-1.5">
+                  <Heart className="h-4 w-4 text-rose-500" />
+                  <span className="text-sm font-semibold text-rose-700">Социальная программа</span>
+                </div>
+
+                <h3 className="text-2xl font-extrabold text-slate-900 lg:text-3xl">
+                  Доступ к образованию{' '}
+                  <span className="bg-gradient-to-r from-rose-500 to-amber-500 bg-clip-text text-transparent">
+                    без барьеров
+                  </span>
+                </h3>
+
+                <p className="mt-3 max-w-2xl text-base leading-relaxed text-slate-600">
+                  Часть пользователей получает бесплатный расширенный доступ
+                  в рамках нашей программы поддержки. Мы верим, что возможности
+                  не должны зависеть от обстоятельств.
+                </p>
+
+                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                  {[
+                    { icon: '🎯', text: 'Мотивированные ученики' },
+                    { icon: '🏠', text: 'Семьи в сложных обстоятельствах' },
+                    { icon: '🌍', text: 'Школьники из регионов' },
+                    { icon: '💙', text: 'Дети с особыми образовательными потребностями' },
+                  ].map((item) => (
+                    <div key={item.text} className="flex items-center gap-3 rounded-xl bg-white/60 px-4 py-3 border border-white/80">
+                      <span className="text-lg shrink-0">{item.icon}</span>
+                      <span className="text-sm font-medium text-slate-700">{item.text}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-5 flex items-center gap-2 text-sm text-slate-500">
+                  <Shield className="h-4 w-4 text-slate-400" />
+                  <span>Заявка рассматривается конфиденциально</span>
+                </div>
+              </div>
+
+              <div className="flex flex-col items-center gap-3 lg:items-start">
+                <button
+                  onClick={() => onNavigate('/auth')}
+                  className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 px-8 py-4 text-base font-bold text-white shadow-lg shadow-rose-500/20 transition-all hover:shadow-xl hover:shadow-rose-500/30 hover:-translate-y-0.5"
+                >
+                  Подать заявку
+                  <ArrowRight className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
       </div>
     </section>
   );
