@@ -377,32 +377,28 @@ function NoDiagnosticCTA() {
   return (
     <motion.div
       variants={cardVariants}
-      className="col-span-full"
+      className="col-span-full sm:col-span-1 xl:col-span-3"
     >
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 p-8 md:p-12 text-white shadow-xl">
-        {/* Decorative elements */}
-        <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-white/10 blur-2xl" />
-        <div className="absolute -bottom-16 -left-16 w-48 h-48 rounded-full bg-white/10 blur-2xl" />
-
-        <div className="relative flex flex-col md:flex-row items-center gap-6 md:gap-10">
-          <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 shrink-0">
-            <Target className="w-10 h-10 text-white" />
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/60 p-6 shadow-sm">
+        <div className="flex items-start gap-4">
+          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-100 shrink-0">
+            <Target className="w-6 h-6 text-blue-600" />
           </div>
-          <div className="flex-1 text-center md:text-left">
-            <h2 className="text-2xl md:text-3xl font-bold mb-2">
-              Пройди диагностику чтобы начать
-            </h2>
-            <p className="text-blue-100 text-base md:text-lg max-w-xl">
-              Узнай свой уровень подготовки, сильные и слабые стороны, а также шансы поступления в выбранные вузы.
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">
+              Хочешь узнать свой точный уровень?
+            </h3>
+            <p className="text-sm text-gray-500 mb-3">
+              Пройди короткий тест и получи точную оценку по каждому предмету. Это поможет платформе подобрать задания под тебя.
             </p>
+            <Link
+              to="/diagnostic"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 active:scale-[0.98] transition-all duration-200"
+            >
+              Пройти диагностику
+              <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
-          <Link
-            to="/diagnostic"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-blue-700 font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 shrink-0"
-          >
-            Начать диагностику
-            <ArrowRight className="w-5 h-5" />
-          </Link>
         </div>
       </div>
     </motion.div>
@@ -871,138 +867,120 @@ export default function Dashboard() {
             className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-12 gap-5"
           >
             {/* ----- If no diagnostic, show CTA ----- */}
-            {!hasTakenDiagnostic && <NoDiagnosticCTA />}
+            {/* ----- Quick Stats (always visible) ----- */}
 
-            {/* ----- Quick Stats ----- */}
-            {hasTakenDiagnostic && (
-              <>
-                {/* Overall score */}
-                <div className="sm:col-span-1 xl:col-span-3">
-                  <QuickStatCard
-                    title="Общий балл"
-                    icon={Target}
-                    iconBg="bg-gradient-to-br from-blue-500 to-blue-600"
-                  >
-                    <div className="flex items-center gap-4">
-                      <CircularProgress
-                        value={diagnosticResult?.overallScore || 0}
-                        max={diagnosticResult?.maxScore || 1}
-                        size={68}
-                        strokeWidth={6}
-                        color="#2563eb"
-                      >
-                        <span className="text-sm font-bold text-gray-900">
-                          {overallPercentage}%
-                        </span>
-                      </CircularProgress>
-                      <div>
-                        <p className="text-2xl font-bold text-gray-900">
-                          {diagnosticResult?.overallScore || 0}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          из {diagnosticResult?.maxScore || 0}
-                        </p>
-                      </div>
-                    </div>
-                  </QuickStatCard>
-                </div>
-
-                {/* Plan progress */}
-                <div className="sm:col-span-1 xl:col-span-3">
-                  <QuickStatCard
-                    title="Прогресс плана"
-                    icon={TrendingUp}
-                    iconBg="bg-gradient-to-br from-purple-500 to-purple-600"
-                  >
-                    <p className="text-2xl font-bold text-gray-900 mb-2">
-                      {studyPlan?.overallProgress || 0}%
-                    </p>
-                    <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-                      <motion.div
-                        className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500"
-                        initial={{ width: 0 }}
-                        animate={{
-                          width: `${studyPlan?.overallProgress || 0}%`,
-                        }}
-                        transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }}
-                      />
-                    </div>
-                  </QuickStatCard>
-                </div>
-
-                {/* Streak */}
-                <div className="sm:col-span-1 xl:col-span-3">
-                  <QuickStatCard
-                    title="Серия"
-                    icon={Zap}
-                    iconBg="bg-gradient-to-br from-orange-500 to-amber-500"
-                  >
-                    <div className="flex items-baseline gap-1.5">
+            {/* Overall score — show if diagnostic done, otherwise show CTA */}
+            {hasTakenDiagnostic ? (
+              <div className="sm:col-span-1 xl:col-span-3">
+                <QuickStatCard
+                  title="Общий балл"
+                  icon={Target}
+                  iconBg="bg-gradient-to-br from-blue-500 to-blue-600"
+                >
+                  <div className="flex items-center gap-4">
+                    <CircularProgress
+                      value={diagnosticResult?.overallScore || 0}
+                      max={diagnosticResult?.maxScore || 1}
+                      size={68}
+                      strokeWidth={6}
+                      color="#2563eb"
+                    >
+                      <span className="text-sm font-bold text-gray-900">
+                        {overallPercentage}%
+                      </span>
+                    </CircularProgress>
+                    <div>
                       <p className="text-2xl font-bold text-gray-900">
-                        {user?.streak || 0}
+                        {diagnosticResult?.overallScore || 0}
                       </p>
-                      <span className="text-sm text-gray-500">дней</span>
+                      <p className="text-xs text-gray-400">
+                        из {diagnosticResult?.maxScore || 0}
+                      </p>
                     </div>
-                    <div className="flex gap-1 mt-2">
-                      {Array.from({ length: 7 }).map((_, i) => (
-                        <div
-                          key={i}
-                          className={cn(
-                            'w-full h-2 rounded-full',
-                            i < (user?.streak || 0) % 7 || ((user?.streak || 0) >= 7 && (user?.streak || 0) % 7 === 0 && (user?.streak || 0) > 0)
-                              ? 'bg-gradient-to-r from-orange-400 to-amber-400'
-                              : 'bg-gray-100',
-                          )}
-                        />
-                      ))}
-                    </div>
-                  </QuickStatCard>
-                </div>
-
-                {/* Study time */}
-                <div className="sm:col-span-1 xl:col-span-3">
-                  <QuickStatCard
-                    title="Время учёбы"
-                    icon={Clock}
-                    iconBg="bg-gradient-to-br from-emerald-500 to-green-600"
-                  >
-                    <p className="text-2xl font-bold text-gray-900">
-                      {minutesToHumanReadable(user?.totalStudyMinutes || 0)}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">общее время</p>
-                  </QuickStatCard>
-                </div>
-
-                {/* Score by subject chart */}
-                <ScoreBySubjectSection />
-
-                {/* Weekly tasks */}
-                <WeeklyTasksSection />
-
-                {/* University predictions */}
-                <UniversityPredictionsSection />
-
-                {/* Achievements */}
-                <AchievementsSection />
-              </>
+                  </div>
+                </QuickStatCard>
+              </div>
+            ) : (
+              <NoDiagnosticCTA />
             )}
 
-            {/* If diagnostic done but no further sections have data, still show tasks & achievements */}
-            {hasTakenDiagnostic &&
-              !diagnosticResult &&
-              (() => {
-                // Fallback: show weekly tasks and achievements even without diagnostic details
-                return (
-                  <>
-                    <div className="col-span-full xl:col-span-6">
-                      <WeeklyTasksSection />
-                    </div>
-                    <div className="col-span-full xl:col-span-6">
-                      <AchievementsSection />
-                    </div>
-                  </>
-                )
-              })()}
+            {/* Plan progress */}
+            <div className="sm:col-span-1 xl:col-span-3">
+              <QuickStatCard
+                title="Прогресс плана"
+                icon={TrendingUp}
+                iconBg="bg-gradient-to-br from-purple-500 to-purple-600"
+              >
+                <p className="text-2xl font-bold text-gray-900 mb-2">
+                  {studyPlan?.overallProgress || 0}%
+                </p>
+                <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                  <motion.div
+                    className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500"
+                    initial={{ width: 0 }}
+                    animate={{
+                      width: `${studyPlan?.overallProgress || 0}%`,
+                    }}
+                    transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }}
+                  />
+                </div>
+              </QuickStatCard>
+            </div>
+
+            {/* Streak */}
+            <div className="sm:col-span-1 xl:col-span-3">
+              <QuickStatCard
+                title="Серия"
+                icon={Zap}
+                iconBg="bg-gradient-to-br from-orange-500 to-amber-500"
+              >
+                <div className="flex items-baseline gap-1.5">
+                  <p className="text-2xl font-bold text-gray-900">
+                    {user?.streak || 0}
+                  </p>
+                  <span className="text-sm text-gray-500">дней</span>
+                </div>
+                <div className="flex gap-1 mt-2">
+                  {Array.from({ length: 7 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        'w-full h-2 rounded-full',
+                        i < (user?.streak || 0) % 7 || ((user?.streak || 0) >= 7 && (user?.streak || 0) % 7 === 0 && (user?.streak || 0) > 0)
+                          ? 'bg-gradient-to-r from-orange-400 to-amber-400'
+                          : 'bg-gray-100',
+                      )}
+                    />
+                  ))}
+                </div>
+              </QuickStatCard>
+            </div>
+
+            {/* Study time */}
+            <div className="sm:col-span-1 xl:col-span-3">
+              <QuickStatCard
+                title="Время учёбы"
+                icon={Clock}
+                iconBg="bg-gradient-to-br from-emerald-500 to-green-600"
+              >
+                <p className="text-2xl font-bold text-gray-900">
+                  {minutesToHumanReadable(user?.totalStudyMinutes || 0)}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">общее время</p>
+              </QuickStatCard>
+            </div>
+
+            {/* Score by subject chart — only if diagnostic done */}
+            {hasTakenDiagnostic && <ScoreBySubjectSection />}
+
+            {/* Weekly tasks */}
+            <WeeklyTasksSection />
+
+            {/* University predictions — only if diagnostic done */}
+            {hasTakenDiagnostic && <UniversityPredictionsSection />}
+
+            {/* Achievements */}
+            <AchievementsSection />
           </motion.div>
         </main>
       </div>

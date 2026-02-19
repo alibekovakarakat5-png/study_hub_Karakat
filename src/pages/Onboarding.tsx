@@ -28,6 +28,7 @@ import {
   Star,
   Zap,
   MapPin,
+  BookOpen,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import type { OnboardingStep, OnboardingProfile, CareerPath } from '@/types'
@@ -35,16 +36,34 @@ import { cn } from '@/lib/utils'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-const STEPS: OnboardingStep[] = ['welcome', 'about', 'interests', 'goals', 'dream', 'result']
+const STEPS: OnboardingStep[] = ['welcome', 'about', 'interests', 'subjects', 'goals', 'dream', 'result']
 
 const STEP_GRADIENTS: Record<OnboardingStep, string> = {
   welcome: 'from-blue-600/10 via-indigo-500/5 to-purple-600/10',
   about: 'from-emerald-500/10 via-teal-500/5 to-cyan-600/10',
   interests: 'from-violet-500/10 via-purple-500/5 to-fuchsia-600/10',
+  subjects: 'from-sky-500/10 via-blue-500/5 to-indigo-500/10',
   goals: 'from-amber-500/10 via-orange-500/5 to-red-500/10',
   dream: 'from-rose-500/10 via-pink-500/5 to-purple-500/10',
   result: 'from-emerald-500/10 via-blue-500/5 to-indigo-600/10',
 }
+
+const SUBJECT_CARDS = [
+  { id: 'math', label: 'Математика', emoji: '📐' },
+  { id: 'physics', label: 'Физика', emoji: '⚡' },
+  { id: 'chemistry', label: 'Химия', emoji: '🧪' },
+  { id: 'biology', label: 'Биология', emoji: '🧬' },
+  { id: 'history', label: 'История Казахстана', emoji: '🏛️' },
+  { id: 'english', label: 'Английский язык', emoji: '🇬🇧' },
+  { id: 'kazakh', label: 'Казахский язык', emoji: '🇰🇿' },
+  { id: 'russian', label: 'Русский язык', emoji: '📖' },
+  { id: 'informatics', label: 'Информатика', emoji: '💻' },
+  { id: 'geography', label: 'География', emoji: '🌍' },
+  { id: 'literature', label: 'Литература', emoji: '📚' },
+]
+
+const LEVEL_LABELS = ['Не знаю', 'Слабо', 'Средне', 'Хорошо', 'Отлично']
+const LEVEL_COLORS = ['bg-gray-300', 'bg-red-400', 'bg-amber-400', 'bg-blue-500', 'bg-emerald-500']
 
 const KZ_CITIES = [
   'Алматы',
@@ -838,6 +857,120 @@ function GoalsStep({
   )
 }
 
+// ─── Step 4b: Subjects Self-Assessment ──────────────────────────────────────
+
+function SubjectsStep({
+  subjectLevels,
+  onLevelChange,
+  onToggleWant,
+}: {
+  subjectLevels: Record<string, { level: number; want: boolean }>
+  onLevelChange: (id: string, level: number) => void
+  onToggleWant: (id: string) => void
+}) {
+  return (
+    <motion.div
+      className="flex flex-col items-center px-6 py-4"
+      variants={staggerContainer}
+      initial="hidden"
+      animate="visible"
+    >
+      <motion.div variants={staggerItem} className="text-5xl mb-4">
+        <BookOpen className="w-12 h-12 text-blue-500" />
+      </motion.div>
+
+      <motion.h2
+        variants={staggerItem}
+        className="text-3xl font-bold text-gray-900 mb-2 text-center"
+      >
+        Как у тебя с предметами?
+      </motion.h2>
+
+      <motion.p
+        variants={staggerItem}
+        className="text-gray-500 mb-6 text-center max-w-md"
+      >
+        Оцени свой примерный уровень и отметь предметы, которые хочешь изучать
+      </motion.p>
+
+      <motion.div
+        variants={staggerContainer}
+        className="w-full max-w-2xl space-y-3"
+      >
+        {SUBJECT_CARDS.map(subj => {
+          const data = subjectLevels[subj.id] || { level: 0, want: false }
+          return (
+            <motion.div
+              key={subj.id}
+              variants={staggerItem}
+              className={cn(
+                'flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 transition-all duration-200',
+                data.want
+                  ? 'border-blue-400 bg-blue-50/50'
+                  : 'border-gray-100 bg-white'
+              )}
+            >
+              {/* Emoji + Name */}
+              <span className="text-xl sm:text-2xl flex-shrink-0">{subj.emoji}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm font-semibold text-gray-800 truncate">{subj.label}</span>
+                  <span className={cn(
+                    'text-xs font-medium px-2 py-0.5 rounded-full',
+                    LEVEL_COLORS[data.level],
+                    data.level === 0 ? 'text-gray-600' : 'text-white'
+                  )}>
+                    {LEVEL_LABELS[data.level]}
+                  </span>
+                </div>
+                {/* Level dots */}
+                <div className="flex gap-1.5">
+                  {[0, 1, 2, 3, 4].map(lvl => (
+                    <button
+                      key={lvl}
+                      onClick={() => onLevelChange(subj.id, lvl)}
+                      className={cn(
+                        'h-2 flex-1 rounded-full transition-all duration-200',
+                        lvl <= data.level
+                          ? LEVEL_COLORS[data.level]
+                          : 'bg-gray-200'
+                      )}
+                    />
+                  ))}
+                </div>
+              </div>
+              {/* Want to study toggle */}
+              <button
+                onClick={() => onToggleWant(subj.id)}
+                className={cn(
+                  'flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 border',
+                  data.want
+                    ? 'bg-blue-500 border-blue-500 text-white shadow-md'
+                    : 'bg-white border-gray-200 text-gray-400 hover:border-blue-300'
+                )}
+                title="Хочу изучать"
+              >
+                {data.want ? (
+                  <Check className="w-4 h-4" />
+                ) : (
+                  <Star className="w-4 h-4" />
+                )}
+              </button>
+            </motion.div>
+          )
+        })}
+      </motion.div>
+
+      <motion.p
+        variants={staggerItem}
+        className="mt-4 text-xs text-gray-400 text-center"
+      >
+        Нажми на звёздочку, чтобы отметить предмет для изучения
+      </motion.p>
+    </motion.div>
+  )
+}
+
 // ─── Step 5: Dream ──────────────────────────────────────────────────────────
 
 function DreamStep({
@@ -1087,6 +1220,7 @@ export default function Onboarding() {
   const [city, setCity] = useState('')
   const [interests, setInterests] = useState<string[]>([])
   const [goals, setGoals] = useState<string[]>([])
+  const [subjectLevels, setSubjectLevels] = useState<Record<string, { level: number; want: boolean }>>({})
   const [dreamText, setDreamText] = useState('')
   const [selectedProfessions, setSelectedProfessions] = useState<string[]>([])
 
@@ -1118,6 +1252,20 @@ export default function Onboarding() {
     )
   }, [])
 
+  const setSubjectLevel = useCallback((id: string, level: number) => {
+    setSubjectLevels(prev => ({
+      ...prev,
+      [id]: { level, want: prev[id]?.want ?? false },
+    }))
+  }, [])
+
+  const toggleSubjectWant = useCallback((id: string) => {
+    setSubjectLevels(prev => ({
+      ...prev,
+      [id]: { level: prev[id]?.level ?? 0, want: !(prev[id]?.want ?? false) },
+    }))
+  }, [])
+
   const toggleProfession = useCallback((prof: string) => {
     setSelectedProfessions(prev =>
       prev.includes(prof) ? prev.filter(p => p !== prof) : [...prev, prof]
@@ -1138,13 +1286,18 @@ export default function Onboarding() {
       city,
       interests,
       strengths: interests.slice(0, 3),
+      subjectLevels: Object.entries(subjectLevels).map(([subject, data]) => ({
+        subject,
+        level: data.level,
+        wantToStudy: data.want,
+      })),
       dreamProfessions: [dreamText, ...selectedProfessions].filter(Boolean),
       goals,
       recommendedPaths: careerPaths,
     }
     completeOnboarding(profile)
     navigate('/dashboard')
-  }, [age, grade, city, interests, goals, dreamText, selectedProfessions, careerPaths, completeOnboarding, navigate])
+  }, [age, grade, city, interests, subjectLevels, goals, dreamText, selectedProfessions, careerPaths, completeOnboarding, navigate])
 
   // Can proceed check
   const canProceed = useMemo(() => {
@@ -1155,6 +1308,8 @@ export default function Onboarding() {
         return age > 0 && grade > 0 && city.length > 0
       case 'interests':
         return interests.length > 0
+      case 'subjects':
+        return true // Optional — user can skip
       case 'goals':
         return goals.length > 0
       case 'dream':
@@ -1232,6 +1387,14 @@ export default function Onboarding() {
                 />
               )}
 
+              {currentStep === 'subjects' && (
+                <SubjectsStep
+                  subjectLevels={subjectLevels}
+                  onLevelChange={setSubjectLevel}
+                  onToggleWant={toggleSubjectWant}
+                />
+              )}
+
               {currentStep === 'goals' && (
                 <GoalsStep
                   selected={goals}
@@ -1263,7 +1426,7 @@ export default function Onboarding() {
           <div className="px-6 pb-8 pt-2">
             <div className="flex justify-between items-center max-w-lg mx-auto">
               <div className="text-sm text-gray-400">
-                {currentStep === 'dream' && 'Необязательный шаг'}
+                {(currentStep === 'dream' || currentStep === 'subjects') && 'Необязательный шаг'}
               </div>
               <motion.button
                 onClick={goNext}

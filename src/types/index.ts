@@ -296,7 +296,7 @@ export interface JobPosting {
 
 // ── Onboarding Quest ────────────────────────────────────────────────────────
 
-export type OnboardingStep = 'welcome' | 'about' | 'interests' | 'goals' | 'dream' | 'result'
+export type OnboardingStep = 'welcome' | 'about' | 'interests' | 'subjects' | 'goals' | 'dream' | 'result'
 
 export interface OnboardingProfile {
   age: number
@@ -304,6 +304,7 @@ export interface OnboardingProfile {
   city: string
   interests: string[]
   strengths: string[]
+  subjectLevels: { subject: string; level: number; wantToStudy: boolean }[]
   dreamProfessions: string[]
   goals: string[] // e.g. 'ent', 'abroad', 'career', 'startup'
   personalityType?: string

@@ -49,7 +49,7 @@ const GRADES = [9, 10, 11]
 
 export default function Auth() {
   const navigate = useNavigate()
-  const { login, register, isAuthenticated, user, hasTakenDiagnostic } = useStore()
+  const { login, register, isAuthenticated, user, onboardingCompleted } = useStore()
 
   const [mode, setMode] = useState<AuthMode>('login')
   const [role, setRole] = useState<Role>('student')
@@ -80,10 +80,10 @@ export default function Auth() {
       } else if (user.role === 'employer') {
         navigate('/employer', { replace: true })
       } else {
-        navigate(hasTakenDiagnostic ? '/dashboard' : '/diagnostic', { replace: true })
+        navigate(onboardingCompleted ? '/dashboard' : '/onboarding', { replace: true })
       }
     }
-  }, [isAuthenticated, user, hasTakenDiagnostic, navigate])
+  }, [isAuthenticated, user, onboardingCompleted, navigate])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
