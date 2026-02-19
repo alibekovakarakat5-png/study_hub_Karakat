@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
 import {
@@ -7,33 +7,27 @@ import {
   X,
   Brain,
   Target,
-  Route,
   Trophy,
   Bot,
-  ClipboardList,
-  Users,
-  BookOpen,
-  Award,
-  TrendingUp,
   Sparkles,
-  HelpCircle,
-  Calendar,
-  Eye,
   ArrowRight,
   Check,
   Star,
   ChevronRight,
   Zap,
-  Shield,
-  BarChart3,
-  Send,
   Github,
   Instagram,
   MessageCircle,
+  Play,
+  Compass,
+  BookOpen,
+  Send,
+  Briefcase,
+  MapPin,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
-// Shared helpers
+// Shared animation helpers
 // ---------------------------------------------------------------------------
 
 function useSectionInView(amount = 0.2) {
@@ -51,14 +45,6 @@ const fadeUp = {
   }),
 } satisfies import('framer-motion').Variants;
 
-const fadeIn = {
-  hidden: { opacity: 0 },
-  visible: (i: number = 0) => ({
-    opacity: 1,
-    transition: { duration: 0.5, delay: i * 0.1 },
-  }),
-} satisfies import('framer-motion').Variants;
-
 const scaleIn = {
   hidden: { opacity: 0, scale: 0.85 },
   visible: (i: number = 0) => ({
@@ -68,8 +54,115 @@ const scaleIn = {
   }),
 } satisfies import('framer-motion').Variants;
 
+const slideFromLeft = {
+  hidden: { opacity: 0, x: -60 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as const },
+  },
+} satisfies import('framer-motion').Variants;
+
+const slideFromRight = {
+  hidden: { opacity: 0, x: 60 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as const },
+  },
+} satisfies import('framer-motion').Variants;
+
 // ---------------------------------------------------------------------------
-// 1. Header / Nav
+// Animated counter hook
+// ---------------------------------------------------------------------------
+
+function useCounter(target: number, inView: boolean, duration = 2000) {
+  const [count, setCount] = useState(0);
+  const started = useRef(false);
+
+  useEffect(() => {
+    if (!inView || started.current) return;
+    started.current = true;
+    const start = performance.now();
+    const step = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setCount(Math.round(target * eased));
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, [inView, target, duration]);
+
+  return count;
+}
+
+// ---------------------------------------------------------------------------
+// Typing effect hook
+// ---------------------------------------------------------------------------
+
+function useTypingEffect(text: string, inView: boolean, speed = 50) {
+  const [displayed, setDisplayed] = useState('');
+  const started = useRef(false);
+
+  useEffect(() => {
+    if (!inView || started.current) return;
+    started.current = true;
+    let i = 0;
+    const interval = setInterval(() => {
+      i++;
+      setDisplayed(text.slice(0, i));
+      if (i >= text.length) clearInterval(interval);
+    }, speed);
+    return () => clearInterval(interval);
+  }, [inView, text, speed]);
+
+  return displayed;
+}
+
+// ---------------------------------------------------------------------------
+// SVG Progress Ring
+// ---------------------------------------------------------------------------
+
+function ProgressRing({ progress, size = 48, strokeWidth = 4 }: { progress: number; size?: number; strokeWidth?: number }) {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (progress / 100) * circumference;
+
+  return (
+    <svg width={size} height={size} className="rotate-[-90deg]">
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        fill="none"
+        stroke="rgba(255,255,255,0.15)"
+        strokeWidth={strokeWidth}
+      />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        fill="none"
+        stroke="url(#ringGradient)"
+        strokeWidth={strokeWidth}
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        strokeLinecap="round"
+        className="transition-all duration-1000"
+      />
+      <defs>
+        <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#60a5fa" />
+          <stop offset="100%" stopColor="#a78bfa" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 1. HEADER (sticky, glassmorphism)
 // ---------------------------------------------------------------------------
 
 function Header({ onNavigate }: { onNavigate: (path: string) => void }) {
@@ -83,15 +176,18 @@ function Header({ onNavigate }: { onNavigate: (path: string) => void }) {
   }, []);
 
   const navLinks = [
+    { label: 'Как это работает', href: '#how-it-works' },
     { label: 'Возможности', href: '#features' },
-    { label: 'Тарифы', href: '#pricing' },
-    { label: 'О нас', href: '#about' },
+    { label: 'Отзывы', href: '#testimonials' },
+    { label: 'Цены', href: '#pricing' },
   ];
 
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? 'glass shadow-lg shadow-black/5' : 'bg-transparent'
+        scrolled
+          ? 'bg-white/80 backdrop-blur-xl shadow-lg shadow-black/5 border-b border-white/20'
+          : 'bg-transparent'
       }`}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -152,7 +248,7 @@ function Header({ onNavigate }: { onNavigate: (path: string) => void }) {
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           exit={{ opacity: 0, height: 0 }}
-          className="glass border-t border-white/20 lg:hidden"
+          className="bg-white/95 backdrop-blur-xl border-t border-slate-100 lg:hidden"
         >
           <div className="mx-auto max-w-7xl space-y-1 px-4 py-4 sm:px-6">
             {navLinks.map((l) => (
@@ -187,95 +283,266 @@ function Header({ onNavigate }: { onNavigate: (path: string) => void }) {
 }
 
 // ---------------------------------------------------------------------------
-// 2. Hero
+// 2. HERO SECTION with product mockup
 // ---------------------------------------------------------------------------
 
 function HeroSection({ onNavigate }: { onNavigate: (path: string) => void }) {
-  const stats = [
-    { value: '15,000+', label: 'учеников' },
-    { value: '95%', label: 'поступивших' },
-    { value: '50+', label: 'вузов' },
-  ];
-
   return (
-    <section className="gradient-hero relative overflow-hidden pt-32 pb-20 lg:pt-44 lg:pb-32">
+    <section className="gradient-hero relative overflow-hidden pt-28 pb-20 lg:pt-36 lg:pb-28">
       {/* Decorative blobs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 h-[500px] w-[500px] rounded-full bg-primary-500/10 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 h-[400px] w-[400px] rounded-full bg-purple-500/10 blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 h-[300px] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary-400/5 blur-3xl" />
+        <div className="absolute -top-40 -right-40 h-[600px] w-[600px] rounded-full bg-primary-500/10 blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 h-[500px] w-[500px] rounded-full bg-purple-500/10 blur-3xl" />
+        <div className="absolute top-1/3 left-1/3 h-[300px] w-[300px] rounded-full bg-pink-500/5 blur-3xl" />
       </div>
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-4xl text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary-400/20 bg-primary-500/10 px-4 py-1.5 text-sm font-medium text-primary-300"
-          >
-            <Sparkles className="h-4 w-4" />
-            <span>Платформа для подготовки к поступлению</span>
-          </motion.div>
-
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.1 }}
-            className="text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl"
-          >
-            Поступи туда,{' '}
-            <span className="bg-gradient-to-r from-primary-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-              куда хочешь
-            </span>
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.25 }}
-            className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-300 sm:text-xl"
-          >
-            AI-платформа, которая создаёт персональный маршрут подготовки к ЕНТ
-            и помогает поступить в лучшие вузы Казахстана и мира.
-          </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row"
-          >
-            <button
-              onClick={() => onNavigate('/diagnostic')}
-              className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-8 py-4 text-base font-bold text-primary-700 shadow-xl shadow-white/10 transition-all hover:shadow-2xl hover:shadow-white/20 hover:-translate-y-0.5 sm:w-auto"
+        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+          {/* Left side — text */}
+          <div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary-400/20 bg-primary-500/10 px-4 py-1.5 text-sm font-medium text-primary-300"
             >
-              Пройти диагностику бесплатно
-              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-            </button>
-            <a
-              href="#how-it-works"
-              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 px-8 py-4 text-base font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/10 hover:border-white/30 sm:w-auto"
+              <Sparkles className="h-4 w-4" />
+              <span>AI-навигатор для учеников Казахстана</span>
+            </motion.div>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.1 }}
+              className="text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl xl:text-7xl"
             >
-              Узнать больше
-              <ChevronRight className="h-5 w-5" />
-            </a>
+              Твой путь от школы{' '}
+              <span className="bg-gradient-to-r from-primary-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                до мечты
+              </span>
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.25 }}
+              className="mt-6 max-w-lg text-lg leading-relaxed text-slate-300 sm:text-xl"
+            >
+              AI-платформа, которая поможет выбрать профессию, подготовиться к ЕНТ
+              и поступить в вуз мечты.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="mt-8 flex flex-col gap-4 sm:flex-row"
+            >
+              <button
+                onClick={() => onNavigate('/diagnostic')}
+                className="group flex items-center justify-center gap-2 rounded-2xl bg-white px-8 py-4 text-base font-bold text-primary-700 shadow-xl shadow-white/10 transition-all hover:shadow-2xl hover:shadow-white/20 hover:-translate-y-0.5"
+              >
+                Начать бесплатно
+                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+              </button>
+              <a
+                href="#features"
+                className="group flex items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 px-8 py-4 text-base font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/10 hover:border-white/30"
+              >
+                <Play className="h-5 w-5" />
+                Смотреть демо
+              </a>
+            </motion.div>
+
+            {/* Social proof */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.55 }}
+              className="mt-10 flex items-center gap-4"
+            >
+              {/* Avatar stack */}
+              <div className="flex -space-x-3">
+                {['bg-gradient-to-br from-primary-400 to-purple-500',
+                  'bg-gradient-to-br from-pink-400 to-rose-500',
+                  'bg-gradient-to-br from-amber-400 to-orange-500',
+                  'bg-gradient-to-br from-emerald-400 to-teal-500',
+                ].map((bg, i) => (
+                  <div
+                    key={i}
+                    className={`flex h-10 w-10 items-center justify-center rounded-full ${bg} text-xs font-bold text-white ring-2 ring-slate-900`}
+                  >
+                    {['А', 'Д', 'М', 'К'][i]}
+                  </div>
+                ))}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-white">15,000+ учеников уже с нами</p>
+                <div className="mt-0.5 flex gap-0.5">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Right side — Phone mockup */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.3, ease: [0.22, 1, 0.36, 1] as const }}
+            className="relative mx-auto w-full max-w-md lg:max-w-none"
+          >
+            <div className="relative flex justify-center">
+              {/* Phone frame */}
+              <div className="relative w-[260px] rounded-[2.5rem] border-[6px] border-slate-700 bg-slate-900 p-3 shadow-2xl shadow-black/50">
+                {/* Notch */}
+                <div className="absolute top-0 left-1/2 h-6 w-24 -translate-x-1/2 rounded-b-2xl bg-slate-700" />
+                {/* Screen */}
+                <div className="rounded-[2rem] bg-gradient-to-b from-slate-800 to-slate-900 p-4 pt-8">
+                  {/* Mini header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center">
+                        <GraduationCap className="h-4 w-4 text-white" />
+                      </div>
+                      <span className="text-xs font-bold text-white">Study Hub</span>
+                    </div>
+                    <div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary-400 to-purple-500 flex items-center justify-center text-[10px] font-bold text-white">А</div>
+                  </div>
+
+                  {/* Greeting */}
+                  <p className="text-[11px] text-slate-400">Привет, Айдана!</p>
+                  <p className="text-sm font-bold text-white mt-0.5">Твой прогресс</p>
+
+                  {/* Progress bar */}
+                  <div className="mt-3 rounded-xl bg-slate-700/50 p-3">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="text-slate-300">Общий балл</span>
+                      <span className="font-bold text-primary-400">76%</span>
+                    </div>
+                    <div className="mt-1.5 h-2 rounded-full bg-slate-700">
+                      <div className="h-full w-[76%] rounded-full bg-gradient-to-r from-primary-500 to-purple-500" />
+                    </div>
+                  </div>
+
+                  {/* Subject list */}
+                  <div className="mt-3 space-y-2">
+                    {[
+                      { name: 'Математика', score: '87%', color: 'from-blue-500 to-cyan-500' },
+                      { name: 'Физика', score: '72%', color: 'from-purple-500 to-pink-500' },
+                      { name: 'История КЗ', score: '91%', color: 'from-emerald-500 to-teal-500' },
+                    ].map((s) => (
+                      <div key={s.name} className="flex items-center justify-between rounded-lg bg-slate-700/30 px-3 py-2">
+                        <span className="text-[10px] text-slate-300">{s.name}</span>
+                        <span className={`text-[10px] font-bold bg-gradient-to-r ${s.color} bg-clip-text text-transparent`}>{s.score}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* AI tip */}
+                  <div className="mt-3 rounded-xl bg-primary-500/10 border border-primary-500/20 p-2.5">
+                    <div className="flex items-start gap-2">
+                      <Bot className="h-3.5 w-3.5 text-primary-400 mt-0.5 shrink-0" />
+                      <p className="text-[10px] text-primary-300 leading-relaxed">Советую повторить логарифмы перед тестом</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Floating card: Score */}
+              <motion.div
+                animate={{ y: [0, -8, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                className="absolute -left-8 top-12 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 p-3 shadow-xl lg:-left-16"
+              >
+                <div className="flex items-center gap-2.5">
+                  <ProgressRing progress={87} size={40} strokeWidth={3} />
+                  <div>
+                    <p className="text-[10px] text-slate-400">Математика</p>
+                    <p className="text-sm font-bold text-white">87%</p>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Floating card: Streak */}
+              <motion.div
+                animate={{ y: [0, 10, 0] }}
+                transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+                className="absolute -right-6 top-28 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2.5 shadow-xl lg:-right-14"
+              >
+                <p className="text-lg">🔥</p>
+                <p className="text-xs font-bold text-white">12 дней подряд</p>
+              </motion.div>
+
+              {/* Floating card: Achievement */}
+              <motion.div
+                animate={{ y: [0, -6, 0] }}
+                transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+                className="absolute -left-4 bottom-24 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2.5 shadow-xl lg:-left-12"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">⭐</span>
+                  <p className="text-xs font-bold text-white">Отличник</p>
+                </div>
+              </motion.div>
+
+              {/* Floating card: AI message */}
+              <motion.div
+                animate={{ y: [0, 8, 0] }}
+                transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
+                className="absolute -right-4 bottom-16 rounded-2xl bg-gradient-to-r from-primary-500/20 to-purple-500/20 backdrop-blur-xl border border-primary-400/20 px-3 py-2 shadow-xl lg:-right-10"
+              >
+                <div className="flex items-center gap-2">
+                  <Bot className="h-4 w-4 text-primary-400" />
+                  <p className="text-[10px] text-primary-300 max-w-[120px]">Советую повторить логарифмы</p>
+                </div>
+              </motion.div>
+            </div>
           </motion.div>
         </div>
+      </div>
+    </section>
+  );
+}
 
-        {/* Floating stats */}
-        <div className="mt-16 flex flex-wrap items-center justify-center gap-6 lg:mt-20">
+// ---------------------------------------------------------------------------
+// 3. LIVE STATS BAR
+// ---------------------------------------------------------------------------
+
+function LiveStatsBar() {
+  const { ref, inView } = useSectionInView(0.5);
+
+  const students = useCounter(15000, inView);
+  const tests = useCounter(48000, inView);
+  const recommend = useCounter(94, inView);
+  const courses = useCounter(50, inView);
+
+  const stats = [
+    { value: `${students.toLocaleString()}+`, label: 'учеников' },
+    { value: `${tests.toLocaleString()}+`, label: 'тестов пройдено' },
+    { value: `${recommend}%`, label: 'рекомендуют' },
+    { value: `${courses}+`, label: 'курсов' },
+  ];
+
+  return (
+    <section ref={ref} className="relative -mt-1 bg-gradient-to-r from-primary-600 via-purple-600 to-pink-600">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-2 gap-px md:grid-cols-4">
           {stats.map((s, i) => (
             <motion.div
               key={s.label}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.55 + i * 0.12 }}
-              className="animate-float glass flex min-w-[160px] flex-col items-center rounded-2xl border border-white/10 bg-white/5 px-6 py-5 text-center shadow-xl backdrop-blur-md"
-              style={{ animationDelay: `${i * 2}s` }}
+              variants={fadeUp}
+              initial="hidden"
+              animate={inView ? 'visible' : 'hidden'}
+              custom={i}
+              className="flex flex-col items-center py-8 lg:py-10"
             >
-              <span className="text-3xl font-extrabold text-white">{s.value}</span>
-              <span className="mt-1 text-sm text-slate-300">{s.label}</span>
+              <span className="text-3xl font-extrabold text-white lg:text-4xl">
+                {s.value}
+              </span>
+              <span className="mt-1 text-sm font-medium text-white/70">{s.label}</span>
             </motion.div>
           ))}
         </div>
@@ -285,85 +552,108 @@ function HeroSection({ onNavigate }: { onNavigate: (path: string) => void }) {
 }
 
 // ---------------------------------------------------------------------------
-// 3. Problem Section
+// 4. PROBLEM → SOLUTION SECTION
 // ---------------------------------------------------------------------------
 
-function ProblemSection() {
+function ProblemSolutionSection() {
   const { ref, inView } = useSectionInView();
 
-  const problems = [
+  const pairs = [
     {
-      icon: HelpCircle,
-      title: 'Не знаю куда поступать',
-      description:
-        'Сотни специальностей, десятки вузов — выбор кажется невозможным. Без чёткой информации легко ошибиться и потерять годы.',
-      color: 'from-red-500 to-orange-500',
-      bg: 'bg-red-50',
+      problem: 'Не знаю кем стать',
+      solution: 'AI определит твои сильные стороны и подберёт профессию',
     },
     {
-      icon: Calendar,
-      title: 'Учусь хаотично без плана',
-      description:
-        'Без структурного подхода подготовка превращается в хаос. Пропуски тем, забытый материал, стресс перед экзаменом.',
-      color: 'from-amber-500 to-yellow-500',
-      bg: 'bg-amber-50',
+      problem: 'Не понимаю как готовиться к ЕНТ',
+      solution: 'Персональный план подготовки, адаптированный под тебя',
     },
     {
-      icon: Eye,
-      title: 'Родители не видят прогресс',
-      description:
-        'Родители хотят помочь, но не понимают, что происходит. Нет прозрачности — нет доверия и поддержки.',
-      color: 'from-purple-500 to-pink-500',
-      bg: 'bg-purple-50',
+      problem: 'Родители переживают, а я не знаю что делать',
+      solution: 'Родители видят прогресс в реальном времени',
     },
   ];
 
   return (
-    <section ref={ref} className="relative py-20 lg:py-28" id="about">
+    <section ref={ref} className="relative py-20 lg:py-28 bg-white">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
           variants={fadeUp}
           initial="hidden"
           animate={inView ? 'visible' : 'hidden'}
-          className="mx-auto max-w-2xl text-center"
+          className="mx-auto max-w-2xl text-center mb-16"
         >
-          <span className="mb-3 inline-block rounded-full bg-red-50 px-4 py-1.5 text-sm font-semibold text-red-600">
-            Проблема
-          </span>
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
-            Знакомые проблемы?
+            Мы знаем, каково это
           </h2>
           <p className="mt-4 text-lg text-slate-500">
-            Тысячи учеников и их родителей сталкиваются с этим каждый год
+            И у нас есть решение для каждой проблемы
           </p>
         </motion.div>
 
-        <div className="mt-14 grid gap-6 md:grid-cols-3 lg:gap-8">
-          {problems.map((p, i) => (
-            <motion.div
-              key={p.title}
-              variants={fadeUp}
-              initial="hidden"
-              animate={inView ? 'visible' : 'hidden'}
-              custom={i + 1}
-              className="group relative overflow-hidden rounded-3xl border border-slate-100 bg-white p-8 shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1"
-            >
-              <div
-                className={`mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl ${p.bg}`}
-              >
-                <p.icon
-                  className={`h-7 w-7 bg-gradient-to-br ${p.color} bg-clip-text`}
-                  style={{ color: p.color.includes('red') ? '#ef4444' : p.color.includes('amber') ? '#f59e0b' : '#a855f7' }}
-                />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900">{p.title}</h3>
-              <p className="mt-3 leading-relaxed text-slate-500">{p.description}</p>
-              {/* Decorative gradient blob */}
-              <div
-                className={`pointer-events-none absolute -bottom-20 -right-20 h-40 w-40 rounded-full bg-gradient-to-br ${p.color} opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-10`}
-              />
-            </motion.div>
-          ))}
+        <div className="grid gap-8 lg:grid-cols-2 lg:gap-16 items-start">
+          {/* Problems */}
+          <motion.div
+            variants={slideFromLeft}
+            initial="hidden"
+            animate={inView ? 'visible' : 'hidden'}
+          >
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-red-50 px-4 py-1.5 text-sm font-semibold text-red-600">
+              Знакомо?
+            </div>
+            <div className="space-y-4">
+              {pairs.map((p, i) => (
+                <motion.div
+                  key={p.problem}
+                  variants={fadeUp}
+                  initial="hidden"
+                  animate={inView ? 'visible' : 'hidden'}
+                  custom={i + 1}
+                  className="flex items-start gap-4 rounded-2xl border border-red-100 bg-red-50/50 p-5 transition-all hover:shadow-md"
+                >
+                  <span className="text-2xl shrink-0">😟</span>
+                  <p className="text-base font-medium text-slate-700">{p.problem}</p>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Solutions */}
+          <motion.div
+            variants={slideFromRight}
+            initial="hidden"
+            animate={inView ? 'visible' : 'hidden'}
+          >
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-1.5 text-sm font-semibold text-emerald-600">
+              Study Hub решает
+            </div>
+            <div className="space-y-4">
+              {pairs.map((p, i) => (
+                <motion.div
+                  key={p.solution}
+                  variants={fadeUp}
+                  initial="hidden"
+                  animate={inView ? 'visible' : 'hidden'}
+                  custom={i + 1.5}
+                  className="flex items-start gap-4 rounded-2xl border border-emerald-100 bg-emerald-50/50 p-5 transition-all hover:shadow-md"
+                >
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500 mt-0.5">
+                    <Check className="h-4 w-4 text-white" />
+                  </div>
+                  <p className="text-base font-medium text-slate-700">{p.solution}</p>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Arrow between (visible on lg) */}
+        <div className="hidden lg:flex justify-center -mt-[11rem] pointer-events-none relative z-10">
+          <motion.div
+            animate={{ x: [0, 8, 0] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <ArrowRight className="h-10 w-10 text-primary-400/40" />
+          </motion.div>
         </div>
       </div>
     </section>
@@ -371,7 +661,328 @@ function ProblemSection() {
 }
 
 // ---------------------------------------------------------------------------
-// 4. How It Works
+// 5. PRODUCT SHOWCASE SECTION
+// ---------------------------------------------------------------------------
+
+function ProductShowcaseSection() {
+  const { ref, inView } = useSectionInView(0.1);
+
+  return (
+    <section ref={ref} id="features" className="relative py-20 lg:py-28 bg-gradient-to-b from-slate-50 to-white">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <motion.div
+          variants={fadeUp}
+          initial="hidden"
+          animate={inView ? 'visible' : 'hidden'}
+          className="mx-auto max-w-2xl text-center mb-16"
+        >
+          <span className="mb-3 inline-block rounded-full bg-primary-50 px-4 py-1.5 text-sm font-semibold text-primary-600">
+            Возможности
+          </span>
+          <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
+            Вся экосистема{' '}
+            <span className="text-gradient">в одном месте</span>
+          </h2>
+          <p className="mt-4 text-lg text-slate-500">
+            Три мощных инструмента, которые ведут тебя от школы до карьеры
+          </p>
+        </motion.div>
+
+        {/* Card 1: Умная диагностика — laptop mockup */}
+        <ShowcaseCard1 inView={inView} />
+
+        {/* Card 2: AI-ментор — phone mockup (right) */}
+        <ShowcaseCard2 inView={inView} />
+
+        {/* Card 3: Карьерный навигатор — wide mockup */}
+        <ShowcaseCard3 inView={inView} />
+      </div>
+    </section>
+  );
+}
+
+function ShowcaseCard1({ inView }: { inView: boolean }) {
+  return (
+    <motion.div
+      variants={fadeUp}
+      initial="hidden"
+      animate={inView ? 'visible' : 'hidden'}
+      custom={1}
+      className="mb-12 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl lg:mb-16"
+    >
+      <div className="grid lg:grid-cols-2">
+        {/* Laptop mockup */}
+        <div className="relative bg-gradient-to-br from-slate-100 to-slate-50 p-8 lg:p-12 flex items-center justify-center">
+          {/* Floating badge */}
+          <motion.div
+            animate={{ y: [0, -6, 0] }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            className="absolute top-6 right-6 rounded-full bg-primary-500 px-3 py-1 text-[10px] font-bold text-white shadow-lg z-10"
+          >
+            AI-адаптивный
+          </motion.div>
+
+          {/* Laptop frame */}
+          <div className="w-full max-w-sm">
+            <div className="rounded-t-xl border-[3px] border-slate-300 border-b-0 bg-slate-800 p-3">
+              {/* Browser bar */}
+              <div className="flex items-center gap-2 rounded-lg bg-slate-700 px-3 py-1.5 mb-3">
+                <div className="flex gap-1.5">
+                  <div className="h-2.5 w-2.5 rounded-full bg-red-400" />
+                  <div className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+                  <div className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                </div>
+                <div className="flex-1 text-center text-[9px] text-slate-400">studyhub.kz/test</div>
+              </div>
+
+              {/* Test interface */}
+              <div className="rounded-lg bg-white p-4">
+                {/* Progress */}
+                <div className="flex items-center justify-between text-[10px] text-slate-500 mb-2">
+                  <span>Вопрос 12 из 30</span>
+                  <span className="font-bold text-primary-600">40%</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-slate-100 mb-4">
+                  <div className="h-full w-[40%] rounded-full bg-gradient-to-r from-primary-500 to-purple-500" />
+                </div>
+
+                {/* Question */}
+                <p className="text-xs font-semibold text-slate-800 mb-3">
+                  Решите уравнение: log₂(x+3) = 5
+                </p>
+
+                {/* Options */}
+                {['x = 29', 'x = 32', 'x = 13', 'x = 28'].map((opt, i) => (
+                  <div
+                    key={opt}
+                    className={`mb-2 rounded-lg border px-3 py-2 text-[10px] transition-colors ${
+                      i === 0
+                        ? 'border-primary-300 bg-primary-50 text-primary-700 font-medium'
+                        : 'border-slate-200 text-slate-600'
+                    }`}
+                  >
+                    {opt}
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Laptop base */}
+            <div className="h-3 rounded-b-xl bg-slate-300 mx-[-2px]" />
+            <div className="mx-auto h-1 w-1/3 rounded-b-lg bg-slate-400" />
+          </div>
+        </div>
+
+        {/* Description */}
+        <div className="p-8 lg:p-12 flex flex-col justify-center">
+          <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50">
+            <Brain className="h-6 w-6 text-primary-600" />
+          </div>
+          <h3 className="text-2xl font-extrabold text-slate-900 lg:text-3xl">Умная диагностика</h3>
+          <p className="mt-3 text-base text-slate-500 leading-relaxed">
+            AI-тест, который адаптируется к твоему уровню в реальном времени.
+            Сложнее, если справляешься. Проще, если нужно закрепить базу.
+          </p>
+          <ul className="mt-6 space-y-3">
+            {[
+              'Определяет сильные и слабые стороны за 15 минут',
+              'Адаптируется к уровню — каждый вопрос подобран под тебя',
+              'Детальный отчёт по каждой теме',
+            ].map((item) => (
+              <li key={item} className="flex items-start gap-3">
+                <Check className="h-5 w-5 text-primary-500 mt-0.5 shrink-0" />
+                <span className="text-sm text-slate-600">{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function ShowcaseCard2({ inView }: { inView: boolean }) {
+  const aiMessage = useTypingEffect('Привет! Я вижу, что тебе сложно с логарифмами. Давай разберём пошагово?', inView, 35);
+
+  return (
+    <motion.div
+      variants={fadeUp}
+      initial="hidden"
+      animate={inView ? 'visible' : 'hidden'}
+      custom={2}
+      className="mb-12 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl lg:mb-16"
+    >
+      <div className="grid lg:grid-cols-2">
+        {/* Description (left on lg) */}
+        <div className="p-8 lg:p-12 flex flex-col justify-center order-2 lg:order-1">
+          <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50">
+            <Bot className="h-6 w-6 text-purple-600" />
+          </div>
+          <h3 className="text-2xl font-extrabold text-slate-900 lg:text-3xl">AI-ментор</h3>
+          <p className="mt-3 text-base text-slate-500 leading-relaxed">
+            Персональный помощник, который доступен 24/7. Спроси что угодно —
+            он объяснит простым языком и поможет разобраться.
+          </p>
+          <ul className="mt-6 space-y-3">
+            {[
+              'Объясняет любую тему простым языком',
+              'Помогает с домашними заданиями',
+              'Мотивирует и следит за прогрессом',
+            ].map((item) => (
+              <li key={item} className="flex items-start gap-3">
+                <Check className="h-5 w-5 text-purple-500 mt-0.5 shrink-0" />
+                <span className="text-sm text-slate-600">{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Phone mockup (right on lg) */}
+        <div className="relative bg-gradient-to-br from-purple-50 to-slate-50 p-8 lg:p-12 flex items-center justify-center order-1 lg:order-2">
+          {/* Floating badge */}
+          <motion.div
+            animate={{ y: [0, -6, 0] }}
+            transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+            className="absolute top-6 left-6 rounded-full bg-purple-500 px-3 py-1 text-[10px] font-bold text-white shadow-lg z-10"
+          >
+            24/7 доступ
+          </motion.div>
+
+          {/* Phone frame */}
+          <div className="w-[240px] rounded-[2.5rem] border-[6px] border-slate-700 bg-slate-900 p-3 shadow-2xl">
+            <div className="absolute top-[18px] left-1/2 h-5 w-20 -translate-x-1/2 rounded-b-xl bg-slate-700 z-10" />
+            <div className="rounded-[2rem] bg-gradient-to-b from-slate-800 to-slate-900 p-4 pt-6">
+              {/* Chat header */}
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-700/50">
+                <div className="h-8 w-8 rounded-full gradient-primary flex items-center justify-center">
+                  <Bot className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-white">AI-ментор</p>
+                  <p className="text-[9px] text-emerald-400">онлайн</p>
+                </div>
+              </div>
+
+              {/* Chat bubbles */}
+              <div className="space-y-3">
+                {/* User message */}
+                <div className="flex justify-end">
+                  <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-primary-500 px-3 py-2">
+                    <p className="text-[10px] text-white">Не понимаю логарифмы, помоги!</p>
+                  </div>
+                </div>
+
+                {/* AI response with typing */}
+                <div className="flex justify-start">
+                  <div className="max-w-[90%] rounded-2xl rounded-bl-sm bg-slate-700 px-3 py-2">
+                    <p className="text-[10px] text-slate-200 leading-relaxed">
+                      {aiMessage}
+                      <span className="inline-block w-0.5 h-2.5 bg-primary-400 ml-0.5 animate-pulse" />
+                    </p>
+                  </div>
+                </div>
+
+                {/* User follow-up */}
+                <div className="flex justify-end">
+                  <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-primary-500 px-3 py-2">
+                    <p className="text-[10px] text-white">Да, давай!</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Input */}
+              <div className="mt-4 flex items-center gap-2 rounded-2xl bg-slate-700/50 px-3 py-2">
+                <p className="flex-1 text-[10px] text-slate-500">Напиши сообщение...</p>
+                <Send className="h-3.5 w-3.5 text-primary-400" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function ShowcaseCard3({ inView }: { inView: boolean }) {
+  return (
+    <motion.div
+      variants={fadeUp}
+      initial="hidden"
+      animate={inView ? 'visible' : 'hidden'}
+      custom={3}
+      className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl"
+    >
+      <div className="grid lg:grid-cols-2">
+        {/* Wide mockup */}
+        <div className="relative bg-gradient-to-br from-emerald-50 to-slate-50 p-8 lg:p-12 flex items-center justify-center">
+          {/* Floating badge */}
+          <motion.div
+            animate={{ y: [0, -6, 0] }}
+            transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+            className="absolute top-6 right-6 rounded-full bg-emerald-500 px-3 py-1 text-[10px] font-bold text-white shadow-lg z-10"
+          >
+            От школы до работы
+          </motion.div>
+
+          {/* Career path timeline */}
+          <div className="w-full max-w-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <p className="text-xs font-bold text-slate-800 mb-6 text-center">Твой карьерный путь</p>
+              <div className="space-y-0">
+                {[
+                  { icon: BookOpen, label: '11 класс', sub: 'Подготовка к ЕНТ', color: 'bg-primary-500', active: true },
+                  { icon: GraduationCap, label: 'Университет', sub: 'IT / Computer Science', color: 'bg-purple-500', active: false },
+                  { icon: Briefcase, label: 'Карьера', sub: 'Software Engineer', color: 'bg-emerald-500', active: false },
+                ].map((step, i) => (
+                  <div key={step.label} className="flex items-start gap-4">
+                    <div className="flex flex-col items-center">
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${step.color} ${step.active ? 'shadow-lg' : 'opacity-60'}`}>
+                        <step.icon className="h-5 w-5 text-white" />
+                      </div>
+                      {i < 2 && (
+                        <div className="w-0.5 h-8 bg-slate-200 my-1" />
+                      )}
+                    </div>
+                    <div className="pt-1">
+                      <p className={`text-sm font-bold ${step.active ? 'text-slate-900' : 'text-slate-400'}`}>{step.label}</p>
+                      <p className="text-[11px] text-slate-400">{step.sub}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Description */}
+        <div className="p-8 lg:p-12 flex flex-col justify-center">
+          <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50">
+            <Compass className="h-6 w-6 text-emerald-600" />
+          </div>
+          <h3 className="text-2xl font-extrabold text-slate-900 lg:text-3xl">Карьерный навигатор</h3>
+          <p className="mt-3 text-base text-slate-500 leading-relaxed">
+            Не просто подготовка к ЕНТ — мы помогаем выстроить путь
+            от школы до работы мечты.
+          </p>
+          <ul className="mt-6 space-y-3">
+            {[
+              'Подбор профессии на основе твоих интересов и способностей',
+              'Рекомендации по вузам и специальностям',
+              'Пошаговый план от текущего момента до трудоустройства',
+            ].map((item) => (
+              <li key={item} className="flex items-start gap-3">
+                <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+                <span className="text-sm text-slate-600">{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 6. HOW IT WORKS (4 steps)
 // ---------------------------------------------------------------------------
 
 function HowItWorksSection() {
@@ -379,40 +990,37 @@ function HowItWorksSection() {
 
   const steps = [
     {
-      icon: Brain,
-      title: 'Пройди диагностику',
-      description: 'AI-тест определит твой уровень знаний, сильные и слабые стороны за 15 минут.',
-      color: 'from-primary-500 to-primary-600',
-    },
-    {
       icon: Target,
-      title: 'Получи персональный план',
-      description:
-        'Алгоритм составит маршрут подготовки, адаптированный под твои цели и уровень.',
-      color: 'from-purple-500 to-purple-600',
+      title: 'Пройди онбординг',
+      description: 'Расскажи о себе, своих целях и интересах за 5 минут.',
+      color: 'from-primary-500 to-primary-600',
+      shadow: 'rgba(59,130,246,.3)',
     },
     {
-      icon: Route,
-      title: 'Учись по маршруту',
-      description:
-        'Следуй пошаговому плану с AI-ментором, который корректирует путь в реальном времени.',
+      icon: MapPin,
+      title: 'Получи персональный план',
+      description: 'AI составит маршрут подготовки именно для тебя.',
+      color: 'from-purple-500 to-purple-600',
+      shadow: 'rgba(168,85,247,.3)',
+    },
+    {
+      icon: Bot,
+      title: 'Учись с AI-ментором',
+      description: 'Занимайся по плану с персональным AI-помощником 24/7.',
       color: 'from-pink-500 to-pink-600',
+      shadow: 'rgba(236,72,153,.3)',
     },
     {
       icon: Trophy,
-      title: 'Поступи в мечту',
-      description:
-        'Сдай ЕНТ на максимум и получи грант в вуз, о котором мечтал.',
+      title: 'Достигни цели',
+      description: 'Сдай ЕНТ на максимум и поступи в вуз мечты.',
       color: 'from-accent-500 to-accent-600',
+      shadow: 'rgba(34,197,94,.3)',
     },
   ];
 
   return (
-    <section
-      ref={ref}
-      id="how-it-works"
-      className="relative bg-gradient-to-b from-slate-50 to-white py-20 lg:py-28"
-    >
+    <section ref={ref} id="how-it-works" className="relative bg-white py-20 lg:py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
           variants={fadeUp}
@@ -425,10 +1033,10 @@ function HowItWorksSection() {
           </span>
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
             4 шага к{' '}
-            <span className="text-gradient">поступлению</span>
+            <span className="text-gradient">твоей мечте</span>
           </h2>
           <p className="mt-4 text-lg text-slate-500">
-            Простой и понятный путь от диагностики до зачисления
+            Простой и понятный путь от первого шага до результата
           </p>
         </motion.div>
 
@@ -453,23 +1061,16 @@ function HowItWorksSection() {
                   </div>
                 )}
 
-                {/* Step number badge */}
+                {/* Step icon */}
                 <div className="relative z-10 mb-4">
-                  <div
+                  <motion.div
+                    animate={inView ? { scale: [0.8, 1.05, 1] } : {}}
+                    transition={{ duration: 0.5, delay: 0.3 + i * 0.15, ease: [0.22, 1, 0.36, 1] as const }}
                     className={`flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br ${s.color} shadow-lg`}
-                    style={{
-                      boxShadow:
-                        i === 0
-                          ? '0 8px 30px rgba(59,130,246,.3)'
-                          : i === 1
-                          ? '0 8px 30px rgba(168,85,247,.3)'
-                          : i === 2
-                          ? '0 8px 30px rgba(236,72,153,.3)'
-                          : '0 8px 30px rgba(34,197,94,.3)',
-                    }}
+                    style={{ boxShadow: `0 8px 30px ${s.shadow}` }}
                   >
                     <s.icon className="h-8 w-8 text-white" />
-                  </div>
+                  </motion.div>
                   <span className="absolute -top-2 -right-2 flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-slate-700 shadow-md ring-2 ring-slate-100">
                     {i + 1}
                   </span>
@@ -487,155 +1088,38 @@ function HowItWorksSection() {
 }
 
 // ---------------------------------------------------------------------------
-// 5. Features
+// 7. SOCIAL PROOF / TESTIMONIALS
 // ---------------------------------------------------------------------------
 
-function FeaturesSection() {
-  const { ref, inView } = useSectionInView();
-
-  const features = [
-    {
-      icon: Bot,
-      title: 'AI-ментор',
-      description:
-        'Персональный репетитор на базе ИИ, который ответит на любой вопрос и объяснит тему простым языком 24/7.',
-      color: 'text-primary-600',
-      bg: 'bg-primary-50',
-      border: 'group-hover:border-primary-200',
-    },
-    {
-      icon: ClipboardList,
-      title: 'Персональный план',
-      description:
-        'Индивидуальный маршрут подготовки, который адаптируется к твоему темпу и прогрессу.',
-      color: 'text-purple-600',
-      bg: 'bg-purple-50',
-      border: 'group-hover:border-purple-200',
-    },
-    {
-      icon: Users,
-      title: 'Родительская панель',
-      description:
-        'Прозрачная аналитика для родителей: прогресс, посещаемость, прогноз результата.',
-      color: 'text-pink-600',
-      bg: 'bg-pink-50',
-      border: 'group-hover:border-pink-200',
-    },
-    {
-      icon: BookOpen,
-      title: 'Банк заданий ЕНТ',
-      description:
-        'Тысячи заданий из реальных ЕНТ прошлых лет с подробными разборами и пояснениями.',
-      color: 'text-amber-600',
-      bg: 'bg-amber-50',
-      border: 'group-hover:border-amber-200',
-    },
-    {
-      icon: Award,
-      title: 'Портфолио достижений',
-      description:
-        'Собирай свои результаты, сертификаты и достижения в одном месте для подачи в вуз.',
-      color: 'text-accent-600',
-      bg: 'bg-accent-50',
-      border: 'group-hover:border-accent-200',
-    },
-    {
-      icon: TrendingUp,
-      title: 'Прогноз поступления',
-      description:
-        'AI-алгоритм рассчитает вероятность поступления в выбранные вузы на основе твоего прогресса.',
-      color: 'text-cyan-600',
-      bg: 'bg-cyan-50',
-      border: 'group-hover:border-cyan-200',
-    },
-  ];
-
-  return (
-    <section ref={ref} id="features" className="relative py-20 lg:py-28">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          animate={inView ? 'visible' : 'hidden'}
-          className="mx-auto max-w-2xl text-center"
-        >
-          <span className="mb-3 inline-block rounded-full bg-primary-50 px-4 py-1.5 text-sm font-semibold text-primary-600">
-            Возможности
-          </span>
-          <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
-            Всё для{' '}
-            <span className="text-gradient">успешного поступления</span>
-          </h2>
-          <p className="mt-4 text-lg text-slate-500">
-            Инструменты, которые делают подготовку эффективной и понятной
-          </p>
-        </motion.div>
-
-        <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((f, i) => (
-            <motion.div
-              key={f.title}
-              variants={scaleIn}
-              initial="hidden"
-              animate={inView ? 'visible' : 'hidden'}
-              custom={i}
-              className={`group relative overflow-hidden rounded-3xl border border-slate-100 bg-white p-8 shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1 ${f.border}`}
-            >
-              <div
-                className={`mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl ${f.bg} transition-transform duration-300 group-hover:scale-110`}
-              >
-                <f.icon className={`h-7 w-7 ${f.color}`} />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900">{f.title}</h3>
-              <p className="mt-3 leading-relaxed text-slate-500">{f.description}</p>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// 6. Social Proof
-// ---------------------------------------------------------------------------
-
-function SocialProofSection() {
+function TestimonialsSection() {
   const { ref, inView } = useSectionInView();
 
   const testimonials = [
     {
-      name: 'Айдана К.',
-      role: 'Поступила в НУ, Астана',
-      text: 'Благодаря Study Hub я подняла балл ЕНТ с 89 до 128 за 4 месяца. Персональный план и AI-ментор реально работают!',
+      name: 'Айгерим',
+      role: 'Ученица 11 класса, Алматы',
+      text: 'Подняла баллы с 67 до 89 за 2 месяца. AI-ментор объясняет лучше, чем репетитор — и доступен в любое время!',
       avatar: 'А',
       color: 'from-primary-500 to-purple-500',
     },
     {
-      name: 'Дамир Т.',
-      role: 'Поступил в КБТУ, Алматы',
-      text: 'Раньше учился хаотично и терял мотивацию. Study Hub структурировал мою подготовку, и я поступил на грант.',
+      name: 'Дамир',
+      role: 'Ученик 10 класса, Астана',
+      text: 'Наконец-то понял кем хочу стать! Карьерный навигатор показал, что мне подходит IT, и теперь у меня есть чёткий план.',
       avatar: 'Д',
       color: 'from-purple-500 to-pink-500',
     },
     {
-      name: 'Гульнара М.',
-      role: 'Мама ученицы',
-      text: 'Наконец-то я вижу, как учится моя дочь. Родительская панель показывает всё: от посещаемости до прогноза. Очень удобно!',
-      avatar: 'Г',
-      color: 'from-pink-500 to-red-500',
+      name: 'Анара',
+      role: 'Мама ученика, Караганда',
+      text: 'Теперь вижу прогресс ребёнка каждый день. Наконец спокойна — знаю, что подготовка идёт по плану.',
+      avatar: 'А',
+      color: 'from-pink-500 to-rose-500',
     },
   ];
 
-  const stats = [
-    { value: '15,000+', label: 'учеников' },
-    { value: '850+', label: 'поступивших' },
-    { value: '50+', label: 'вузов' },
-    { value: '4.9', label: 'рейтинг' },
-  ];
-
   return (
-    <section ref={ref} className="relative bg-gradient-to-b from-slate-50 to-white py-20 lg:py-28">
+    <section ref={ref} id="testimonials" className="relative bg-gradient-to-b from-slate-50 to-white py-20 lg:py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
           variants={fadeUp}
@@ -651,20 +1135,19 @@ function SocialProofSection() {
             <span className="text-gradient">тысячи учеников</span>
           </h2>
           <p className="mt-4 text-lg text-slate-500">
-            Истории успеха учеников и их родителей
+            Реальные истории учеников и их родителей
           </p>
         </motion.div>
 
-        {/* Testimonial cards */}
         <div className="mt-14 grid gap-6 md:grid-cols-3 lg:gap-8">
           {testimonials.map((t, i) => (
             <motion.div
               key={t.name}
-              variants={fadeUp}
+              variants={scaleIn}
               initial="hidden"
               animate={inView ? 'visible' : 'hidden'}
-              custom={i + 1}
-              className="relative rounded-3xl border border-slate-100 bg-white p-8 shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-slate-200/50"
+              custom={i}
+              className="relative rounded-3xl border border-slate-100 bg-white p-8 shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1"
             >
               {/* Stars */}
               <div className="mb-4 flex gap-1">
@@ -692,38 +1175,13 @@ function SocialProofSection() {
             </motion.div>
           ))}
         </div>
-
-        {/* Stats bar */}
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          animate={inView ? 'visible' : 'hidden'}
-          custom={4}
-          className="mt-16 overflow-hidden rounded-3xl gradient-primary p-1 shadow-xl shadow-primary-500/20"
-        >
-          <div className="grid grid-cols-2 gap-px rounded-[22px] bg-white/5 md:grid-cols-4">
-            {stats.map((s, i) => (
-              <div
-                key={s.label}
-                className={`flex flex-col items-center py-8 ${
-                  i < stats.length - 1 ? 'md:border-r md:border-white/10' : ''
-                }`}
-              >
-                <span className="text-3xl font-extrabold text-white lg:text-4xl">
-                  {s.value}
-                </span>
-                <span className="mt-1 text-sm font-medium text-white/70">{s.label}</span>
-              </div>
-            ))}
-          </div>
-        </motion.div>
       </div>
     </section>
   );
 }
 
 // ---------------------------------------------------------------------------
-// 7. Pricing
+// 8. PRICING SECTION
 // ---------------------------------------------------------------------------
 
 function PricingSection({ onNavigate }: { onNavigate: (path: string) => void }) {
@@ -731,42 +1189,58 @@ function PricingSection({ onNavigate }: { onNavigate: (path: string) => void }) 
 
   const plans = [
     {
-      name: 'Бесплатный',
+      name: 'Бесплатно',
       price: '0 ₸',
       period: 'навсегда',
-      description: 'Идеально для знакомства с платформой',
+      description: 'Попробуй платформу без ограничений по времени',
       features: [
         'Диагностика уровня знаний',
         'Базовый план подготовки',
-        'Ограниченный банк тестов (20 заданий)',
+        '20 тестовых заданий',
         'Общий прогноз поступления',
-        'Доступ к сообществу',
       ],
       cta: 'Начать бесплатно',
       popular: false,
+      gradient: '',
+    },
+    {
+      name: 'Стандарт',
+      price: '2,990 ₸',
+      period: '/мес',
+      description: 'Для серьёзной подготовки к ЕНТ',
+      features: [
+        'AI-ментор 24/7',
+        'Безлимитный банк тестов',
+        'Персональный план подготовки',
+        'Детальная аналитика прогресса',
+        'Родительская панель',
+        'Портфолио достижений',
+      ],
+      cta: 'Выбрать Стандарт',
+      popular: true,
+      gradient: 'gradient-primary',
     },
     {
       name: 'Премиум',
       price: '4,990 ₸',
       period: '/мес',
-      description: 'Максимум возможностей для серьёзной подготовки',
+      description: 'Максимум возможностей + карьерный навигатор',
       features: [
-        'AI-ментор 24/7',
-        'Родительская панель аналитики',
-        'Безлимитный банк тестов ЕНТ',
-        'Детальная аналитика прогресса',
-        'Приоритетная поддержка',
-        'Персональный план подготовки',
-        'Портфолио достижений',
+        'Всё из тарифа Стандарт',
+        'Карьерный навигатор',
+        'Персональные рекомендации по вузам',
         'Подробный прогноз поступления',
+        'Приоритетная поддержка',
+        'Консультация с экспертом',
       ],
       cta: 'Выбрать Премиум',
-      popular: true,
+      popular: false,
+      gradient: '',
     },
   ];
 
   return (
-    <section ref={ref} id="pricing" className="relative py-20 lg:py-28">
+    <section ref={ref} id="pricing" className="relative py-20 lg:py-28 bg-white">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
           variants={fadeUp}
@@ -775,18 +1249,18 @@ function PricingSection({ onNavigate }: { onNavigate: (path: string) => void }) 
           className="mx-auto max-w-2xl text-center"
         >
           <span className="mb-3 inline-block rounded-full bg-accent-50 px-4 py-1.5 text-sm font-semibold text-accent-600">
-            Тарифы
+            Цены
           </span>
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
             Простые и{' '}
             <span className="text-gradient">прозрачные цены</span>
           </h2>
           <p className="mt-4 text-lg text-slate-500">
-            Начни бесплатно, перейди на Премиум когда будешь готов
+            Начни бесплатно, перейди на платный тариф когда будешь готов
           </p>
         </motion.div>
 
-        <div className="mx-auto mt-14 grid max-w-5xl gap-8 lg:grid-cols-2">
+        <div className="mx-auto mt-14 grid max-w-6xl gap-6 lg:grid-cols-3">
           {plans.map((plan, i) => (
             <motion.div
               key={plan.name}
@@ -794,9 +1268,9 @@ function PricingSection({ onNavigate }: { onNavigate: (path: string) => void }) 
               initial="hidden"
               animate={inView ? 'visible' : 'hidden'}
               custom={i}
-              className={`relative overflow-hidden rounded-3xl border p-8 transition-all duration-300 hover:shadow-xl lg:p-10 ${
+              className={`relative overflow-hidden rounded-3xl border p-8 transition-all duration-300 hover:shadow-xl ${
                 plan.popular
-                  ? 'border-primary-200 bg-white shadow-xl shadow-primary-500/10'
+                  ? 'border-primary-200 bg-white shadow-xl shadow-primary-500/10 scale-[1.02] lg:scale-105'
                   : 'border-slate-200 bg-white shadow-sm hover:shadow-slate-200/50'
               }`}
             >
@@ -812,13 +1286,13 @@ function PricingSection({ onNavigate }: { onNavigate: (path: string) => void }) 
               <p className="mt-1 text-sm text-slate-500">{plan.description}</p>
 
               <div className="mt-6 flex items-baseline gap-1">
-                <span className="text-5xl font-extrabold tracking-tight text-slate-900">
+                <span className="text-4xl font-extrabold tracking-tight text-slate-900">
                   {plan.price}
                 </span>
-                <span className="text-lg text-slate-500">{plan.period}</span>
+                <span className="text-base text-slate-500">{plan.period}</span>
               </div>
 
-              <ul className="mt-8 space-y-4">
+              <ul className="mt-8 space-y-3">
                 {plan.features.map((f) => (
                   <li key={f} className="flex items-start gap-3">
                     <Check
@@ -851,17 +1325,11 @@ function PricingSection({ onNavigate }: { onNavigate: (path: string) => void }) 
 }
 
 // ---------------------------------------------------------------------------
-// 8. CTA Section
+// 9. FINAL CTA
 // ---------------------------------------------------------------------------
 
-function CtaSection({ onNavigate }: { onNavigate: (path: string) => void }) {
+function FinalCtaSection({ onNavigate }: { onNavigate: (path: string) => void }) {
   const { ref, inView } = useSectionInView();
-  const [email, setEmail] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onNavigate('/diagnostic');
-  };
 
   return (
     <section ref={ref} className="relative py-20 lg:py-28">
@@ -876,11 +1344,21 @@ function CtaSection({ onNavigate }: { onNavigate: (path: string) => void }) {
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-primary-500/20 blur-3xl" />
             <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-purple-500/20 blur-3xl" />
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
+              className="absolute top-10 right-10 h-20 w-20 rounded-full border border-white/5"
+            />
+            <motion.div
+              animate={{ rotate: -360 }}
+              transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
+              className="absolute bottom-10 left-10 h-16 w-16 rounded-xl border border-white/5 rotate-45"
+            />
           </div>
 
           <div className="relative">
             <motion.div
-              variants={fadeIn}
+              variants={fadeUp}
               initial="hidden"
               animate={inView ? 'visible' : 'hidden'}
               className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-sm font-medium text-white/90"
@@ -898,7 +1376,7 @@ function CtaSection({ onNavigate }: { onNavigate: (path: string) => void }) {
             >
               Начни свой путь{' '}
               <span className="bg-gradient-to-r from-primary-300 via-purple-300 to-pink-300 bg-clip-text text-transparent">
-                сегодня
+                прямо сейчас
               </span>
             </motion.h2>
 
@@ -909,48 +1387,23 @@ function CtaSection({ onNavigate }: { onNavigate: (path: string) => void }) {
               custom={2}
               className="mx-auto mt-4 max-w-xl text-lg text-slate-300"
             >
-              Пройди бесплатную диагностику и получи персональный план подготовки к ЕНТ за 15 минут
+              Бесплатная диагностика за 15 минут покажет твой уровень и создаст персональный план
             </motion.p>
 
-            <motion.form
+            <motion.div
               variants={fadeUp}
               initial="hidden"
               animate={inView ? 'visible' : 'hidden'}
               custom={3}
-              onSubmit={handleSubmit}
-              className="mx-auto mt-10 flex max-w-md flex-col gap-3 sm:flex-row"
+              className="mt-10"
             >
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Введите ваш email"
-                className="flex-1 rounded-2xl border border-white/20 bg-white/10 px-5 py-4 text-base text-white placeholder-white/50 outline-none backdrop-blur-sm transition-colors focus:border-white/40 focus:bg-white/15"
-              />
               <button
-                type="submit"
-                className="group flex items-center justify-center gap-2 rounded-2xl bg-white px-8 py-4 text-base font-bold text-primary-700 shadow-xl transition-all hover:shadow-2xl hover:-translate-y-0.5"
+                onClick={() => onNavigate('/diagnostic')}
+                className="group inline-flex items-center gap-2 rounded-2xl bg-white px-10 py-5 text-lg font-bold text-primary-700 shadow-xl transition-all hover:shadow-2xl hover:-translate-y-0.5"
               >
-                Начать
-                <Send className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                Начать бесплатно
+                <ArrowRight className="h-6 w-6 transition-transform group-hover:translate-x-1" />
               </button>
-            </motion.form>
-
-            <motion.div
-              variants={fadeIn}
-              initial="hidden"
-              animate={inView ? 'visible' : 'hidden'}
-              custom={4}
-              className="mt-6 flex items-center justify-center gap-6 text-sm text-white/60"
-            >
-              <span className="flex items-center gap-1.5">
-                <Shield className="h-4 w-4" />
-                Бесплатно
-              </span>
-              <span className="flex items-center gap-1.5">
-                <BarChart3 className="h-4 w-4" />
-                Без обязательств
-              </span>
             </motion.div>
           </div>
         </motion.div>
@@ -960,21 +1413,20 @@ function CtaSection({ onNavigate }: { onNavigate: (path: string) => void }) {
 }
 
 // ---------------------------------------------------------------------------
-// 9. Footer
+// 10. FOOTER
 // ---------------------------------------------------------------------------
 
 function Footer() {
   const links = {
-    Платформа: ['Возможности', 'Тарифы', 'Банк заданий', 'AI-ментор'],
+    Платформа: ['Возможности', 'Тарифы', 'AI-ментор', 'Диагностика'],
     Поддержка: ['Помощь', 'Контакты', 'FAQ', 'Блог'],
     Компания: ['О нас', 'Карьера', 'Партнёрам', 'Пресса'],
-    Правовая: ['Конфиденциальность', 'Условия', 'Cookies'],
   };
 
   return (
     <footer className="border-t border-slate-100 bg-slate-50">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
-        <div className="grid gap-10 lg:grid-cols-6">
+        <div className="grid gap-10 lg:grid-cols-5">
           {/* Brand */}
           <div className="lg:col-span-2">
             <a href="#" className="flex items-center gap-2.5">
@@ -986,13 +1438,19 @@ function Footer() {
               </span>
             </a>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-slate-500">
-              AI-платформа для подготовки к ЕНТ и поступлению в лучшие вузы Казахстана и мира.
+              AI-платформа, которая ведёт учеников от школы до карьеры мечты.
+              Подготовка к ЕНТ, выбор профессии, поступление в вуз.
             </p>
             <div className="mt-6 flex gap-3">
-              {[Instagram, MessageCircle, Github].map((Icon, i) => (
+              {[
+                { Icon: Instagram, label: 'Instagram' },
+                { Icon: MessageCircle, label: 'Telegram' },
+                { Icon: Github, label: 'Github' },
+              ].map(({ Icon, label }) => (
                 <a
-                  key={i}
+                  key={label}
                   href="#"
+                  aria-label={label}
                   className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition-all hover:bg-primary-50 hover:text-primary-600 hover:-translate-y-0.5"
                 >
                   <Icon className="h-5 w-5" />
@@ -1029,7 +1487,7 @@ function Footer() {
             &copy; {new Date().getFullYear()} Study Hub. Все права защищены.
           </p>
           <p className="text-sm text-slate-400">
-            Сделано с любовью в Казахстане
+            Made with ❤️ in Kazakhstan
           </p>
         </div>
       </div>
@@ -1044,21 +1502,22 @@ function Footer() {
 export default function Landing() {
   const navigate = useNavigate();
 
-  const handleNavigate = (path: string) => {
+  const handleNavigate = useCallback((path: string) => {
     navigate(path);
-  };
+  }, [navigate]);
 
   return (
-    <div className="min-h-screen overflow-x-hidden">
+    <div className="min-h-screen overflow-x-hidden bg-white">
       <Header onNavigate={handleNavigate} />
       <main>
         <HeroSection onNavigate={handleNavigate} />
-        <ProblemSection />
+        <LiveStatsBar />
+        <ProblemSolutionSection />
+        <ProductShowcaseSection />
         <HowItWorksSection />
-        <FeaturesSection />
-        <SocialProofSection />
+        <TestimonialsSection />
         <PricingSection onNavigate={handleNavigate} />
-        <CtaSection onNavigate={handleNavigate} />
+        <FinalCtaSection onNavigate={handleNavigate} />
       </main>
       <Footer />
     </div>
