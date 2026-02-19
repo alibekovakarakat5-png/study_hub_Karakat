@@ -197,7 +197,7 @@ function Header({ onNavigate }: { onNavigate: (path: string) => void }) {
             <div className="gradient-primary flex h-9 w-9 items-center justify-center rounded-xl shadow-md shadow-primary-500/25 transition-transform group-hover:scale-105">
               <GraduationCap className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xl font-bold tracking-tight text-primary-950">
+            <span className={`text-xl font-bold tracking-tight transition-colors ${scrolled ? 'text-primary-950' : 'text-white'}`}>
               Study<span className="text-gradient">Hub</span>
             </span>
           </a>
@@ -208,7 +208,11 @@ function Header({ onNavigate }: { onNavigate: (path: string) => void }) {
               <a
                 key={l.href}
                 href={l.href}
-                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-primary-50 hover:text-primary-700"
+                className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                  scrolled
+                    ? 'text-slate-600 hover:bg-primary-50 hover:text-primary-700'
+                    : 'text-white/80 hover:bg-white/10 hover:text-white'
+                }`}
               >
                 {l.label}
               </a>
@@ -219,7 +223,11 @@ function Header({ onNavigate }: { onNavigate: (path: string) => void }) {
           <div className="hidden items-center gap-3 lg:flex">
             <button
               onClick={() => onNavigate('/auth')}
-              className="rounded-xl px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
+              className={`rounded-xl px-5 py-2.5 text-sm font-semibold transition-colors ${
+                scrolled
+                  ? 'text-slate-700 hover:bg-slate-100'
+                  : 'text-white/90 hover:bg-white/10 hover:text-white'
+              }`}
             >
               Войти
             </button>
@@ -234,7 +242,9 @@ function Header({ onNavigate }: { onNavigate: (path: string) => void }) {
           {/* Mobile toggle */}
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100 lg:hidden"
+            className={`rounded-lg p-2 transition-colors lg:hidden ${
+              scrolled ? 'text-slate-600 hover:bg-slate-100' : 'text-white hover:bg-white/10'
+            }`}
             aria-label="Toggle menu"
           >
             {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
