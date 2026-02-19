@@ -14,6 +14,11 @@ import Courses from '@/pages/Courses'
 import TeacherDashboard from '@/pages/TeacherDashboard'
 import EmployerDashboard from '@/pages/EmployerDashboard'
 import PublicProfile from '@/pages/PublicProfile'
+import Onboarding from '@/pages/Onboarding'
+import CareerOrientation from '@/pages/CareerOrientation'
+import CareerTracker from '@/pages/CareerTracker'
+import Admission from '@/pages/Admission'
+import Internships from '@/pages/Internships'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useStore()
@@ -64,6 +69,11 @@ export default function App() {
         <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
         <Route path="/teacher" element={<TeacherRoute><TeacherDashboard /></TeacherRoute>} />
         <Route path="/employer" element={<EmployerRoute><EmployerDashboard /></EmployerRoute>} />
+        <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+        <Route path="/career-orientation" element={<ProtectedRoute><CareerOrientation /></ProtectedRoute>} />
+        <Route path="/career-tracker" element={<ProtectedRoute><CareerTracker /></ProtectedRoute>} />
+        <Route path="/admission" element={<ProtectedRoute><Admission /></ProtectedRoute>} />
+        <Route path="/internships" element={<ProtectedRoute><Internships /></ProtectedRoute>} />
         <Route path="/courses" element={<Courses />} />
         <Route path="/profile/:id" element={<PublicProfile />} />
         <Route path="/pricing" element={<Pricing />} />

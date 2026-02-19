@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { User, UserRole, DiagnosticResult, StudyPlan, ChatMessage, StudyWeek, StudyTask, Achievement, Notification } from '@/types'
+import type { User, UserRole, DiagnosticResult, StudyPlan, ChatMessage, StudyWeek, StudyTask, Achievement, Notification, OnboardingProfile } from '@/types'
 import { generateId } from '@/lib/utils'
 import { universities } from '@/data/universities'
 
@@ -222,6 +222,11 @@ interface AppState {
     }
   } | null
 
+  // Onboarding
+  onboardingCompleted: boolean
+  onboardingProfile: OnboardingProfile | null
+  completeOnboarding: (profile: OnboardingProfile) => void
+
   // UI
   sidebarOpen: boolean
   toggleSidebar: () => void
@@ -386,6 +391,8 @@ export const useStore = create<AppState>()(
           hasTakenDiagnostic: false,
           childData: null,
           notifications: [],
+          onboardingCompleted: false,
+          onboardingProfile: null,
         })
       },
 
@@ -636,6 +643,18 @@ export const useStore = create<AppState>()(
       // Parent
       childData: null,
 
+      // Onboarding
+      onboardingCompleted: false,
+      onboardingProfile: null,
+      completeOnboarding: (profile) => {
+        set({ onboardingCompleted: true, onboardingProfile: profile })
+        get().addNotification({
+          type: 'achievement',
+          title: 'Путь определён!',
+          message: `Ваш топ-направление: ${profile.recommendedPaths[0]?.title || 'IT'}. Начните подготовку!`,
+        })
+      },
+
       // UI
       sidebarOpen: false,
       toggleSidebar: () => set(state => ({ sidebarOpen: !state.sidebarOpen })),
@@ -651,6 +670,8 @@ export const useStore = create<AppState>()(
         studyPlan: state.studyPlan,
         achievements: state.achievements,
         notifications: state.notifications,
+        onboardingCompleted: state.onboardingCompleted,
+        onboardingProfile: state.onboardingProfile,
         childData: state.childData,
       }),
     }
