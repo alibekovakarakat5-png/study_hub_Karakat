@@ -830,9 +830,15 @@ function PlanView() {
 // ── Phase 6: Module Viewer ──────────────────────────────────────────────────
 
 function ModuleViewer() {
-  const { plan, activeModuleId, closeModule, moduleProgress, submitPracticeAnswer, submitModuleTest } = useCuratorStore()
+  const {
+    plan, activeModuleId, closeModule, moduleProgress, submitPracticeAnswer, submitModuleTest,
+    directModule, directModuleInitialTab, closeDirectModule,
+  } = useCuratorStore()
 
-  const [activeTab, setActiveTab] = useState<'theory' | 'practice' | 'test'>('theory')
+  const isDirectMode = !!directModule
+  const [activeTab, setActiveTab] = useState<'theory' | 'practice' | 'test'>(
+    directModule ? directModuleInitialTab : 'theory'
+  )
   const [practiceIdx, setPracticeIdx] = useState(0)
   const [showPracticeResult, setShowPracticeResult] = useState(false)
   const [testAnswers, setTestAnswers] = useState<Record<string, number>>({})
@@ -840,13 +846,20 @@ function ModuleViewer() {
   const [showHint, setShowHint] = useState(false)
 
   const mod = useMemo(() => {
+    if (directModule) return directModule
     if (!plan || !activeModuleId) return null
     return plan.weeks.flatMap(w => w.modules).find(m => m.id === activeModuleId) || null
-  }, [plan, activeModuleId])
+  }, [plan, activeModuleId, directModule])
 
-  const progress = activeModuleId ? moduleProgress[activeModuleId] : undefined
+  const moduleId = mod?.id
+  const progress = moduleId ? moduleProgress[moduleId] : undefined
 
   if (!mod) return null
+
+  const handleBack = () => {
+    if (isDirectMode) closeDirectModule()
+    else closeModule()
+  }
 
   const currentPractice = mod.practice[practiceIdx]
   const practiceAnswer = progress?.practiceAnswers[currentPractice?.id]
@@ -863,11 +876,11 @@ function ModuleViewer() {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <button
-          onClick={closeModule}
+          onClick={handleBack}
           className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          Назад к плану
+          {isDirectMode ? 'Назад' : 'Назад к плану'}
         </button>
         <span
           className="rounded-full px-3 py-1 text-xs font-semibold text-white"
@@ -1207,11 +1220,11 @@ function ModuleViewer() {
                       <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
                         {passed ? (
                           <button
-                            onClick={closeModule}
+                            onClick={handleBack}
                             className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-6 py-3 text-sm font-semibold text-white hover:bg-primary-700"
                           >
                             <ArrowRight className="h-4 w-4" />
-                            Вернуться к плану
+                            {isDirectMode ? 'Готово' : 'Вернуться к плану'}
                           </button>
                         ) : (
                           <>

@@ -19,7 +19,9 @@ import {
 import { useStore } from '@/store/useStore'
 import { cn, generateId } from '@/lib/utils'
 import { SUBJECT_NAMES } from '@/types'
-import type { DiagnosticResult, StudyPlan, User } from '@/types'
+import type { Subject, DiagnosticResult, StudyPlan, User } from '@/types'
+import { curatorContent } from '@/data/curatorContent'
+import type { TopicContent } from '@/types/curator'
 
 // ---------------------------------------------------------------------------
 // Simulated AI response generator
@@ -29,6 +31,78 @@ interface MentorContext {
   diagnosticResult: DiagnosticResult | null
   studyPlan: StudyPlan | null
   user: User | null
+}
+
+// Find topic from curator content by matching keywords in user message
+function findTopicFromMessage(msg: string): TopicContent | null {
+  const lower = msg.toLowerCase()
+  // Try exact topic match first
+  for (const topic of curatorContent) {
+    if (lower.includes(topic.topic.toLowerCase())) return topic
+  }
+  // Try keyword fragments (at least 4 chars)
+  const words = lower.split(/\s+/).filter(w => w.length >= 4)
+  for (const word of words) {
+    for (const topic of curatorContent) {
+      if (topic.topic.toLowerCase().includes(word)) return topic
+      for (const section of topic.theory.sections) {
+        if (section.heading.toLowerCase().includes(word)) return topic
+      }
+    }
+  }
+  // Try subject name match
+  const subjectKeywords: Record<string, Subject> = {
+    'матем': 'math', 'алгебр': 'math', 'геометр': 'math', 'тригон': 'math',
+    'физик': 'physics', 'механ': 'physics', 'оптик': 'physics',
+    'хими': 'chemistry', 'реакц': 'chemistry', 'органи': 'chemistry',
+    'биолог': 'biology', 'клетк': 'biology', 'генет': 'biology',
+    'истори': 'history', 'казах': 'history',
+    'информат': 'informatics', 'програм': 'informatics',
+    'географ': 'geography',
+  }
+  for (const [keyword, subject] of Object.entries(subjectKeywords)) {
+    if (lower.includes(keyword)) {
+      const subjectTopics = curatorContent.filter(t => t.subject === subject)
+      if (subjectTopics.length > 0) return subjectTopics[0]
+    }
+  }
+  return null
+}
+
+function formatTheoryResponse(topic: TopicContent, name: string): string {
+  const sections = topic.theory.sections.slice(0, 3)
+  let response = `${name}, вот материал по теме **${topic.topic}** (${SUBJECT_NAMES[topic.subject]}):\n\n`
+  for (const section of sections) {
+    response += `**${section.heading}**\n${section.content}\n\n`
+  }
+  if (topic.theory.keyPoints.length > 0) {
+    response += `**Ключевые моменты:**\n`
+    for (const point of topic.theory.keyPoints.slice(0, 4)) {
+      response += `- ${point}\n`
+    }
+    response += '\n'
+  }
+  if (topic.theory.formulas && topic.theory.formulas.length > 0) {
+    response += `**Формулы:**\n`
+    for (const f of topic.theory.formulas.slice(0, 3)) {
+      response += `- ${f}\n`
+    }
+    response += '\n'
+  }
+  response += `Хочешь попрактиковаться? Напиши «задача по ${topic.topic.toLowerCase()}»!`
+  return response
+}
+
+function formatPracticeResponse(topic: TopicContent, name: string): string {
+  const q = topic.practice[Math.floor(Math.random() * topic.practice.length)]
+  let response = `${name}, вот задача по теме **${topic.topic}**:\n\n`
+  response += `**${q.question}**\n\n`
+  q.options.forEach((opt, i) => {
+    response += `${String.fromCharCode(65 + i)}) ${opt}\n`
+  })
+  response += `\n*Подумай и выбери вариант. Если хочешь подсказку, напиши «подсказка».*\n`
+  response += `\n||Правильный ответ: ${String.fromCharCode(65 + q.correctAnswer)}. ${q.explanation}||`
+  return response
 }
 
 function generateMentorResponse(userMessage: string, context: MentorContext): string {
@@ -49,14 +123,33 @@ function generateMentorResponse(userMessage: string, context: MentorContext): st
   const targetUni = studyPlan?.targetUniversity || user?.targetUniversity || null
   const targetSpec = studyPlan?.targetSpecialty || user?.targetSpecialty || null
 
-  // ---- Keywords: explain topic ----
-  if (lowerMsg.includes('объясни') || lowerMsg.includes('тема')) {
-    return `${name}, отлично, что хочешь разобраться в теме! Давай разберём по шагам.\n\n**Логарифмы — основы:**\n\n1. **Определение:** Логарифм числа b по основанию a — это степень, в которую нужно возвести a, чтобы получить b. Записывается: log_a(b) = c, что означает a^c = b.\n\n2. **Основные свойства:**\n   - log_a(xy) = log_a(x) + log_a(y)\n   - log_a(x/y) = log_a(x) - log_a(y)\n   - log_a(x^n) = n * log_a(x)\n\n3. **Переход к другому основанию:**\n   log_a(b) = log_c(b) / log_c(a)\n\nПопробуй решить: найди log_2(32). Подсказка: 2 в какой степени даст 32?\n\nЕсли хочешь, могу объяснить другую тему — просто напиши название!`
+  // ---- Keywords: explain topic (now with REAL content) ----
+  if (lowerMsg.includes('объясни') || lowerMsg.includes('тема') || lowerMsg.includes('расскаж') || lowerMsg.includes('теори')) {
+    const topic = findTopicFromMessage(lowerMsg)
+    if (topic) return formatTheoryResponse(topic, name)
+
+    // Fallback — suggest available topics
+    const subjects = [...new Set(curatorContent.map(t => SUBJECT_NAMES[t.subject]))]
+    return `${name}, я могу объяснить темы по этим предметам: ${subjects.join(', ')}.\n\nНапример, напиши:\n- «Объясни тригонометрию»\n- «Тема логарифмы»\n- «Расскажи про оптику»\n\nВ моей базе ${curatorContent.length} тем — просто назови нужную!`
   }
 
-  // ---- Keywords: problem help ----
-  if (lowerMsg.includes('задач') || lowerMsg.includes('помоги')) {
-    return `Конечно помогу, ${name}! Давай разберём задачу пошагово.\n\n**Метод решения задач:**\n\n1. **Прочитай условие** дважды. Выдели: что дано, что нужно найти.\n2. **Нарисуй схему** или запиши краткое условие.\n3. **Выбери формулу** или метод решения.\n4. **Подставь значения** и выполни вычисления.\n5. **Проверь ответ** — подставь обратно в условие.\n\n${weakTopics.length > 0 ? `Я знаю, что тебе стоит потренироваться в: ${weakTopics.slice(0, 3).join(', ')}. Хочешь разберём задачу по одной из этих тем?` : 'Напиши мне условие задачи, и я помогу тебе решить её шаг за шагом!'}\n\nНе бойся ошибаться — каждая ошибка приближает тебя к пониманию.`
+  // ---- Keywords: problem help (now with REAL questions) ----
+  if (lowerMsg.includes('задач') || lowerMsg.includes('помоги') || lowerMsg.includes('практик')) {
+    const topic = findTopicFromMessage(lowerMsg)
+    if (topic && topic.practice.length > 0) return formatPracticeResponse(topic, name)
+
+    // Fallback — pick from weak topics or random
+    if (weakTopics.length > 0) {
+      const weakTopic = curatorContent.find(t =>
+        weakTopics.some(wt => t.topic.toLowerCase().includes(wt.toLowerCase()))
+      )
+      if (weakTopic && weakTopic.practice.length > 0) return formatPracticeResponse(weakTopic, name)
+    }
+
+    const randomTopic = curatorContent[Math.floor(Math.random() * curatorContent.length)]
+    if (randomTopic.practice.length > 0) return formatPracticeResponse(randomTopic, name)
+
+    return `${name}, напиши тему задачи. Например: «задача по тригонометрии» или «практика физика».`
   }
 
   // ---- Keywords: study plan ----
@@ -99,8 +192,14 @@ function generateMentorResponse(userMessage: string, context: MentorContext): st
     return `${name}, чтобы сделать качественный разбор ошибок, мне нужны данные твоей диагностики. Пройди диагностический тест, и я смогу точно определить твои слабые места и составить план работы над ошибками.\n\nПока могу дать общий совет: веди тетрадь ошибок. Записывай каждую ошибку, правильное решение и правило, которое нужно запомнить. Раз в неделю перечитывай её.`
   }
 
-  // ---- Default ----
-  return `Привет, ${name}! Я твой AI-ментор и готов помочь тебе с подготовкой${targetSpec ? ` по направлению "${targetSpec}"` : ' к ЕНТ'}.\n\nВот чем я могу помочь:\n\n- Объяснить сложную тему простыми словами\n- Помочь решить задачу пошагово\n- Составить план занятий на сегодня\n- Подбодрить и дать советы по мотивации\n- Разобрать твои ошибки и слабые места\n\nПросто напиши свой вопрос, и мы начнём!`
+  // ---- Default (now shows real topic suggestions) ----
+  const sampleTopics = curatorContent
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 3)
+    .map(t => `«${t.topic}»`)
+    .join(', ')
+
+  return `Привет, ${name}! Я твой AI-ментор и готов помочь тебе с подготовкой${targetSpec ? ` по направлению "${targetSpec}"` : ' к ЕНТ'}.\n\nВот чем я могу помочь:\n\n- **Объяснить тему** — напиши «Объясни [тема]», например: ${sampleTopics}\n- **Дать задачу** — напиши «Задача по [тема]» для тренировки\n- **Составить план** на сегодня\n- **Мотивация** и советы по учёбе\n- **Разбор ошибок** по результатам диагностики\n\nУ меня ${curatorContent.length} тем с теорией и задачами. Просто напиши вопрос!`
 }
 
 // ---------------------------------------------------------------------------

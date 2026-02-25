@@ -12,6 +12,7 @@ import type {
   CuratorDiagnosticScore,
   ModuleProgress,
 } from '@/types/curator'
+import type { TopicContent } from '@/types/curator'
 import { curatorContent, ENT_MANDATORY_SUBJECTS } from '@/data/curatorContent'
 import { generateId } from '@/lib/utils'
 
@@ -20,6 +21,7 @@ import { generateId } from '@/lib/utils'
 interface CuratorState {
   // Navigation
   phase: CuratorPhase
+  previousPhase: CuratorPhase | null
   setPhase: (phase: CuratorPhase) => void
 
   // Goal
@@ -49,6 +51,14 @@ interface CuratorState {
   openModule: (moduleId: string) => void
   closeModule: () => void
 
+  // Direct module access (from Plan.tsx, PracticeEnt, etc.)
+  directModule: CuratorModule | null
+  directModuleInitialTab: 'theory' | 'practice' | 'test'
+  onDirectModuleComplete: (() => void) | null
+  openDirectModule: (content: TopicContent, initialTab?: 'theory' | 'practice' | 'test') => void
+  closeDirectModule: () => void
+  setOnDirectModuleComplete: (callback: (() => void) | null) => void
+
   // Module Progress
   moduleProgress: Record<string, ModuleProgress>
   submitPracticeAnswer: (moduleId: string, questionId: string, answer: number) => void
@@ -74,6 +84,7 @@ export const useCuratorStore = create<CuratorState>()(
     (set, get) => ({
       // ── Navigation ──────────────────────────────────────────────────────
       phase: 'goal',
+      previousPhase: null,
       setPhase: (phase) => set({ phase }),
 
       // ── Goal ────────────────────────────────────────────────────────────
@@ -275,6 +286,46 @@ export const useCuratorStore = create<CuratorState>()(
         set({ activeModuleId: null, phase: 'plan' })
       },
 
+      // ── Direct Module Access ───────────────────────────────────────────
+      directModule: null,
+      directModuleInitialTab: 'theory',
+      onDirectModuleComplete: null,
+
+      openDirectModule: (content, initialTab = 'theory') => {
+        const mod: CuratorModule = {
+          id: `direct-${content.subject}-${content.topic.replace(/\s+/g, '-').toLowerCase()}`,
+          subject: content.subject,
+          topic: content.topic,
+          weekNumber: 0,
+          order: 0,
+          theory: content.theory,
+          practice: content.practice.map(p => ({ ...p, answered: false, userAnswer: undefined })),
+          test: content.test.map(t => ({ ...t, userAnswer: undefined })),
+          status: 'available',
+        }
+        set({
+          directModule: mod,
+          directModuleInitialTab: initialTab,
+          previousPhase: get().phase,
+          phase: 'module',
+        })
+      },
+
+      closeDirectModule: () => {
+        const { previousPhase, onDirectModuleComplete } = get()
+        if (onDirectModuleComplete) onDirectModuleComplete()
+        set({
+          directModule: null,
+          onDirectModuleComplete: null,
+          phase: previousPhase || 'plan',
+          previousPhase: null,
+        })
+      },
+
+      setOnDirectModuleComplete: (callback) => {
+        set({ onDirectModuleComplete: callback })
+      },
+
       // ── Module Progress ─────────────────────────────────────────────────
       moduleProgress: {},
 
@@ -290,17 +341,15 @@ export const useCuratorStore = create<CuratorState>()(
         }
 
         // Check if all practice questions answered
-        const plan = get().plan
-        if (plan) {
-          const mod = plan.weeks
-            .flatMap(w => w.modules)
-            .find(m => m.id === moduleId)
-          if (mod) {
-            const totalPractice = mod.practice.length
-            const answeredCount = Object.keys(updatedProgress.practiceAnswers).length
-            if (answeredCount >= totalPractice) {
-              updatedProgress.practiceCompleted = true
-            }
+        const { plan, directModule } = get()
+        const mod = directModule?.id === moduleId
+          ? directModule
+          : plan?.weeks.flatMap(w => w.modules).find(m => m.id === moduleId)
+        if (mod) {
+          const totalPractice = mod.practice.length
+          const answeredCount = Object.keys(updatedProgress.practiceAnswers).length
+          if (answeredCount >= totalPractice) {
+            updatedProgress.practiceCompleted = true
           }
         }
 
@@ -310,12 +359,12 @@ export const useCuratorStore = create<CuratorState>()(
       },
 
       submitModuleTest: (moduleId, answers) => {
-        const plan = get().plan
-        if (!plan) return
+        const { plan, directModule } = get()
 
-        const mod = plan.weeks
-          .flatMap(w => w.modules)
-          .find(m => m.id === moduleId)
+        // Find module — direct or from plan
+        const mod = directModule?.id === moduleId
+          ? directModule
+          : plan?.weeks.flatMap(w => w.modules).find(m => m.id === moduleId)
         if (!mod) return
 
         // Score the test
@@ -334,7 +383,17 @@ export const useCuratorStore = create<CuratorState>()(
           testPassed: passed,
         }
 
-        // Update module status in plan
+        // Direct module — just save progress, no plan updates
+        if (directModule?.id === moduleId) {
+          set({
+            moduleProgress: { ...get().moduleProgress, [moduleId]: progress },
+          })
+          return
+        }
+
+        // Plan module — update plan status & unlock next week
+        if (!plan) return
+
         const updatedWeeks = plan.weeks.map(week => ({
           ...week,
           modules: week.modules.map(m => {
@@ -345,12 +404,10 @@ export const useCuratorStore = create<CuratorState>()(
           }),
         }))
 
-        // Count completed modules
         const completedModules = updatedWeeks
           .flatMap(w => w.modules)
           .filter(m => m.status === 'completed').length
 
-        // Unlock next week if all modules in current week are completed
         const moduleWeek = updatedWeeks.find(w => w.modules.some(m => m.id === moduleId))
         if (moduleWeek && passed) {
           const allCompleted = moduleWeek.modules.every(m => m.status === 'completed')
@@ -379,6 +436,7 @@ export const useCuratorStore = create<CuratorState>()(
       resetCurator: () => {
         set({
           phase: 'goal',
+          previousPhase: null,
           goalType: null,
           ieltsType: null,
           selectedSubjects: [],
@@ -388,6 +446,9 @@ export const useCuratorStore = create<CuratorState>()(
           diagnosticScores: [],
           plan: null,
           activeModuleId: null,
+          directModule: null,
+          directModuleInitialTab: 'theory',
+          onDirectModuleComplete: null,
           moduleProgress: {},
         })
       },

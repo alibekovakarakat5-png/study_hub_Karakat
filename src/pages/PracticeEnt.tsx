@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeft,
@@ -22,6 +22,8 @@ import {
   X,
 } from 'lucide-react'
 import { usePracticeEntStore } from '@/store/usePracticeEntStore'
+import { useCuratorStore } from '@/store/useCuratorStore'
+import { curatorContent } from '@/data/curatorContent'
 import { examVariants, profileBanks } from '@/data/practiceEnt'
 import { SUBJECT_NAMES, SUBJECT_COLORS } from '@/types'
 import type { Subject } from '@/types'
@@ -416,6 +418,9 @@ function ResultsPhase() {
         ))}
       </motion.div>
 
+      {/* Weak topics recommendations */}
+      <WeakTopicsRecommendations blocks={r.blocks} s1={profileSubject1} s2={profileSubject2} />
+
       {/* Actions */}
       <motion.div variants={fadeUp} className="flex gap-3">
         <button onClick={resetSession} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-3 font-medium text-gray-700 transition-colors hover:bg-gray-50">
@@ -425,6 +430,82 @@ function ResultsPhase() {
           На главную <ArrowRight className="h-4 w-4" />
         </Link>
       </motion.div>
+    </motion.div>
+  )
+}
+
+function WeakTopicsRecommendations({ blocks, s1, s2 }: { blocks: EntBlockResult[]; s1: Subject | null; s2: Subject | null }) {
+  const { openDirectModule } = useCuratorStore()
+  const navigate = useNavigate()
+
+  // Collect weak topics (< 60%) from byTopic data
+  const weakTopics = useMemo(() => {
+    const weak: { topic: string; subject: Subject; pct: number }[] = []
+    for (const block of blocks) {
+      if (!block.byTopic || block.byTopic.length === 0) continue
+      const blockSubject = block.block === 'profileSubject1' ? s1
+        : block.block === 'profileSubject2' ? s2
+        : block.block === 'history' ? 'history' as Subject
+        : null
+      if (!blockSubject) continue
+
+      for (const data of block.byTopic) {
+        const pct = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0
+        if (pct < 60) {
+          weak.push({ topic: data.topic, subject: blockSubject, pct })
+        }
+      }
+    }
+    return weak.sort((a, b) => a.pct - b.pct)
+  }, [blocks, s1, s2])
+
+  if (weakTopics.length === 0) return null
+
+  function handleStudyTopic(subject: Subject, topicName: string) {
+    const content = curatorContent.find(t =>
+      t.subject === subject && t.topic.toLowerCase().includes(topicName.toLowerCase())
+    ) || curatorContent.find(t =>
+      t.subject === subject && topicName.toLowerCase().includes(t.topic.toLowerCase())
+    )
+    if (content) {
+      openDirectModule(content, 'theory')
+      navigate('/curator')
+    }
+  }
+
+  return (
+    <motion.div variants={fadeUp} className="space-y-3">
+      <h2 className="text-lg font-semibold text-gray-800">Темы для повторения</h2>
+      <p className="text-sm text-gray-500">Темы, где результат ниже 60%. Нажми «Подтянуть» для изучения.</p>
+      <div className="space-y-2">
+        {weakTopics.slice(0, 6).map((wt, i) => {
+          const hasContent = curatorContent.some(t =>
+            t.subject === wt.subject && (
+              t.topic.toLowerCase().includes(wt.topic.toLowerCase()) ||
+              wt.topic.toLowerCase().includes(t.topic.toLowerCase())
+            )
+          )
+          return (
+            <div key={i} className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3">
+              <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: SUBJECT_COLORS[wt.subject] }} />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-gray-900">{wt.topic}</p>
+                <p className="text-xs text-gray-400">{SUBJECT_NAMES[wt.subject]} — {wt.pct}%</p>
+              </div>
+              {hasContent ? (
+                <button
+                  onClick={() => handleStudyTopic(wt.subject, wt.topic)}
+                  className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700"
+                >
+                  Подтянуть
+                </button>
+              ) : (
+                <span className="shrink-0 text-xs text-gray-400">Скоро</span>
+              )}
+            </div>
+          )
+        })}
+      </div>
     </motion.div>
   )
 }

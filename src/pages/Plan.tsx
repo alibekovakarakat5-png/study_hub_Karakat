@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeft,
@@ -22,10 +22,12 @@ import {
   Trophy,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
+import { useCuratorStore } from '@/store/useCuratorStore'
 import { universities } from '@/data/universities'
 import { cn, formatDateShort, minutesToHumanReadable } from '@/lib/utils'
+import { findTopicContentFuzzy } from '@/lib/topicLookup'
 import { SUBJECT_NAMES, SUBJECT_COLORS } from '@/types'
-import type { Subject, University, Specialty } from '@/types'
+import type { Subject, University, Specialty, StudyTask } from '@/types'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -459,6 +461,21 @@ function PlanView() {
   const studyPlan = useStore((s) => s.studyPlan)!
   const toggleTask = useStore((s) => s.toggleTask)
   const diagnosticResult = useStore((s) => s.diagnosticResult)
+  const { openDirectModule, setOnDirectModuleComplete } = useCuratorStore()
+  const navigate = useNavigate()
+
+  function handleTaskClick(task: StudyTask) {
+    if (task.completed) return
+    const content = findTopicContentFuzzy(task.subject, task.topic)
+    if (!content) return
+    const initialTab = task.type === 'lesson' || task.type === 'review'
+      ? 'theory' as const
+      : task.type === 'practice'
+        ? 'practice' as const
+        : 'test' as const
+    openDirectModule(content, initialTab)
+    navigate('/curator')
+  }
 
   const [selectedWeekNum, setSelectedWeekNum] = useState(studyPlan.currentWeek)
   const weekScrollRef = useRef<HTMLDivElement>(null)
@@ -664,6 +681,7 @@ function PlanView() {
                 {selectedWeek.tasks.map((task) => {
                   const meta = TASK_TYPE_META[task.type]
                   const TypeIcon = meta.icon
+                  const hasContent = !task.completed && !!findTopicContentFuzzy(task.subject, task.topic)
                   return (
                     <motion.div
                       key={task.id}
@@ -672,16 +690,19 @@ function PlanView() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ duration: 0.2 }}
+                      onClick={() => hasContent && handleTaskClick(task)}
                       className={cn(
                         'group flex items-center gap-3 rounded-xl border bg-white px-4 py-3 transition-all',
                         task.completed
                           ? 'border-green-200 bg-green-50/50'
-                          : 'border-gray-200 hover:border-gray-300 hover:shadow-sm',
+                          : hasContent
+                            ? 'border-gray-200 hover:border-blue-300 hover:shadow-md cursor-pointer'
+                            : 'border-gray-200 hover:border-gray-300 hover:shadow-sm',
                       )}
                     >
                       {/* Checkbox */}
                       <button
-                        onClick={() => toggleTask(selectedWeek.weekNumber, task.id)}
+                        onClick={(e) => { e.stopPropagation(); toggleTask(selectedWeek.weekNumber, task.id) }}
                         className={cn(
                           'flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-all',
                           task.completed
@@ -744,10 +765,14 @@ function PlanView() {
                         {minutesToHumanReadable(task.duration)}
                       </span>
 
-                      {/* Completed indicator */}
-                      {task.completed && (
+                      {/* Start / Completed indicator */}
+                      {task.completed ? (
                         <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" />
-                      )}
+                      ) : hasContent ? (
+                        <span className="shrink-0 rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100">
+                          Начать
+                        </span>
+                      ) : null}
                     </motion.div>
                   )
                 })}

@@ -973,6 +973,42 @@ export default function Dashboard() {
             {/* Score by subject chart — only if diagnostic done */}
             {hasTakenDiagnostic && <ScoreBySubjectSection />}
 
+            {/* "Start Here" guide for new users */}
+            {!hasTakenDiagnostic && (
+              <motion.div variants={cardVariants} className="sm:col-span-2 xl:col-span-12">
+                <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
+                  <h3 className="mb-1 text-lg font-bold text-gray-900">С чего начать?</h3>
+                  <p className="mb-5 text-sm text-gray-500">3 шага к подготовке к ЕНТ</p>
+                  <div className="space-y-3">
+                    <Link to="/diagnostic" className="flex items-center gap-4 rounded-xl border border-blue-200 bg-white p-4 transition-all hover:shadow-md hover:border-blue-300">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">1</div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-900">Пройди диагностику</p>
+                        <p className="text-xs text-gray-500">Узнай свои сильные и слабые стороны</p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-blue-500" />
+                    </Link>
+                    <div className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white/60 p-4 opacity-60">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-300 text-sm font-bold text-white">2</div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-700">Начни обучение с куратором</p>
+                        <p className="text-xs text-gray-400">Теория, практика и тесты по каждой теме</p>
+                      </div>
+                      <Lock className="h-4 w-4 text-gray-300" />
+                    </div>
+                    <div className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white/60 p-4 opacity-60">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-300 text-sm font-bold text-white">3</div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-700">Сдай пробный ЕНТ</p>
+                        <p className="text-xs text-gray-400">120 вопросов, реальный формат экзамена</p>
+                      </div>
+                      <Lock className="h-4 w-4 text-gray-300" />
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
             {/* Digital Curator CTA */}
             <motion.div variants={cardVariants} className="sm:col-span-2 xl:col-span-12">
               <Link to="/curator">
