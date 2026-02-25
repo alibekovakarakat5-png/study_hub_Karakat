@@ -20,6 +20,8 @@ import CareerTracker from '@/pages/CareerTracker'
 import Admission from '@/pages/Admission'
 import Internships from '@/pages/Internships'
 import Support from '@/pages/Support'
+import Curator from '@/pages/Curator'
+import PracticeEnt from '@/pages/PracticeEnt'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useStore()
@@ -75,6 +77,8 @@ export default function App() {
         <Route path="/career-tracker" element={<ProtectedRoute><CareerTracker /></ProtectedRoute>} />
         <Route path="/admission" element={<ProtectedRoute><Admission /></ProtectedRoute>} />
         <Route path="/internships" element={<ProtectedRoute><Internships /></ProtectedRoute>} />
+        <Route path="/curator" element={<ProtectedRoute><Curator /></ProtectedRoute>} />
+        <Route path="/practice-ent" element={<ProtectedRoute><PracticeEnt /></ProtectedRoute>} />
         <Route path="/courses" element={<Courses />} />
         <Route path="/profile/:id" element={<PublicProfile />} />
         <Route path="/support" element={<Support />} />

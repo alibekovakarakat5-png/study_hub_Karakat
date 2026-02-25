@@ -973,6 +973,44 @@ export default function Dashboard() {
             {/* Score by subject chart — only if diagnostic done */}
             {hasTakenDiagnostic && <ScoreBySubjectSection />}
 
+            {/* Digital Curator CTA */}
+            <motion.div variants={cardVariants} className="sm:col-span-2 xl:col-span-12">
+              <Link to="/curator">
+                <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 p-6 text-white transition-all hover:shadow-xl hover:shadow-purple-200">
+                  <div className="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/10 transition-transform group-hover:scale-150" />
+                  <div className="relative flex items-center gap-5">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20">
+                      <Sparkles className="h-7 w-7" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="mb-1 text-lg font-bold">Цифровой куратор</h3>
+                      <p className="text-sm text-white/70">Персональная подготовка к ЕНТ и IELTS с теорией, практикой и тестами</p>
+                    </div>
+                    <ArrowRight className="h-5 w-5 text-white/60 transition-transform group-hover:translate-x-1" />
+                  </div>
+                </div>
+              </Link>
+            </motion.div>
+
+            {/* Practice ENT CTA */}
+            <motion.div variants={cardVariants} className="sm:col-span-2 xl:col-span-12">
+              <Link to="/practice-ent">
+                <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-r from-rose-600 via-orange-500 to-amber-500 p-6 text-white transition-all hover:shadow-xl hover:shadow-orange-200">
+                  <div className="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/10 transition-transform group-hover:scale-150" />
+                  <div className="relative flex items-center gap-5">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20">
+                      <Target className="h-7 w-7" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="mb-1 text-lg font-bold">Пробный ЕНТ</h3>
+                      <p className="text-sm text-white/70">Полная симуляция экзамена — 120 вопросов, 4 часа, реальный формат 2025-2026</p>
+                    </div>
+                    <ArrowRight className="h-5 w-5 text-white/60 transition-transform group-hover:translate-x-1" />
+                  </div>
+                </div>
+              </Link>
+            </motion.div>
+
             {/* Weekly tasks */}
             <WeeklyTasksSection />
 

@@ -1008,8 +1008,8 @@ function HowItWorksSection() {
     },
     {
       icon: MapPin,
-      title: 'Получи персональный план',
-      description: 'AI составит маршрут подготовки именно для тебя.',
+      title: 'Цифровой куратор',
+      description: 'AI составит персональный план подготовки к ЕНТ/IELTS с теорией и практикой.',
       color: 'from-purple-500 to-purple-600',
       shadow: 'rgba(168,85,247,.3)',
     },
