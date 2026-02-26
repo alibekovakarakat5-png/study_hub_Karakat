@@ -22,6 +22,7 @@ import Internships from '@/pages/Internships'
 import Support from '@/pages/Support'
 import Curator from '@/pages/Curator'
 import PracticeEnt from '@/pages/PracticeEnt'
+import RobotWidget from '@/components/robot/RobotWidget'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useStore()
@@ -85,6 +86,7 @@ export default function App() {
         <Route path="/pricing" element={<Pricing />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <RobotWidget />
     </BrowserRouter>
   )
 }

@@ -90,3 +90,31 @@
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-20px); }
 }
+
+/* ── Robot Widget Animations ─────────────────────────────────── */
+
+@keyframes robot-blink {
+  0%, 90%, 100% { transform: scaleY(1); }
+  95%           { transform: scaleY(0.1); }
+}
+
+@keyframes robot-bounce {
+  0%, 100% { transform: translateY(0px); }
+  50%      { transform: translateY(-6px); }
+}
+
+@keyframes robot-sleep-bob {
+  0%, 100% { transform: translateY(0px) rotate(-2deg); }
+  50%      { transform: translateY(3px) rotate(2deg); }
+}
+
+@keyframes robot-zzz-float {
+  0%   { opacity: 0; transform: translate(0, 0) scale(0.6); }
+  50%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(8px, -16px) scale(1); }
+}
+
+@layer utilities {
+  .animate-robot-bounce { animation: robot-bounce 2s ease-in-out infinite; }
+  .animate-robot-sleep  { animation: robot-sleep-bob 3s ease-in-out infinite; }
+}
