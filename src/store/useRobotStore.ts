@@ -64,6 +64,10 @@ interface RobotState {
   speak: (text: string) => void
   stopSpeaking: () => void
 
+  // Robot name — set by student, persisted
+  robotName: string | null
+  setRobotName: (name: string) => void
+
   // Greeting — persisted: tracks if we already greeted today
   lastGreetedDate: string | null
   setLastGreetedDate: (date: string) => void
@@ -151,6 +155,10 @@ export const useRobotStore = create<RobotState>()(
         window.speechSynthesis?.cancel()
       },
 
+      // ── Robot name ─────────────────────────────────────────────────────────
+      robotName: null,
+      setRobotName: (name) => set({ robotName: name.trim() || null }),
+
       // ── Greeting ───────────────────────────────────────────────────────────
       lastGreetedDate: null,
       setLastGreetedDate: (date) => set({ lastGreetedDate: date }),
@@ -211,6 +219,7 @@ export const useRobotStore = create<RobotState>()(
       partialize: (state) => ({
         isMuted: state.isMuted,
         lastGreetedDate: state.lastGreetedDate,
+        robotName: state.robotName,
       }),
     }
   )

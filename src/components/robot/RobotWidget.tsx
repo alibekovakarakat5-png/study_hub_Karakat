@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo } from 'react'
+import { useEffect, useRef, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Play, Pause, RotateCcw, Flame, Volume2, VolumeX, ChevronRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -16,6 +16,8 @@ import {
   buildContextualGreeting,
   buildIdleMessage,
   subjectSummary,
+  getHolidayGreeting,
+  getRandomIdleFact,
 } from '@/lib/robotContext'
 import type { CuratorLevel } from '@/types/curator'
 import RobotFace from './RobotFace'
@@ -85,10 +87,14 @@ export default function RobotWidget() {
     mood, setMood, message, setMessage,
     lastActivityAt, recordActivity,
     isMuted, toggleMute, speak, stopSpeaking,
+    robotName, setRobotName,
     lastGreetedDate, setLastGreetedDate,
     pomodoroPhase, secondsRemaining, timerRunning,
     startTimer, pauseTimer, resetTimer, tickTimer,
   } = useRobotStore()
+
+  // Local state for the naming input
+  const [namingInput, setNamingInput] = useState('')
 
   const streak = user?.streak ?? 0
 
@@ -129,13 +135,16 @@ export default function RobotWidget() {
     const today = new Date().toDateString()
     if (lastGreetedDate === today) return
 
-    const greetingText = buildContextualGreeting(ctx)
+    // Holiday overrides normal greeting
+    const holidayGreeting = getHolidayGreeting(robotName)
+    const greetingText = holidayGreeting ?? buildContextualGreeting(ctx)
 
     const timer = setTimeout(() => {
       setMood('happy', greetingText)
       speak(greetingText)
       setLastGreetedDate(today)
-      if (ctx.isNewUser && !isExpanded) toggleExpanded()
+      // Auto-open for new users OR when robot has no name yet
+      if ((ctx.isNewUser || robotName === null) && !isExpanded) toggleExpanded()
     }, 1000)
 
     return () => clearTimeout(timer)
@@ -172,14 +181,26 @@ export default function RobotWidget() {
     if (mood !== 'sleeping' && mood !== 'idle') speak(message)
   }, [mood, message, speak])
 
-  // Update idle message when context changes (e.g. after completing a module)
+  // Update idle message: rotate fact every 45s, or show context-aware hint
   useEffect(() => {
-    if (mood === 'idle' && ctx) {
-      const msg = buildIdleMessage(ctx)
-      if (msg !== message) setMessage(msg)
-    }
+    if (mood !== 'idle' || !ctx) return
+    // If onboarding not done, use context hint; otherwise rotate facts
+    const hasOnboarding = !ctx.hasTakenDiagnostic || !ctx.hasActivePlan ||
+      (ctx.planProgress?.completed ?? 0) === 0
+    const msg = hasOnboarding ? buildIdleMessage(ctx) : getRandomIdleFact()
+    if (msg !== message) setMessage(msg)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ctx, mood])
+
+  // Rotate fact every 45s while idle
+  useEffect(() => {
+    const id = setInterval(() => {
+      const s = useRobotStore.getState()
+      if (s.mood !== 'idle') return
+      s.setMessage(getRandomIdleFact())
+    }, 45_000)
+    return () => clearInterval(id)
+  }, [])
 
   // Stop speaking on close
   useEffect(() => {
@@ -285,11 +306,16 @@ export default function RobotWidget() {
               exit="exit"
               className="flex flex-col items-center gap-2.5 p-3 w-full"
             >
-              {/* Top row: mute + close */}
+              {/* Top row: mute + robot name + close */}
               <div className="flex items-center justify-between w-full">
                 <button type="button" onClick={toggleMute} className="text-white/50 hover:text-white transition-colors p-0.5" aria-label={isMuted ? 'Включить звук' : 'Выключить звук'}>
                   {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
                 </button>
+                {robotName && (
+                  <span className="text-white/60 text-[10px] font-medium tracking-wide">
+                    {robotName}
+                  </span>
+                )}
                 <button type="button" onClick={toggleExpanded} className="text-white/50 hover:text-white text-xs transition-colors" aria-label="Свернуть">✕</button>
               </div>
 
@@ -309,6 +335,44 @@ export default function RobotWidget() {
                   {message}
                 </button>
               </div>
+
+              {/* ── Naming prompt (shown once until robot is named) ── */}
+              {robotName === null && (
+                <div className="w-full flex flex-col gap-1.5">
+                  <p className="text-white/70 text-[10px] text-center">Как меня назвать? 🤖</p>
+                  <div className="flex gap-1.5">
+                    <input
+                      type="text"
+                      value={namingInput}
+                      onChange={e => setNamingInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && namingInput.trim()) {
+                          setRobotName(namingInput)
+                          const msg = `Меня зовут ${namingInput.trim()}! Приятно познакомиться 🤝`
+                          setMood('excited', msg)
+                          speak(msg)
+                        }
+                      }}
+                      placeholder="Введи имя..."
+                      maxLength={12}
+                      className="flex-1 min-w-0 bg-white/15 text-white placeholder:text-white/40 text-xs rounded-lg px-2.5 py-1.5 outline-none focus:bg-white/20 border border-white/20"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!namingInput.trim()) return
+                        setRobotName(namingInput)
+                        const msg = `Меня зовут ${namingInput.trim()}! Приятно познакомиться 🤝`
+                        setMood('excited', msg)
+                        speak(msg)
+                      }}
+                      className="shrink-0 bg-white/20 hover:bg-white/30 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg transition-colors"
+                    >
+                      OK
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* ── Onboarding CTA ── */}
               {onboardingCTA && (
