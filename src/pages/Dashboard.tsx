@@ -27,6 +27,8 @@ import {
   Zap,
   Calendar,
   BarChart3,
+  MessageCircle,
+  Timer,
 } from 'lucide-react'
 import {
   BarChart,
@@ -1045,6 +1047,66 @@ export default function Dashboard() {
                   </div>
                 </div>
               </Link>
+            </motion.div>
+
+            {/* Share with parents */}
+            <motion.div variants={cardVariants} className="sm:col-span-2 xl:col-span-12">
+              <div className="rounded-2xl border border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 p-5">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-green-500/10">
+                    <MessageCircle className="h-6 w-6 text-green-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-gray-900">Отчёт для родителей</h3>
+                    <p className="mt-0.5 text-sm text-gray-500">
+                      Отправь родителям сводку прогресса: диагностика, результаты ЕНТ и активность
+                    </p>
+                    {user && (
+                      <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <Flame className="h-3 w-3 text-orange-500" />
+                          {user.streak} дней подряд
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Timer className="h-3 w-3 text-blue-500" />
+                          {minutesToHumanReadable(user.totalStudyMinutes)} всего
+                        </span>
+                        {hasTakenDiagnostic && diagnosticResult && (
+                          <span className="flex items-center gap-1">
+                            <Target className="h-3 w-3 text-purple-500" />
+                            Диагностика: {Math.round((diagnosticResult.overallScore / diagnosticResult.maxScore) * 100)}%
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => {
+                      const name = user?.name || 'Ученик'
+                      const streak = user?.streak ?? 0
+                      const studyTime = minutesToHumanReadable(user?.totalStudyMinutes ?? 0)
+                      const diagLine = diagnosticResult
+                        ? `✅ Диагностика: ${Math.round((diagnosticResult.overallScore / diagnosticResult.maxScore) * 100)}%\n`
+                        : ''
+                      const weak = diagnosticResult?.subjects
+                        .filter(s => s.level === 'low' || s.level === 'medium')
+                        .map(s => SUBJECT_NAMES[s.subject])
+                        .join(', ')
+                      const msg = `📊 Отчёт по подготовке к ЕНТ\n\n👤 ${name}\n` +
+                        diagLine +
+                        (weak ? `⚠️ Нужно подтянуть: ${weak}\n` : '') +
+                        `🔥 Серия занятий: ${streak} дней\n` +
+                        `⏱ Общее время: ${studyTime}\n\n` +
+                        `Платформа: Study Hub`
+                      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
+                    }}
+                    className="flex shrink-0 items-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-green-600"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    Отправить в WhatsApp
+                  </button>
+                </div>
+              </div>
             </motion.div>
 
             {/* Weekly tasks */}

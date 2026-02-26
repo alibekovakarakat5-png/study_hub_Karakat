@@ -22,6 +22,11 @@ import {
   ArrowUp,
   ArrowDown,
   FileText,
+  MessageCircle,
+  Trophy,
+  Timer,
+  Layers,
+  CheckSquare,
 } from 'lucide-react'
 import {
   LineChart,
@@ -38,6 +43,8 @@ import {
 } from 'recharts'
 
 import { useStore } from '@/store/useStore'
+import { useCuratorStore } from '@/store/useCuratorStore'
+import { usePracticeEntStore } from '@/store/usePracticeEntStore'
 import { SUBJECT_NAMES, SUBJECT_COLORS, type SubjectScore, type Subject } from '@/types'
 import { cn, getGreeting, minutesToHumanReadable, getScoreBgColor, formatDate } from '@/lib/utils'
 import Card, { CardBody, CardHeader } from '@/components/ui/Card'
@@ -214,17 +221,32 @@ function CustomTooltip({
 
 // ── Main Component ──────────────────────────────────────────────────────────
 
+// ── ENT target date (June 1 of current year) ────────────────────────────────
+function getDaysUntilEnt(): number {
+  const now = new Date()
+  const ent = new Date(now.getFullYear(), 5, 1) // June 1
+  if (ent < now) ent.setFullYear(ent.getFullYear() + 1)
+  return Math.ceil((ent.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+}
+
 export default function ParentDashboard() {
   const navigate = useNavigate()
   const user = useStore((s) => s.user)
   const childData = useStore((s) => s.childData)
   const logout = useStore((s) => s.logout)
 
+  // Curator & ENT data (shared localStorage)
+  const curatorPlan = useCuratorStore((s) => s.plan)
+  const moduleProgress = useCuratorStore((s) => s.moduleProgress)
+  const entHistory = usePracticeEntStore((s) => s.history)
+
   // Derived data
   const diagnosticResult = childData?.diagnosticResult ?? null
   const studyPlan = childData?.studyPlan ?? null
   const weeklyReport = childData?.weeklyReport ?? null
   const child = childData?.user ?? null
+
+  const daysUntilEnt = getDaysUntilEnt()
 
   const overallPercentage = diagnosticResult
     ? Math.round((diagnosticResult.overallScore / diagnosticResult.maxScore) * 100)
@@ -248,6 +270,63 @@ export default function ParentDashboard() {
   const currentWeekTotal = currentWeekData?.tasks.length ?? 0
   const currentWeekCompleted = currentWeekData?.tasks.filter((t) => t.completed).length ?? 0
   const currentWeekRate = currentWeekTotal > 0 ? Math.round((currentWeekCompleted / currentWeekTotal) * 100) : 0
+
+  // Curator progress stats
+  const curatorStats = useMemo(() => {
+    if (!curatorPlan) return null
+    const allModules = curatorPlan.weeks.flatMap(w => w.modules)
+    const completed = allModules.filter(m => m.status === 'completed').length
+    const inProgress = allModules.filter(m => m.status === 'in-progress').length
+    const avgScore = completed > 0
+      ? Math.round(allModules.filter(m => m.status === 'completed')
+          .reduce((sum, m) => sum + (moduleProgress[m.id]?.testScore ?? 0), 0) / completed)
+      : 0
+    return { total: allModules.length, completed, inProgress, avgScore }
+  }, [curatorPlan, moduleProgress])
+
+  // Latest 3 ENT attempts
+  const recentEntResults = useMemo(() => entHistory.slice(0, 3), [entHistory])
+
+  // WhatsApp share
+  const handleShareWhatsApp = () => {
+    const name = child?.name || 'Ученик'
+    const grade = child?.grade || 11
+    const diagPct = diagnosticResult
+      ? Math.round((diagnosticResult.overallScore / diagnosticResult.maxScore) * 100)
+      : null
+    const weakSubjects = diagnosticResult?.subjects
+      .filter(s => s.level === 'low' || s.level === 'medium')
+      .map(s => SUBJECT_NAMES[s.subject])
+      .join(', ') || '—'
+    const strongSubjects = diagnosticResult?.subjects
+      .filter(s => s.level === 'high')
+      .map(s => SUBJECT_NAMES[s.subject])
+      .join(', ') || '—'
+    const streak = weeklyReport?.streak ?? child?.streak ?? 0
+    const studyTime = minutesToHumanReadable(weeklyReport?.studyMinutes ?? child?.totalStudyMinutes ?? 0)
+    const lastEnt = recentEntResults[0]
+    const entLine = lastEnt
+      ? `🎯 Последний пробный ЕНТ: ${lastEnt.totalCorrect}/${lastEnt.totalQuestions} (${lastEnt.percentage}%)\n`
+      : ''
+    const curatorLine = curatorStats
+      ? `📖 Куратор: ${curatorStats.completed}/${curatorStats.total} модулей выполнено\n`
+      : ''
+
+    const msg = `📊 Отчёт по подготовке к ЕНТ\n\n` +
+      `👤 ${name}, ${grade} класс\n` +
+      `📅 До ЕНТ: ${daysUntilEnt} дней\n\n` +
+      (diagPct !== null ? `✅ Диагностика: ${diagPct}%\n` : '') +
+      `💪 Сильные предметы: ${strongSubjects}\n` +
+      `⚠️ Нужно подтянуть: ${weakSubjects}\n\n` +
+      entLine +
+      curatorLine +
+      `🔥 Серия занятий: ${streak} дней\n` +
+      `⏱ Время за неделю: ${studyTime}\n\n` +
+      `Платформа: Study Hub`
+
+    const url = `https://wa.me/?text=${encodeURIComponent(msg)}`
+    window.open(url, '_blank')
+  }
 
   const handleLogout = () => {
     logout()
@@ -374,6 +453,25 @@ export default function ParentDashboard() {
                           <p className="text-[11px] text-purple-400 font-medium">последняя активность</p>
                         </div>
                       </div>
+
+                      <div className="flex items-center gap-2.5 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+                        <Timer className="w-5 h-5 text-red-500" />
+                        <div>
+                          <p className="text-lg font-bold text-red-600">{daysUntilEnt}</p>
+                          <p className="text-[11px] text-red-400 font-medium">дней до ЕНТ</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* WhatsApp share */}
+                    <div className="flex justify-end pt-2">
+                      <button
+                        onClick={handleShareWhatsApp}
+                        className="inline-flex items-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-green-200 transition-all hover:bg-green-600 hover:shadow-md"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        Отправить отчёт в WhatsApp
+                      </button>
                     </div>
                   </div>
                 ) : (
@@ -850,6 +948,103 @@ export default function ParentDashboard() {
                       </CircularProgress>
                     </div>
                   </div>
+                </CardBody>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* ── Curator Progress ─────────────────────────────────── */}
+          {curatorStats && (
+            <motion.div variants={itemVariants}>
+              <Card variant="default">
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-5 h-5 text-indigo-600" />
+                    <h3 className="text-lg font-bold text-gray-900">Цифровой куратор</h3>
+                    <Badge color="blue" size="sm">{curatorPlan?.goalType === 'ielts' ? 'IELTS' : 'ЕНТ'}</Badge>
+                  </div>
+                </CardHeader>
+                <CardBody className="p-6 sm:p-8">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                    <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-4 text-center">
+                      <p className="text-2xl font-bold text-indigo-600">{curatorStats.completed}</p>
+                      <p className="text-xs text-indigo-400 mt-0.5">выполнено</p>
+                    </div>
+                    <div className="rounded-xl bg-amber-50 border border-amber-100 p-4 text-center">
+                      <p className="text-2xl font-bold text-amber-600">{curatorStats.inProgress}</p>
+                      <p className="text-xs text-amber-400 mt-0.5">в процессе</p>
+                    </div>
+                    <div className="rounded-xl bg-gray-50 border border-gray-100 p-4 text-center">
+                      <p className="text-2xl font-bold text-gray-600">{curatorStats.total}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">всего модулей</p>
+                    </div>
+                    <div className="rounded-xl bg-green-50 border border-green-100 p-4 text-center">
+                      <p className="text-2xl font-bold text-green-600">{curatorStats.avgScore}%</p>
+                      <p className="text-xs text-green-400 mt-0.5">средний балл</p>
+                    </div>
+                  </div>
+                  {/* Progress bar */}
+                  <div>
+                    <div className="flex justify-between text-sm mb-1.5">
+                      <span className="font-medium text-gray-600">Общий прогресс куратора</span>
+                      <span className="font-bold text-indigo-600">
+                        {curatorStats.total > 0 ? Math.round((curatorStats.completed / curatorStats.total) * 100) : 0}%
+                      </span>
+                    </div>
+                    <div className="h-3 rounded-full bg-gray-100 overflow-hidden">
+                      <motion.div
+                        className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${curatorStats.total > 0 ? Math.round((curatorStats.completed / curatorStats.total) * 100) : 0}%` }}
+                        transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+                      />
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* ── Practice ENT Results ──────────────────────────────── */}
+          {recentEntResults.length > 0 && (
+            <motion.div variants={itemVariants}>
+              <Card variant="default">
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-orange-500" />
+                    <h3 className="text-lg font-bold text-gray-900">Пробные ЕНТ</h3>
+                    <Badge color="yellow" size="sm">последние {recentEntResults.length}</Badge>
+                  </div>
+                </CardHeader>
+                <CardBody className="p-6 sm:p-8 space-y-3">
+                  {recentEntResults.map((result, i) => {
+                    const pct = result.percentage
+                    const color = pct >= 70 ? 'text-green-600' : pct >= 50 ? 'text-amber-600' : 'text-red-600'
+                    const bgColor = pct >= 70 ? 'bg-green-50 border-green-100' : pct >= 50 ? 'bg-amber-50 border-amber-100' : 'bg-red-50 border-red-100'
+                    return (
+                      <div key={result.id} className={`flex items-center gap-4 rounded-xl border p-4 ${bgColor}`}>
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/60 text-sm font-bold text-gray-600">
+                          #{i + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{result.variantTitle}</p>
+                          <p className="text-xs text-gray-400">
+                            {SUBJECT_NAMES[result.profileSubject1]} + {SUBJECT_NAMES[result.profileSubject2]}
+                            &nbsp;·&nbsp;{new Date(result.date).toLocaleDateString('ru-RU')}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className={`text-xl font-bold ${color}`}>{result.totalCorrect}/{result.totalQuestions}</p>
+                          <p className="text-xs text-gray-400">{pct}%</p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {recentEntResults.length === 0 && (
+                    <p className="text-center text-sm text-gray-400 py-4">
+                      Пробные ЕНТ ещё не сдавались
+                    </p>
+                  )}
                 </CardBody>
               </Card>
             </motion.div>
