@@ -946,7 +946,7 @@ export default function Courses() {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="fixed inset-y-0 left-0 z-50 w-80 max-w-[85vw] lg:hidden"
+              className="fixed inset-y-0 left-0 z-50 w-[90vw] max-w-80 lg:hidden"
             >
               <FiltersSidebar
                 selectedCategories={selectedCategories}

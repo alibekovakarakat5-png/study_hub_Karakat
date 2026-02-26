@@ -17,6 +17,7 @@ import {
   MessageSquare,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
+import { useRobotStore } from '@/store/useRobotStore'
 import { cn, generateId } from '@/lib/utils'
 import { SUBJECT_NAMES } from '@/types'
 import type { Subject, DiagnosticResult, StudyPlan, User } from '@/types'
@@ -489,8 +490,9 @@ export default function Mentor() {
       setInputValue('')
       setSessionMessageCount((prev) => prev + 1)
 
-      // Simulate AI thinking
+      // Simulate AI thinking — robot reacts
       setIsThinking(true)
+      useRobotStore.getState().setMood('thinking')
       const delay = 1000 + Math.random() * 1500
 
       setTimeout(() => {
@@ -506,6 +508,16 @@ export default function Mentor() {
           timestamp: new Date().toISOString(),
         })
         setIsThinking(false)
+
+        // Robot reacts: speaks first ~180 chars stripped of markdown
+        const robot = useRobotStore.getState()
+        robot.setMood('happy', '📖 Проверь мой ответ!')
+        const spoken = response
+          .replace(/\*\*?(.+?)\*\*?/g, '$1')
+          .replace(/`(.+?)`/g, '$1')
+          .replace(/#+\s/g, '')
+          .slice(0, 180)
+        robot.speak(spoken)
       }, delay)
     },
     [inputValue, isThinking, user, sessionMessageCount, addChatMessage, diagnosticResult, studyPlan]
@@ -548,7 +560,7 @@ export default function Mentor() {
   const targetContext = user?.targetSpecialty || 'ЕНТ подготовка'
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-[100dvh] bg-gray-50">
       {/* ------- Left sidebar ------- */}
       <aside className="hidden w-64 flex-col border-r border-gray-200 bg-white lg:flex">
         {/* Back link */}
@@ -675,8 +687,17 @@ export default function Mentor() {
           </div>
 
           {/* Context badge */}
-          <div className="hidden items-center gap-2 sm:flex">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 ring-1 ring-inset ring-primary-200/50">
+          <div className="flex items-center gap-2">
+            {/* Clear chat — mobile only */}
+            <button
+              onClick={handleClearChat}
+              className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 lg:hidden"
+              aria-label="Очистить чат"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+            {/* Context badge — desktop only */}
+            <span className="hidden items-center gap-1.5 rounded-full bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 ring-1 ring-inset ring-primary-200/50 sm:inline-flex">
               <BookOpen className="h-3 w-3" />
               {user?.grade || 11} класс, {targetContext}
             </span>

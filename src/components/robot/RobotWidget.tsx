@@ -213,6 +213,23 @@ export default function RobotWidget() {
   // ── Guard ─────────────────────────────────────────────────────────────────
   if (!isAuth) return null
 
+  // ── Onboarding step (derived, no persist needed) ──────────────────────────
+  // Shows a CTA button in the widget guiding the student through the funnel
+  const onboardingStep: 0 | 1 | 2 | 'done' = (() => {
+    if (!ctx) return 'done'
+    if (!ctx.hasTakenDiagnostic) return 0
+    if (!ctx.hasActivePlan) return 1
+    if ((ctx.planProgress?.completed ?? 0) === 0) return 2
+    return 'done'
+  })()
+
+  const onboardingCTA: { label: string; path: string; emoji: string } | null = (() => {
+    if (onboardingStep === 0) return { label: 'Пройти диагностику', path: '/diagnostic', emoji: '📋' }
+    if (onboardingStep === 1) return { label: 'Создать план обучения', path: '/curator',   emoji: '📚' }
+    if (onboardingStep === 2) return { label: 'Начать первый модуль', path: '/curator',    emoji: '🚀' }
+    return null
+  })()
+
   // ── Derived display values ────────────────────────────────────────────────
   const phaseLabel = pomodoroPhase === 'work' ? 'Фокус' : pomodoroPhase === 'break' ? 'Перерыв' : 'Помодоро'
   const timerMax   = pomodoroPhase === 'break' ? POMODORO_BREAK_SECONDS : POMODORO_WORK_SECONDS
@@ -292,6 +309,20 @@ export default function RobotWidget() {
                   {message}
                 </button>
               </div>
+
+              {/* ── Onboarding CTA ── */}
+              {onboardingCTA && (
+                <button
+                  type="button"
+                  onClick={() => { navigate(onboardingCTA.path); if (!isExpanded) toggleExpanded() }}
+                  className="w-full flex items-center justify-between bg-white/20 hover:bg-white/30 active:bg-white/40 rounded-xl px-3 py-2.5 transition-colors"
+                >
+                  <span className="text-white text-xs font-semibold">
+                    {onboardingCTA.emoji} {onboardingCTA.label}
+                  </span>
+                  <ChevronRight className="w-3.5 h-3.5 text-white/70 shrink-0" />
+                </button>
+              )}
 
               {/* ── Student context section ── */}
               {ctx && (ctx.subjects.length > 0 || ctx.planProgress || ctx.latestEntScore !== null) && (
