@@ -186,6 +186,70 @@ export function subjectSummary(subject: Subject, level: CuratorLevel): string {
 
 export { SUBJECT_NAMES, CURATOR_LEVEL_NAMES, CURATOR_LEVEL_EMOJI }
 
+// ── Voice dialog evaluation ────────────────────────────────────────────────
+// Feynman method: student explains topic → check against keyPoints → feedback
+
+export interface VoiceEvalResult {
+  feedback: string
+  followUp: string
+  mentionedCount: number
+  totalCount: number
+}
+
+/**
+ * Evaluates a student's spoken explanation against a topic's key points.
+ * Returns personalised feedback + a follow-up question.
+ */
+export function evaluateStudentSpeech(
+  transcript: string,
+  keyPoints: string[],
+  topicName: string,
+  practiceText?: string,
+): VoiceEvalResult {
+  if (!transcript.trim() || keyPoints.length === 0) {
+    return {
+      feedback: 'Я не расслышал. Попробуй ещё раз — говори чётче.',
+      followUp: `Расскажи мне, что ты знаешь о теме "${topicName}".`,
+      mentionedCount: 0,
+      totalCount: keyPoints.length,
+    }
+  }
+
+  const lower = transcript.toLowerCase()
+
+  // For each key point, extract "signal words" (len > 3) and check overlap
+  const mentioned: string[] = []
+  const missed: string[] = []
+
+  for (const point of keyPoints) {
+    const words = point
+      .toLowerCase()
+      .split(/[\s,;.()=→+\-–—/]+/)
+      .filter(w => w.length > 3)
+    if (words.length === 0) { mentioned.push(point); continue }
+    const hits = words.filter(w => lower.includes(w)).length
+    const ratio = hits / words.length
+    ;(ratio >= 0.4 ? mentioned : missed).push(point)
+  }
+
+  let feedback: string
+  if (missed.length === 0) {
+    feedback = `Отлично! Ты охватил все ${keyPoints.length} ключевых момента темы "${topicName}". 🎉`
+  } else if (mentioned.length === 0) {
+    feedback = `Попробуй ещё. Начни с главного: ${missed[0]}`
+  } else {
+    feedback = `Хорошо! ${mentioned.length} из ${keyPoints.length} пунктов ✓. Но ты не упомянул: «${missed[0]}».`
+  }
+
+  const followUp = practiceText
+    ? `Теперь ответь на вопрос: ${practiceText}`
+    : missed.length > 0
+      ? `Объясни своими словами: ${missed[0]}`
+      : `Молодец! Что ещё ты знаешь о теме "${topicName}"?`
+
+  return { feedback, followUp, mentionedCount: mentioned.length, totalCount: keyPoints.length }
+}
+
 // ── Holiday greetings ─────────────────────────────────────────────────────────
 
 export function getHolidayGreeting(robotName: string | null): string | null {

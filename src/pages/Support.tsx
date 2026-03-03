@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, useInView } from 'framer-motion'
+import { openWhatsApp, buildSupportMessage } from '@/lib/whatsapp'
 import {
   GraduationCap,
   Heart,
@@ -47,6 +48,7 @@ export default function Support() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    openWhatsApp(buildSupportMessage(form))
     setSubmitted(true)
   }
 

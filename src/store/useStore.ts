@@ -3,110 +3,8 @@ import { persist } from 'zustand/middleware'
 import type { User, UserRole, DiagnosticResult, StudyPlan, ChatMessage, StudyWeek, StudyTask, Achievement, Notification, OnboardingProfile } from '@/types'
 import { generateId } from '@/lib/utils'
 import { universities } from '@/data/universities'
-
-// ── Pre-configured accounts ─────────────────────────────────────────────────
-
-interface RegisteredAccount {
-  email: string
-  password: string
-  role: UserRole
-  user: User
-}
-
-const REGISTERED_ACCOUNTS: RegisteredAccount[] = [
-  {
-    email: 'alibekovakarakat5@gmail.com',
-    password: 'karakat120505',
-    role: 'admin',
-    user: {
-      id: 'admin-001',
-      name: 'Каракат Алибекова',
-      email: 'alibekovakarakat5@gmail.com',
-      role: 'admin',
-      grade: 11,
-      city: 'Алматы',
-      isPremium: true,
-      createdAt: '2025-01-15T00:00:00.000Z',
-      streak: 45,
-      totalStudyMinutes: 12600,
-      lastActiveDate: new Date().toISOString(),
-    },
-  },
-  {
-    email: 'alibekovakarakat5@gmail.com',
-    password: 'karakat120505',
-    role: 'parent',
-    user: {
-      id: 'parent-001',
-      name: 'Каракат Алибекова',
-      email: 'alibekovakarakat5@gmail.com',
-      role: 'parent',
-      grade: 11,
-      city: 'Алматы',
-      isPremium: true,
-      createdAt: '2025-01-15T00:00:00.000Z',
-      streak: 0,
-      totalStudyMinutes: 0,
-      lastActiveDate: new Date().toISOString(),
-    },
-  },
-  {
-    email: 'alibekovakarakat5@gmail.com',
-    password: 'karakat120505',
-    role: 'student',
-    user: {
-      id: 'student-001',
-      name: 'Каракат Алибекова',
-      email: 'alibekovakarakat5@gmail.com',
-      role: 'student',
-      grade: 11,
-      city: 'Алматы',
-      targetUniversity: 'Назарбаев Университет',
-      targetSpecialty: 'Computer Science',
-      isPremium: true,
-      createdAt: '2025-01-15T00:00:00.000Z',
-      streak: 12,
-      totalStudyMinutes: 2340,
-      lastActiveDate: new Date().toISOString(),
-    },
-  },
-  {
-    email: 'alibekovakarakat5@gmail.com',
-    password: 'karakat120505',
-    role: 'teacher',
-    user: {
-      id: 'teacher-001',
-      name: 'Каракат Алибекова',
-      email: 'alibekovakarakat5@gmail.com',
-      role: 'teacher',
-      grade: 11,
-      city: 'Алматы',
-      isPremium: true,
-      createdAt: '2025-01-15T00:00:00.000Z',
-      streak: 0,
-      totalStudyMinutes: 0,
-      lastActiveDate: new Date().toISOString(),
-    },
-  },
-  {
-    email: 'alibekovakarakat5@gmail.com',
-    password: 'karakat120505',
-    role: 'employer',
-    user: {
-      id: 'employer-001',
-      name: 'Каракат Алибекова',
-      email: 'alibekovakarakat5@gmail.com',
-      role: 'employer',
-      grade: 11,
-      city: 'Алматы',
-      isPremium: true,
-      createdAt: '2025-01-15T00:00:00.000Z',
-      streak: 0,
-      totalStudyMinutes: 0,
-      lastActiveDate: new Date().toISOString(),
-    },
-  },
-]
+import { api, setToken, clearToken } from '@/lib/api'
+import i18n from '@/i18n/index'
 
 // ── Mock platform stats for admin ───────────────────────────────────────────
 
@@ -175,8 +73,8 @@ interface AppState {
   // Auth
   user: User | null
   isAuthenticated: boolean
-  login: (email: string, password: string, role: UserRole) => boolean
-  register: (data: { name: string; email: string; password: string; role: UserRole; grade?: number; city?: string; childEmail?: string }) => boolean
+  login: (email: string, password: string, role: UserRole) => Promise<void>
+  register: (data: { name: string; email: string; password: string; role: UserRole; grade?: number; city?: string; childEmail?: string }) => Promise<void>
   logout: () => void
   updateUser: (updates: Partial<User>) => void
 
@@ -250,92 +148,32 @@ export const useStore = create<AppState>()(
       user: null,
       isAuthenticated: false,
 
-      login: (email, password, role) => {
-        // Check pre-configured accounts first
-        const account = REGISTERED_ACCOUNTS.find(
-          a => a.email.toLowerCase() === email.toLowerCase() && a.password === password && a.role === role
+      login: async (email, password, _role) => {
+        // _role is kept for UI compatibility but server determines the real role
+        const { user, token } = await api.post<{ user: User; token: string }>(
+          '/auth/login',
+          { email, password }
         )
-
-        if (account) {
-          const user = { ...account.user, lastActiveDate: new Date().toISOString() }
-          set({ user, isAuthenticated: true })
-
-          // If logging in as parent, set up child data
-          if (role === 'parent') {
-            const childAccount = REGISTERED_ACCOUNTS.find(a => a.email === email && a.role === 'student')
-            if (childAccount) {
-              set({
-                childData: {
-                  user: childAccount.user,
-                  diagnosticResult: {
-                    id: 'diag-child-001',
-                    userId: childAccount.user.id,
-                    date: '2026-02-01T00:00:00.000Z',
-                    subjects: [
-                      { subject: 'math', score: 4, maxScore: 5, percentage: 80, level: 'high', weakTopics: ['Логарифмы'], strongTopics: ['Алгебра', 'Геометрия', 'Функции'] },
-                      { subject: 'physics', score: 3, maxScore: 4, percentage: 75, level: 'high', weakTopics: ['Оптика'], strongTopics: ['Механика', 'Электричество'] },
-                      { subject: 'informatics', score: 3, maxScore: 3, percentage: 100, level: 'high', weakTopics: [], strongTopics: ['Алгоритмы', 'Системы счисления', 'Программирование'] },
-                      { subject: 'english', score: 2, maxScore: 3, percentage: 67, level: 'medium', weakTopics: ['Vocabulary'], strongTopics: ['Grammar'] },
-                    ],
-                    overallScore: 12,
-                    maxScore: 15,
-                    percentile: 78,
-                    predictedUniversities: [],
-                  },
-                  studyPlan: null,
-                  weeklyReport: {
-                    studyMinutes: 2340,
-                    tasksCompleted: 47,
-                    streak: 12,
-                    prevDiagnosticScore: 65,
-                    subjectTrends: [
-                      { subject: 'Математика', prevScore: 65, currentScore: 80 },
-                      { subject: 'Физика', prevScore: 60, currentScore: 75 },
-                      { subject: 'Информатика', prevScore: 90, currentScore: 100 },
-                      { subject: 'Английский', prevScore: 55, currentScore: 67 },
-                    ],
-                  },
-                },
-              })
-            }
-          }
-          return true
-        }
-
-        // Fallback: allow any email/password (demo mode)
-        const user: User = {
-          id: generateId(),
-          name: role === 'parent' ? 'Родитель' : role === 'admin' ? 'Админ' : role === 'teacher' ? 'Преподаватель' : role === 'employer' ? 'Работодатель' : 'Ученик',
-          email,
-          role,
-          grade: 11,
-          city: 'Алматы',
-          isPremium: false,
-          createdAt: new Date().toISOString(),
-          streak: 0,
-          totalStudyMinutes: 0,
-          lastActiveDate: new Date().toISOString(),
-        }
+        setToken(token)
         set({ user, isAuthenticated: true })
-        return true
       },
 
-      register: (data) => {
-        const user: User = {
-          id: generateId(),
-          name: data.name,
-          email: data.email,
-          role: data.role,
-          grade: data.grade || 11,
-          city: data.city || 'Алматы',
-          isPremium: false,
-          createdAt: new Date().toISOString(),
-          streak: 0,
-          totalStudyMinutes: 0,
-          lastActiveDate: new Date().toISOString(),
-        }
+      register: async (data) => {
+        const { user, token } = await api.post<{ user: User; token: string }>(
+          '/auth/register',
+          {
+            name:     data.name,
+            email:    data.email,
+            password: data.password,
+            role:     data.role,
+            grade:    data.grade,
+            city:     data.city,
+          }
+        )
+        setToken(token)
         set({ user, isAuthenticated: true })
 
+        // If registering as parent, stub childData so the parent dashboard works
         if (data.role === 'parent') {
           const childUser: User = {
             id: generateId(),
@@ -376,11 +214,10 @@ export const useStore = create<AppState>()(
             },
           })
         }
-
-        return true
       },
 
       logout: () => {
+        clearToken()
         set({
           user: null,
           isAuthenticated: false,
@@ -434,18 +271,18 @@ export const useStore = create<AppState>()(
           const diff = pct - prevPct
           get().addNotification({
             type: diff > 0 ? 'success' : 'info',
-            title: 'Повторная диагностика завершена',
+            title: i18n.t('store.notif_diag_retake_title'),
             message: diff > 0
-              ? `Ваш результат улучшился на ${diff}%! Было ${prevPct}%, стало ${pct}%.`
+              ? i18n.t('store.notif_diag_improved', { diff, prevPct, pct })
               : diff === 0
-                ? `Ваш результат не изменился — ${pct}%. Продолжайте заниматься!`
-                : `Результат снизился на ${Math.abs(diff)}%. Не сдавайтесь, повторите слабые темы!`,
+                ? i18n.t('store.notif_diag_same', { pct })
+                : i18n.t('store.notif_diag_decreased', { diff: Math.abs(diff) }),
           })
         } else {
           get().addNotification({
             type: 'success',
-            title: 'Диагностика завершена!',
-            message: `Ваш результат: ${pct}%. Теперь создайте учебный план!`,
+            title: i18n.t('store.notif_diag_done_title'),
+            message: i18n.t('store.notif_diag_done_msg', { pct }),
           })
         }
       },
@@ -589,24 +426,24 @@ export const useStore = create<AppState>()(
         {
           id: 'welcome-1',
           type: 'info' as const,
-          title: 'Добро пожаловать в Study Hub!',
-          message: 'Пройдите диагностический тест, чтобы начать подготовку к ЕНТ.',
+          title: i18n.t('store.notif_welcome_title'),
+          message: i18n.t('store.notif_welcome_msg'),
           read: false,
           createdAt: new Date(Date.now() - 3600000).toISOString(),
         },
         {
           id: 'streak-reminder',
           type: 'warning' as const,
-          title: 'Не забудьте позаниматься сегодня!',
-          message: 'Ваша серия — 12 дней. Не потеряйте прогресс!',
+          title: i18n.t('store.notif_streak_title'),
+          message: i18n.t('store.notif_streak_msg'),
           read: false,
           createdAt: new Date(Date.now() - 7200000).toISOString(),
         },
         {
           id: 'new-course-1',
           type: 'info' as const,
-          title: 'Новый курс: Data Science на Python',
-          message: 'Даурен Ахметов выпустил новый курс. Рейтинг 4.9!',
+          title: i18n.t('store.notif_new_course_title'),
+          message: i18n.t('store.notif_new_course_msg'),
           read: true,
           createdAt: new Date(Date.now() - 86400000).toISOString(),
         },
@@ -650,8 +487,8 @@ export const useStore = create<AppState>()(
         set({ onboardingCompleted: true, onboardingProfile: profile })
         get().addNotification({
           type: 'achievement',
-          title: 'Путь определён!',
-          message: `Ваш топ-направление: ${profile.recommendedPaths[0]?.title || 'IT'}. Начните подготовку!`,
+          title: i18n.t('store.notif_path_title'),
+          message: i18n.t('store.notif_path_msg', { path: profile.recommendedPaths[0]?.title || 'IT' }),
         })
       },
 

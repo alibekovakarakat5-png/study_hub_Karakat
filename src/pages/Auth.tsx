@@ -18,6 +18,8 @@ import {
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import type { UserRole } from '@/types'
+import { useTranslation } from 'react-i18next'
+import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 
 type AuthMode = 'login' | 'register'
 type Role = UserRole
@@ -49,6 +51,7 @@ const GRADES = [9, 10, 11]
 
 export default function Auth() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { login, register, isAuthenticated, user, onboardingCompleted } = useStore()
 
   const [mode, setMode] = useState<AuthMode>('login')
@@ -95,14 +98,12 @@ export default function Auth() {
     }
 
     setIsLoading(true)
-    // Small delay for UX
-    await new Promise(r => setTimeout(r, 600))
-
-    const success = login(email, password, role)
-    setIsLoading(false)
-
-    if (!success) {
-      setError('Неверный email или пароль')
+    try {
+      await login(email, password, role)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Неверный email или пароль')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -136,22 +137,20 @@ export default function Auth() {
     }
 
     setIsLoading(true)
-    await new Promise(r => setTimeout(r, 600))
-
-    const success = register({
-      name,
-      email: regEmail,
-      password: regPassword,
-      role,
-      grade: role === 'student' ? grade : undefined,
-      city: role === 'student' ? city : undefined,
-      childEmail: role === 'parent' ? childEmail : undefined,
-    })
-
-    setIsLoading(false)
-
-    if (!success) {
-      setError('Ошибка при регистрации. Попробуйте ещё раз.')
+    try {
+      await register({
+        name,
+        email: regEmail,
+        password: regPassword,
+        role,
+        grade: role === 'student' ? grade : undefined,
+        city: role === 'student' ? city : undefined,
+        childEmail: role === 'parent' ? childEmail : undefined,
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка при регистрации. Попробуйте ещё раз.')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -211,10 +210,11 @@ export default function Auth() {
           </div>
           <h1 className="text-3xl font-bold text-gradient">Study Hub</h1>
           <p className="mt-1.5 text-sm text-gray-500">
-            {mode === 'login'
-              ? 'Войдите в свой аккаунт'
-              : 'Создайте аккаунт для начала'}
+            {mode === 'login' ? t('auth.login_subtitle') : t('auth.register_subtitle')}
           </p>
+          <div className="mt-3 flex justify-center">
+            <LanguageSwitcher />
+          </div>
         </motion.div>
 
         {/* Card */}
@@ -223,16 +223,15 @@ export default function Auth() {
           <div className="mb-6">
             <div className="flex flex-wrap gap-1 rounded-xl bg-gray-100/80 p-1">
               {([
-                { key: 'student' as Role, label: 'Ученик', icon: GraduationCap },
-                { key: 'parent' as Role, label: 'Родитель', icon: Users },
-                { key: 'teacher' as Role, label: 'Учитель', icon: BookOpen },
-                { key: 'employer' as Role, label: 'Работодатель', icon: Briefcase },
-                { key: 'admin' as Role, label: 'Админ', icon: Shield },
-              ]).map(({ key, label, icon: Icon }) => (
+                { key: 'student' as Role, labelKey: 'auth.role_student', icon: GraduationCap },
+                { key: 'parent' as Role, labelKey: 'auth.role_parent', icon: Users },
+                { key: 'teacher' as Role, labelKey: 'auth.role_teacher', icon: BookOpen },
+                { key: 'employer' as Role, labelKey: 'auth.role_employer', icon: Briefcase },
+              ]).map(({ key, labelKey, icon: Icon }) => (
                 <button
                   key={key}
                   type="button"
-                  onClick={() => { setRole(key); setError(''); if (key === 'admin' || key === 'employer') setMode('login') }}
+                  onClick={() => { setRole(key); setError(''); if (key === 'employer') setMode('login') }}
                   className={`relative flex min-w-[30%] flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-all duration-200 ${
                     role === key
                       ? 'text-primary-700'
@@ -248,15 +247,15 @@ export default function Auth() {
                   )}
                   <span className="relative z-10 flex items-center gap-1.5">
                     <Icon className="h-3.5 w-3.5" />
-                    {label}
+                    {t(labelKey)}
                   </span>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Auth mode toggle (hide for admin/employer — login only) */}
-          {role !== 'admin' && role !== 'employer' && (
+          {/* Auth mode toggle (hide for employer — login only) */}
+          {role !== 'employer' && (
             <div className="mb-6">
               <div className="flex rounded-xl bg-gray-100/80 p-1">
                 {([
@@ -318,7 +317,7 @@ export default function Auth() {
                   <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <input
                     type="email"
-                    placeholder="Email"
+                    placeholder={t('auth.email')}
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     className={inputClasses}
@@ -331,7 +330,7 @@ export default function Auth() {
                   <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Пароль"
+                    placeholder={t('auth.password')}
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     className={`${inputClasses} pr-11`}
@@ -362,7 +361,7 @@ export default function Auth() {
                     />
                   ) : (
                     <>
-                      Войти
+                      {t('auth.login_btn')}
                       <ArrowRight className="h-4 w-4" />
                     </>
                   )}
@@ -370,13 +369,13 @@ export default function Auth() {
 
                 {/* Switch to register */}
                 <p className="text-center text-sm text-gray-500">
-                  Нет аккаунта?{' '}
+                  {t('auth.no_account')}{' '}
                   <button
                     type="button"
                     onClick={() => switchMode('register')}
                     className="font-medium text-primary-600 transition-colors hover:text-primary-700"
                   >
-                    Зарегистрироваться
+                    {t('auth.register_btn')}
                   </button>
                 </p>
               </motion.form>
@@ -395,7 +394,7 @@ export default function Auth() {
                   <User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Имя"
+                    placeholder={t('auth.name')}
                     value={name}
                     onChange={e => setName(e.target.value)}
                     className={inputClasses}
@@ -408,7 +407,7 @@ export default function Auth() {
                   <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <input
                     type="email"
-                    placeholder="Email"
+                    placeholder={t('auth.email')}
                     value={regEmail}
                     onChange={e => setRegEmail(e.target.value)}
                     className={inputClasses}
@@ -421,7 +420,7 @@ export default function Auth() {
                   <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Пароль"
+                    placeholder={t('auth.password')}
                     value={regPassword}
                     onChange={e => setRegPassword(e.target.value)}
                     className={`${inputClasses} pr-11`}
@@ -457,7 +456,7 @@ export default function Auth() {
                         >
                           {GRADES.map(g => (
                             <option key={g} value={g}>
-                              {g} класс
+                              {g} {t('auth.grade_suffix')}
                             </option>
                           ))}
                         </select>
@@ -504,7 +503,7 @@ export default function Auth() {
                         <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                         <input
                           type="email"
-                          placeholder="Email ребёнка"
+                          placeholder={t('auth.child_email')}
                           value={childEmail}
                           onChange={e => setChildEmail(e.target.value)}
                           className={inputClasses}
@@ -530,7 +529,7 @@ export default function Auth() {
                     />
                   ) : (
                     <>
-                      Зарегистрироваться
+                      {t('auth.register_btn')}
                       <ArrowRight className="h-4 w-4" />
                     </>
                   )}
@@ -538,13 +537,13 @@ export default function Auth() {
 
                 {/* Switch to login */}
                 <p className="text-center text-sm text-gray-500">
-                  Уже есть аккаунт?{' '}
+                  {t('auth.have_account')}{' '}
                   <button
                     type="button"
                     onClick={() => switchMode('login')}
                     className="font-medium text-primary-600 transition-colors hover:text-primary-700"
                   >
-                    Войти
+                    {t('auth.login_btn')}
                   </button>
                 </p>
               </motion.form>

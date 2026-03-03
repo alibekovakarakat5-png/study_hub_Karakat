@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -35,9 +35,20 @@ import {
   ChevronDown,
   ArrowUpRight,
   ArrowDownRight,
+  Plus,
+  Trash2,
+  Globe,
+  Youtube,
+  Smartphone,
+  BookMarked,
+  Bot,
+  Languages,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { PLATFORM_STATS } from '@/store/useStore'
+import { useContentStore } from '@/store/useContentStore'
+import type { CustomMaterial, CustomQA, CustomVocabWord } from '@/store/useContentStore'
+import { VOCAB_TOPICS } from '@/data/ieltsContent'
 import { cn } from '@/lib/utils'
 
 const PIE_COLORS = ['#2563eb', '#7c3aed', '#16a34a', '#d97706', '#dc2626', '#6b7280']
@@ -50,6 +61,311 @@ const fadeIn = {
     transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const },
   },
 } satisfies import('framer-motion').Variants
+
+// ── Content Manager (IELTS materials, Q&A, Vocabulary) ───────────────────────
+
+const MATERIAL_TYPE_ICONS: Record<string, React.ElementType> = {
+  book: BookMarked, website: Globe, youtube: Youtube, app: Smartphone,
+}
+
+function ContentManager() {
+  const { materials, addMaterial, deleteMaterial, qas, addQA, deleteQA, vocabWords, addVocabWord, deleteVocabWord, syncFromServer } = useContentStore()
+  const [section, setSection] = useState<'materials' | 'qa' | 'vocab'>('materials')
+
+  useEffect(() => { syncFromServer() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Material form state ──────────────────────────────────────────────────
+  const [mForm, setMForm] = useState<Omit<CustomMaterial, 'id' | 'createdAt'>>({
+    title: '', type: 'book', description: '', skill: 'all', level: 'all', free: true, url: '',
+  })
+
+  // ── Q&A form state ───────────────────────────────────────────────────────
+  const [qaForm, setQaForm] = useState<Omit<CustomQA, 'id' | 'createdAt'>>({
+    keywords: '', answer: '', followUp: '', mood: 'thinking',
+  })
+
+  // ── Vocab form state ─────────────────────────────────────────────────────
+  const [vForm, setVForm] = useState<Omit<CustomVocabWord, 'id' | 'createdAt'>>({
+    topicId: VOCAB_TOPICS[0].id, topicName: VOCAB_TOPICS[0].name, word: '', definition: '', example: '',
+  })
+
+  const inputCls = 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-100'
+  const labelCls = 'block text-xs font-medium text-slate-600 mb-1'
+
+  const sections = [
+    { id: 'materials' as const, label: 'Материалы IELTS', icon: Globe, count: materials.length },
+    { id: 'qa' as const, label: 'Q&A Ментора', icon: Bot, count: qas.length },
+    { id: 'vocab' as const, label: 'Словарь', icon: Languages, count: vocabWords.length },
+  ]
+
+  return (
+    <motion.div variants={fadeIn} initial="hidden" animate="visible" className="space-y-6">
+      {/* Section tabs */}
+      <div className="flex gap-3">
+        {sections.map(s => {
+          const Icon = s.icon
+          return (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => setSection(s.id)}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors',
+                section === s.id ? 'bg-primary-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200',
+              )}
+            >
+              <Icon className="w-4 h-4" />
+              {s.label}
+              <span className={cn('text-xs px-1.5 py-0.5 rounded-full', section === s.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500')}>
+                {s.count}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* ── Materials ────────────────────────────────────────────────────────── */}
+      {section === 'materials' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Add form */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2"><Plus className="w-4 h-4 text-primary-600" /> Добавить материал</h3>
+            <div className="space-y-3">
+              <div>
+                <label className={labelCls}>Название *</label>
+                <input className={inputCls} placeholder="Cambridge IELTS 19 Academic" value={mForm.title} onChange={e => setMForm(f => ({ ...f, title: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>Тип</label>
+                  <select className={inputCls} value={mForm.type} onChange={e => setMForm(f => ({ ...f, type: e.target.value as CustomMaterial['type'] }))}>
+                    <option value="book">Книга</option>
+                    <option value="website">Сайт</option>
+                    <option value="youtube">YouTube</option>
+                    <option value="app">Приложение</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Навык</label>
+                  <select className={inputCls} value={mForm.skill} onChange={e => setMForm(f => ({ ...f, skill: e.target.value as CustomMaterial['skill'] }))}>
+                    <option value="all">Все</option>
+                    <option value="reading">Reading</option>
+                    <option value="writing">Writing</option>
+                    <option value="listening">Listening</option>
+                    <option value="speaking">Speaking</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className={labelCls}>Описание *</label>
+                <textarea className={cn(inputCls, 'h-20 resize-none')} placeholder="Краткое описание материала" value={mForm.description} onChange={e => setMForm(f => ({ ...f, description: e.target.value }))} />
+              </div>
+              <div>
+                <label className={labelCls}>URL (необязательно)</label>
+                <input className={inputCls} placeholder="https://..." value={mForm.url ?? ''} onChange={e => setMForm(f => ({ ...f, url: e.target.value }))} />
+              </div>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-600">
+                  <input type="checkbox" checked={mForm.free} onChange={e => setMForm(f => ({ ...f, free: e.target.checked }))} className="w-4 h-4 rounded accent-primary-600" />
+                  Бесплатно
+                </label>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!mForm.title.trim() || !mForm.description.trim()) return
+                  addMaterial(mForm)
+                  setMForm({ title: '', type: 'book', description: '', skill: 'all', level: 'all', free: true, url: '' })
+                }}
+                className="w-full bg-primary-600 hover:bg-primary-700 text-white rounded-xl py-2.5 text-sm font-medium transition-colors"
+              >
+                Добавить
+              </button>
+            </div>
+          </div>
+
+          {/* List */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <h3 className="font-semibold text-slate-800 mb-4">Добавленные материалы ({materials.length})</h3>
+            {materials.length === 0 ? (
+              <p className="text-slate-400 text-sm text-center py-8">Пока ничего нет. Добавьте первый материал.</p>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                {materials.map(m => {
+                  const Icon = MATERIAL_TYPE_ICONS[m.type] ?? Globe
+                  return (
+                    <div key={m.id} className="flex items-start gap-3 p-3 border border-slate-100 rounded-xl hover:border-slate-200">
+                      <Icon className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-800 truncate">{m.title}</p>
+                        <p className="text-xs text-slate-400 truncate">{m.description}</p>
+                        <div className="flex gap-2 mt-1">
+                          <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{m.skill}</span>
+                          <span className={cn('text-xs px-1.5 py-0.5 rounded', m.free ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600')}>
+                            {m.free ? 'free' : 'paid'}
+                          </span>
+                        </div>
+                      </div>
+                      <button type="button" onClick={() => deleteMaterial(m.id)} className="text-slate-300 hover:text-red-400 transition-colors shrink-0">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Q&A ──────────────────────────────────────────────────────────────── */}
+      {section === 'qa' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <h3 className="font-semibold text-slate-800 mb-1 flex items-center gap-2"><Plus className="w-4 h-4 text-primary-600" /> Добавить Q&A для ментора</h3>
+            <p className="text-xs text-slate-400 mb-4">Когда студент спросит что-то с этими ключевыми словами — робот ответит этим текстом.</p>
+            <div className="space-y-3">
+              <div>
+                <label className={labelCls}>Ключевые слова * (через запятую)</label>
+                <input className={inputCls} placeholder="task 2, эссе, структура эссе" value={qaForm.keywords} onChange={e => setQaForm(f => ({ ...f, keywords: e.target.value }))} />
+                <p className="text-xs text-slate-400 mt-1">Если вопрос содержит хотя бы одно слово — сработает этот ответ</p>
+              </div>
+              <div>
+                <label className={labelCls}>Ответ ментора *</label>
+                <textarea className={cn(inputCls, 'h-32 resize-none')} placeholder="Подробный ответ, который увидит студент..." value={qaForm.answer} onChange={e => setQaForm(f => ({ ...f, answer: e.target.value }))} />
+              </div>
+              <div>
+                <label className={labelCls}>Следующий вопрос (необязательно)</label>
+                <input className={inputCls} placeholder="Хочешь разберём подробнее?" value={qaForm.followUp ?? ''} onChange={e => setQaForm(f => ({ ...f, followUp: e.target.value }))} />
+              </div>
+              <div>
+                <label className={labelCls}>Настроение робота</label>
+                <select className={inputCls} value={qaForm.mood} onChange={e => setQaForm(f => ({ ...f, mood: e.target.value as CustomQA['mood'] }))}>
+                  <option value="thinking">Thinking (задумчивый)</option>
+                  <option value="happy">Happy (радостный)</option>
+                  <option value="excited">Excited (восторженный)</option>
+                  <option value="encouraging">Encouraging (подбадривающий)</option>
+                </select>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!qaForm.keywords.trim() || !qaForm.answer.trim()) return
+                  addQA(qaForm)
+                  setQaForm({ keywords: '', answer: '', followUp: '', mood: 'thinking' })
+                }}
+                className="w-full bg-primary-600 hover:bg-primary-700 text-white rounded-xl py-2.5 text-sm font-medium transition-colors"
+              >
+                Добавить
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <h3 className="font-semibold text-slate-800 mb-4">Добавленные Q&A ({qas.length})</h3>
+            {qas.length === 0 ? (
+              <p className="text-slate-400 text-sm text-center py-8">Пока ничего. Добавьте первый ответ для ментора.</p>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                {qas.map(q => (
+                  <div key={q.id} className="p-3 border border-slate-100 rounded-xl hover:border-slate-200">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap gap-1 mb-1">
+                          {q.keywords.split(',').map(kw => (
+                            <span key={kw} className="text-xs bg-primary-50 text-primary-700 px-1.5 py-0.5 rounded">{kw.trim()}</span>
+                          ))}
+                        </div>
+                        <p className="text-xs text-slate-600 line-clamp-2">{q.answer}</p>
+                      </div>
+                      <button type="button" onClick={() => deleteQA(q.id)} className="text-slate-300 hover:text-red-400 transition-colors shrink-0">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Vocabulary ───────────────────────────────────────────────────────── */}
+      {section === 'vocab' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2"><Plus className="w-4 h-4 text-primary-600" /> Добавить слово в словарь</h3>
+            <div className="space-y-3">
+              <div>
+                <label className={labelCls}>Тема</label>
+                <select className={inputCls} value={vForm.topicId} onChange={e => {
+                  const topic = VOCAB_TOPICS.find(t => t.id === e.target.value)
+                  setVForm(f => ({ ...f, topicId: e.target.value, topicName: topic?.name ?? e.target.value }))
+                }}>
+                  {VOCAB_TOPICS.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  <option value="custom">Новая тема...</option>
+                </select>
+              </div>
+              {vForm.topicId === 'custom' && (
+                <div>
+                  <label className={labelCls}>Название новой темы *</label>
+                  <input className={inputCls} placeholder="Society" value={vForm.topicName} onChange={e => setVForm(f => ({ ...f, topicName: e.target.value }))} />
+                </div>
+              )}
+              <div>
+                <label className={labelCls}>Слово / фраза *</label>
+                <input className={inputCls} placeholder="carbon footprint" value={vForm.word} onChange={e => setVForm(f => ({ ...f, word: e.target.value }))} />
+              </div>
+              <div>
+                <label className={labelCls}>Определение *</label>
+                <input className={inputCls} placeholder="Total greenhouse gas emissions..." value={vForm.definition} onChange={e => setVForm(f => ({ ...f, definition: e.target.value }))} />
+              </div>
+              <div>
+                <label className={labelCls}>Пример предложения *</label>
+                <input className={inputCls} placeholder="You can reduce your carbon footprint by..." value={vForm.example} onChange={e => setVForm(f => ({ ...f, example: e.target.value }))} />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!vForm.word.trim() || !vForm.definition.trim() || !vForm.example.trim()) return
+                  addVocabWord(vForm)
+                  setVForm(f => ({ ...f, word: '', definition: '', example: '' }))
+                }}
+                className="w-full bg-primary-600 hover:bg-primary-700 text-white rounded-xl py-2.5 text-sm font-medium transition-colors"
+              >
+                Добавить
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <h3 className="font-semibold text-slate-800 mb-4">Добавленные слова ({vocabWords.length})</h3>
+            {vocabWords.length === 0 ? (
+              <p className="text-slate-400 text-sm text-center py-8">Пока ничего. Добавьте первое слово.</p>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                {vocabWords.map(w => (
+                  <div key={w.id} className="flex items-start gap-3 p-3 border border-slate-100 rounded-xl">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <p className="text-sm font-semibold text-slate-800">{w.word}</p>
+                        <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{w.topicName}</span>
+                      </div>
+                      <p className="text-xs text-slate-400 truncate">{w.definition}</p>
+                    </div>
+                    <button type="button" onClick={() => deleteVocabWord(w.id)} className="text-slate-300 hover:text-red-400 transition-colors shrink-0">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </motion.div>
+  )
+}
 
 export default function Admin() {
   const navigate = useNavigate()
@@ -488,40 +804,7 @@ export default function Admin() {
         )}
 
         {activeTab === 'content' && (
-          <motion.div variants={fadeIn} initial="hidden" animate="visible" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[
-                { label: 'Вопросов в банке', value: '5,240', color: 'bg-blue-500' },
-                { label: 'Предметов', value: '11', color: 'bg-green-500' },
-                { label: 'Университетов', value: '6', color: 'bg-purple-500' },
-                { label: 'Специальностей', value: '22', color: 'bg-amber-500' },
-              ].map(item => (
-                <div key={item.label} className="bg-white rounded-2xl p-6 shadow-sm">
-                  <div className={cn('w-3 h-3 rounded-full mb-3', item.color)} />
-                  <p className="text-2xl font-bold text-slate-900">{item.value}</p>
-                  <p className="text-sm text-slate-500 mt-1">{item.label}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 shadow-sm">
-              <h3 className="font-semibold text-slate-800 mb-4">Управление контентом</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[
-                  { title: 'Банк вопросов ЕНТ', desc: 'Добавление, редактирование, модерация вопросов', status: '5,240 вопросов' },
-                  { title: 'База университетов', desc: 'Обновление данных о вузах и специальностях', status: '6 вузов, 22 специальности' },
-                  { title: 'Учебные материалы', desc: 'Микро-уроки, видео, разборы', status: '320 материалов' },
-                  { title: 'Промо-баннеры', desc: 'Управление баннерами на лендинге', status: '3 активных' },
-                ].map(item => (
-                  <div key={item.title} className="p-4 border border-slate-200 rounded-xl hover:border-primary-300 transition-colors cursor-pointer">
-                    <h4 className="font-medium text-slate-800">{item.title}</h4>
-                    <p className="text-sm text-slate-500 mt-1">{item.desc}</p>
-                    <p className="text-xs text-primary-600 mt-2 font-medium">{item.status}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </motion.div>
+          <ContentManager />
         )}
       </div>
     </div>

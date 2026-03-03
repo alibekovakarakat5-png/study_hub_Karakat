@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { openWhatsApp, buildPricingMessage } from '@/lib/whatsapp';
 import { motion, useInView } from 'framer-motion';
 import {
   GraduationCap,
@@ -166,6 +169,7 @@ function ProgressRing({ progress, size = 48, strokeWidth = 4 }: { progress: numb
 // ---------------------------------------------------------------------------
 
 function Header({ onNavigate }: { onNavigate: (path: string) => void }) {
+  const { t } = useTranslation();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -221,6 +225,7 @@ function Header({ onNavigate }: { onNavigate: (path: string) => void }) {
 
           {/* Desktop CTA */}
           <div className="hidden items-center gap-3 lg:flex">
+            <LanguageSwitcher />
             <button
               onClick={() => onNavigate('/auth')}
               className={`rounded-xl px-5 py-2.5 text-sm font-semibold transition-colors ${
@@ -229,13 +234,13 @@ function Header({ onNavigate }: { onNavigate: (path: string) => void }) {
                   : 'text-white/90 hover:bg-white/10 hover:text-white'
               }`}
             >
-              Войти
+              {t('nav.login')}
             </button>
             <button
               onClick={() => onNavigate('/diagnostic')}
               className="gradient-primary rounded-xl px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary-500/25 transition-all hover:shadow-xl hover:shadow-primary-500/30 hover:-translate-y-0.5 active:translate-y-0"
             >
-              Начать бесплатно
+              {t('nav.start_free')}
             </button>
           </div>
 
@@ -276,13 +281,13 @@ function Header({ onNavigate }: { onNavigate: (path: string) => void }) {
                 onClick={() => { setMobileOpen(false); onNavigate('/auth'); }}
                 className="rounded-xl px-5 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
               >
-                Войти
+                {t('nav.login')}
               </button>
               <button
                 onClick={() => { setMobileOpen(false); onNavigate('/diagnostic'); }}
                 className="gradient-primary rounded-xl px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-500/25"
               >
-                Начать бесплатно
+                {t('nav.start_free')}
               </button>
             </div>
           </div>
@@ -297,6 +302,7 @@ function Header({ onNavigate }: { onNavigate: (path: string) => void }) {
 // ---------------------------------------------------------------------------
 
 function HeroSection({ onNavigate }: { onNavigate: (path: string) => void }) {
+  const { t } = useTranslation();
   return (
     <section className="gradient-hero relative overflow-hidden pt-28 pb-20 lg:pt-36 lg:pb-28">
       {/* Decorative blobs */}
@@ -317,7 +323,7 @@ function HeroSection({ onNavigate }: { onNavigate: (path: string) => void }) {
               className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary-400/20 bg-primary-500/10 px-4 py-1.5 text-sm font-medium text-primary-300"
             >
               <Sparkles className="h-4 w-4" />
-              <span>AI-навигатор для учеников Казахстана</span>
+              <span>{t('landing.hero_badge')}</span>
             </motion.div>
 
             <motion.h1
@@ -326,10 +332,11 @@ function HeroSection({ onNavigate }: { onNavigate: (path: string) => void }) {
               transition={{ duration: 0.7, delay: 0.1 }}
               className="text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl xl:text-7xl"
             >
-              Твой путь от школы{' '}
+              {t('landing.hero_title')}{' '}
               <span className="bg-gradient-to-r from-primary-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                до мечты
-              </span>
+                {t('landing.hero_title_highlight')}
+              </span>{' '}
+              {t('landing.hero_title_end')}
             </motion.h1>
 
             <motion.p
@@ -338,8 +345,7 @@ function HeroSection({ onNavigate }: { onNavigate: (path: string) => void }) {
               transition={{ duration: 0.6, delay: 0.25 }}
               className="mt-6 max-w-lg text-lg leading-relaxed text-slate-300 sm:text-xl"
             >
-              AI-платформа, которая поможет выбрать профессию, подготовиться к ЕНТ
-              и поступить в вуз мечты.
+              {t('landing.hero_subtitle')}
             </motion.p>
 
             <motion.div
@@ -352,7 +358,7 @@ function HeroSection({ onNavigate }: { onNavigate: (path: string) => void }) {
                 onClick={() => onNavigate('/diagnostic')}
                 className="group flex items-center justify-center gap-2 rounded-2xl bg-white px-8 py-4 text-base font-bold text-primary-700 shadow-xl shadow-white/10 transition-all hover:shadow-2xl hover:shadow-white/20 hover:-translate-y-0.5"
               >
-                Начать бесплатно
+                {t('landing.hero_cta_primary')}
                 <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
               </button>
               <a
@@ -360,7 +366,7 @@ function HeroSection({ onNavigate }: { onNavigate: (path: string) => void }) {
                 className="group flex items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 px-8 py-4 text-base font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/10 hover:border-white/30"
               >
                 <Play className="h-5 w-5" />
-                Смотреть демо
+                {t('landing.hero_cta_secondary')}
               </a>
             </motion.div>
 
@@ -387,7 +393,7 @@ function HeroSection({ onNavigate }: { onNavigate: (path: string) => void }) {
                 ))}
               </div>
               <div>
-                <p className="text-sm font-semibold text-white">15,000+ учеников уже с нами</p>
+                <p className="text-sm font-semibold text-white">{t('landing.social_proof')}</p>
                 <div className="mt-0.5 flex gap-0.5">
                   {[...Array(5)].map((_, i) => (
                     <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
@@ -523,6 +529,7 @@ function HeroSection({ onNavigate }: { onNavigate: (path: string) => void }) {
 
 function LiveStatsBar() {
   const { ref, inView } = useSectionInView(0.5);
+  const { t } = useTranslation();
 
   const diagnostics = useCounter(1500, inView);
   const students = useCounter(500, inView);
@@ -530,10 +537,10 @@ function LiveStatsBar() {
   const social = useCounter(20, inView);
 
   const stats = [
-    { value: `${diagnostics.toLocaleString()}+`, label: 'диагностик пройдено' },
-    { value: `${students}+`, label: 'учеников на платных тарифах' },
-    { value: `${plans}+`, label: 'персональных планов' },
-    { value: `${social}%`, label: 'поддержано через соц. программу' },
+    { value: `${diagnostics.toLocaleString()}+`, label: t('landing.stat_diagnostics') },
+    { value: `${students}+`, label: t('landing.stat_students') },
+    { value: `${plans}+`, label: t('landing.stat_plans') },
+    { value: `${social}%`, label: t('landing.stat_social') },
   ];
 
   return (
@@ -1328,7 +1335,11 @@ function PricingSection({ onNavigate }: { onNavigate: (path: string) => void }) 
               )}
 
               <button
-                onClick={() => onNavigate('/diagnostic')}
+                onClick={() =>
+                  plan.price === '0 ₸'
+                    ? onNavigate('/diagnostic')
+                    : openWhatsApp(buildPricingMessage(`${plan.name} — ${plan.price}${plan.period}`))
+                }
                 className={`mt-8 flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-4 text-base font-bold transition-all duration-200 hover:-translate-y-0.5 ${
                   plan.popular
                     ? 'gradient-primary text-white shadow-lg shadow-primary-500/25 hover:shadow-xl hover:shadow-primary-500/30'

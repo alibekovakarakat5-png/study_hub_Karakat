@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  student
+  parent
+  teacher
+  employer
+  admin
+}
+
+model User {
+  id                String   @id @default(cuid())
+  name              String
+  email             String   @unique
+  passwordHash      String
+  role              Role     @default(student)
+  grade             Int?
+  city              String?
+  targetUniversity  String?
+  targetSpecialty   String?
+  isPremium         Boolean  @default(false)
+  streak            Int      @default(0)
+  totalStudyMinutes Int      @default(0)
+  lastActiveDate    String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Parent-child relationship (optional)
+  parentId          String?
+  parent            User?    @relation("ParentChild", fields: [parentId], references: [id])
+  children          User[]   @relation("ParentChild")
+
+  // Relations
+  diagnosticResults DiagnosticResult[]
+  studyPlans        StudyPlan[]
+  moduleProgresses  ModuleProgress[]
+  entResults        EntResult[]
+}
+
+model DiagnosticResult {
+  id      String   @id @default(cuid())
+  userId  String
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject String
+  scores  Json     // { score, maxScore, percentage, level, weakTopics, strongTopics }
+  takenAt DateTime @default(now())
+}
+
+model StudyPlan {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goalType         String
+  totalModules     Int
+  completedModules Int      @default(0)
+  weeks            Json     // serialized plan weeks array
+  createdAt        DateTime @default(now())
+  isActive         Boolean  @default(true)
+}
+
+model ModuleProgress {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  moduleId  String
+  answers   Json     @default("{}")
+  testScore Int?
+  completed Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, moduleId])
+}
+
+model EntResult {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalScore   Int
+  percentage   Float
+  blockResults Json     // per-subject breakdown
+  takenAt      DateTime @default(now())
+}
+
+// Content managed by admin — IELTS materials, mentor Q&As, vocab, ENT questions, curator topics
+model Content {
+  id        String   @id @default(cuid())
+  type      String   // 'ielts_material' | 'mentor_qa' | 'vocab_word' | 'ent_question' | 'curator_topic'
+  data      Json     // flexible payload per type
+  active    Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

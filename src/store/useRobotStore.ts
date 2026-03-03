@@ -27,6 +27,21 @@ export const ROBOT_MESSAGES: Record<RobotMood, string[]> = {
 export const POMODORO_WORK_SECONDS  = 25 * 60  // 1500
 export const POMODORO_BREAK_SECONDS =  5 * 60  //  300
 
+// ── SpeechRecognition module-level ref (not persisted) ────────────────────────
+
+type AnyRecognition = {
+  lang: string
+  continuous: boolean
+  interimResults: boolean
+  maxAlternatives: number
+  start(): void
+  abort(): void
+  onresult: ((event: SpeechRecognitionEvent) => void) | null
+  onend: (() => void) | null
+  onerror: (() => void) | null
+}
+let _rec: AnyRecognition | null = null
+
 // ── Speech helper ─────────────────────────────────────────────────────────────
 
 function getVoice(): SpeechSynthesisVoice | null {
@@ -71,6 +86,11 @@ interface RobotState {
   // Greeting — persisted: tracks if we already greeted today
   lastGreetedDate: string | null
   setLastGreetedDate: (date: string) => void
+
+  // Voice dialog (SpeechRecognition)
+  isListening: boolean
+  startListening: (onResult: (transcript: string) => void, onEnd?: () => void) => void
+  stopListening: () => void
 
   // Pomodoro timer
   pomodoroPhase: PomodoroPhase
@@ -153,6 +173,49 @@ export const useRobotStore = create<RobotState>()(
 
       stopSpeaking: () => {
         window.speechSynthesis?.cancel()
+      },
+
+      // ── Voice dialog ───────────────────────────────────────────────────────
+      isListening: false,
+
+      startListening: (onResult, onEnd) => {
+        const win = window as unknown as Record<string, unknown>
+        const SR = (win['SpeechRecognition'] ?? win['webkitSpeechRecognition']) as (new () => AnyRecognition) | undefined
+        if (!SR) { onEnd?.(); return }
+
+        if (_rec) { _rec.abort(); _rec = null }
+
+        const rec = new SR()
+        rec.lang = 'ru-RU'
+        rec.continuous = false
+        rec.interimResults = false
+        rec.maxAlternatives = 1
+        _rec = rec
+
+        set({ isListening: true })
+
+        rec.onresult = (event: SpeechRecognitionEvent) => {
+          const transcript = event.results[0]?.[0]?.transcript ?? ''
+          onResult(transcript)
+        }
+        rec.onend = () => {
+          _rec = null
+          set({ isListening: false })
+          onEnd?.()
+        }
+        rec.onerror = () => {
+          _rec = null
+          set({ isListening: false })
+          onEnd?.()
+        }
+
+        rec.start()
+      },
+
+      stopListening: () => {
+        _rec?.abort()
+        _rec = null
+        set({ isListening: false })
       },
 
       // ── Robot name ─────────────────────────────────────────────────────────

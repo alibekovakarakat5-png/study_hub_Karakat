@@ -22,6 +22,7 @@ import Internships from '@/pages/Internships'
 import Support from '@/pages/Support'
 import Curator from '@/pages/Curator'
 import PracticeEnt from '@/pages/PracticeEnt'
+import Ielts from '@/pages/Ielts'
 import RobotWidget from '@/components/robot/RobotWidget'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -80,6 +81,7 @@ export default function App() {
         <Route path="/internships" element={<ProtectedRoute><Internships /></ProtectedRoute>} />
         <Route path="/curator" element={<ProtectedRoute><Curator /></ProtectedRoute>} />
         <Route path="/practice-ent" element={<ProtectedRoute><PracticeEnt /></ProtectedRoute>} />
+        <Route path="/ielts" element={<ProtectedRoute><Ielts /></ProtectedRoute>} />
         <Route path="/courses" element={<Courses />} />
         <Route path="/profile/:id" element={<PublicProfile />} />
         <Route path="/support" element={<Support />} />

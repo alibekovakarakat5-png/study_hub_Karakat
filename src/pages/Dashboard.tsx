@@ -48,12 +48,11 @@ import {
 } from '@/types'
 import {
   cn,
-  getGreeting,
-  minutesToHumanReadable,
-  getScoreBgColor,
   formatDate,
 } from '@/lib/utils'
 import NotificationDropdown from '@/components/NotificationDropdown'
+import { LanguageSwitcher } from '@/components/LanguageSwitcher'
+import { useTranslation } from 'react-i18next'
 
 // ---------------------------------------------------------------------------
 // Animation variants
@@ -98,12 +97,13 @@ interface NavItem {
   disabled?: boolean
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { label: 'Главная', icon: LayoutDashboard, to: '/dashboard' },
-  { label: 'Учебный план', icon: BookOpen, to: '/plan' },
-  { label: 'AI Ментор', icon: Bot, to: '/mentor' },
-  { label: 'Портфолио', icon: FolderOpen, to: '/portfolio' },
-  { label: 'Настройки', icon: Settings, to: '#', disabled: true },
+const NAV_KEYS: { key: string; icon: React.ElementType; to: string; disabled?: boolean }[] = [
+  { key: 'nav.dashboard',   icon: LayoutDashboard, to: '/dashboard' },
+  { key: 'nav.study_plan',  icon: BookOpen,        to: '/plan' },
+  { key: 'nav.ai_mentor',   icon: Bot,             to: '/mentor' },
+  { key: 'IELTS',           icon: GraduationCap,   to: '/ielts' },
+  { key: 'nav.portfolio',   icon: FolderOpen,      to: '/portfolio' },
+  { key: 'nav.settings',    icon: Settings,        to: '#', disabled: true },
 ]
 
 // ---------------------------------------------------------------------------
@@ -167,10 +167,11 @@ function CircularProgress({
 // ---------------------------------------------------------------------------
 
 function LevelBadge({ level }: { level: 'low' | 'medium' | 'high' }) {
+  const { t } = useTranslation()
   const config = {
-    low: { label: 'Низкий', className: 'bg-red-100 text-red-700' },
-    medium: { label: 'Средний', className: 'bg-amber-100 text-amber-700' },
-    high: { label: 'Высокий', className: 'bg-emerald-100 text-emerald-700' },
+    low: { label: t('dashboard.level_low'), className: 'bg-red-100 text-red-700' },
+    medium: { label: t('dashboard.level_medium'), className: 'bg-amber-100 text-amber-700' },
+    high: { label: t('dashboard.level_high'), className: 'bg-emerald-100 text-emerald-700' },
   }
   const c = config[level]
   return (
@@ -235,6 +236,7 @@ function TaskTypeIcon({ type }: { type: StudyTask['type'] }) {
 
 function Sidebar() {
   const { user, sidebarOpen, toggleSidebar, logout } = useStore()
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -264,7 +266,7 @@ function Sidebar() {
 
       {/* Nav items */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {NAV_ITEMS.map((item) => {
+        {NAV_KEYS.map((item) => {
           const isActive = location.pathname === item.to
           const Icon = item.icon
           return (
@@ -284,10 +286,10 @@ function Sidebar() {
               )}
             >
               <Icon className={cn('w-5 h-5 shrink-0', isActive && 'text-blue-600')} />
-              {item.label}
+              {t(item.key)}
               {item.disabled && (
                 <span className="ml-auto text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-md font-normal">
-                  Скоро
+                  Soon
                 </span>
               )}
             </Link>
@@ -313,10 +315,10 @@ function Sidebar() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-amber-800">
-                Перейти на Премиум
+                {t('dashboard.upgrade_premium')}
               </p>
               <p className="text-xs text-amber-600/80 truncate">
-                Разблокируй все функции
+                {t('dashboard.unlock_features')}
               </p>
             </div>
             <ChevronRight className="w-4 h-4 text-amber-500 group-hover:translate-x-0.5 transition-transform" />
@@ -324,14 +326,15 @@ function Sidebar() {
         </div>
       )}
 
-      {/* Logout */}
-      <div className="px-3 py-3 border-t border-gray-100">
+      {/* Logout + Language */}
+      <div className="px-3 py-3 border-t border-gray-100 space-y-1">
+        <LanguageSwitcher className="w-full justify-center mb-1" />
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all duration-200"
         >
           <LogOut className="w-5 h-5" />
-          Выйти
+          {t('nav.logout')}
         </button>
       </div>
     </div>
@@ -376,6 +379,7 @@ function Sidebar() {
 // ---------------------------------------------------------------------------
 
 function NoDiagnosticCTA() {
+  const { t } = useTranslation()
   return (
     <motion.div
       variants={cardVariants}
@@ -388,16 +392,16 @@ function NoDiagnosticCTA() {
           </div>
           <div className="flex-1">
             <h3 className="text-lg font-bold text-gray-900 mb-1">
-              Хочешь узнать свой точный уровень?
+              {t('dashboard.no_diagnostic_title')}
             </h3>
             <p className="text-sm text-gray-500 mb-3">
-              Пройди короткий тест и получи точную оценку по каждому предмету. Это поможет платформе подобрать задания под тебя.
+              {t('dashboard.no_diagnostic_subtitle')}
             </p>
             <Link
               to="/diagnostic"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 active:scale-[0.98] transition-all duration-200"
             >
-              Пройти диагностику
+              {t('dashboard.take_diagnostic')}
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
@@ -448,6 +452,7 @@ function QuickStatCard({
 
 function ScoreBySubjectSection() {
   const { diagnosticResult } = useStore()
+  const { t } = useTranslation()
   if (!diagnosticResult) return null
 
   const data = diagnosticResult.subjects.map((s) => ({
@@ -465,15 +470,15 @@ function ScoreBySubjectSection() {
       <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-6">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h3 className="text-lg font-bold text-gray-900">Результаты по предметам</h3>
-            <p className="text-sm text-gray-500 mt-0.5">Диагностический тест</p>
+            <h3 className="text-lg font-bold text-gray-900">{t('dashboard.subject_scores_title')}</h3>
+            <p className="text-sm text-gray-500 mt-0.5">{t('dashboard.diagnostic_test_label')}</p>
           </div>
           <div className="flex items-center gap-3">
             <Link to="/diagnostic" className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
-              Пройти повторно <RefreshCw className="w-4 h-4" />
+              {t('dashboard.retake_label')} <RefreshCw className="w-4 h-4" />
             </Link>
             <Link to="/diagnostic" className="text-sm text-gray-400 hover:text-gray-500 font-medium flex items-center gap-1">
-              Подробнее <ChevronRight className="w-4 h-4" />
+              {t('dashboard.learn_more_label')} <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
         </div>
@@ -496,7 +501,7 @@ function ScoreBySubjectSection() {
                 axisLine={false}
               />
               <Tooltip
-                formatter={(value) => [`${value}%`, 'Результат']}
+                formatter={(value) => [`${value}%`, t('dashboard.result_label')]}
                 contentStyle={{
                   borderRadius: 12,
                   border: '1px solid #e5e7eb',
@@ -536,25 +541,26 @@ function ScoreBySubjectSection() {
 
 function WeeklyTasksSection() {
   const { studyPlan, toggleTask } = useStore()
+  const { t } = useTranslation()
 
   if (!studyPlan) {
     return (
       <motion.div variants={cardVariants} className="col-span-full xl:col-span-4">
         <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-6 h-full flex flex-col">
-          <h3 className="text-lg font-bold text-gray-900 mb-2">Задачи на неделю</h3>
+          <h3 className="text-lg font-bold text-gray-900 mb-2">{t('dashboard.weekly_tasks_title')}</h3>
           <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
             <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center mb-4">
               <Calendar className="w-8 h-8 text-blue-500" />
             </div>
-            <p className="text-gray-600 mb-1 font-medium">Нет учебного плана</p>
+            <p className="text-gray-600 mb-1 font-medium">{t('dashboard.no_plan_title')}</p>
             <p className="text-sm text-gray-400 mb-5 max-w-[240px]">
-              Создай персональный план для достижения цели
+              {t('dashboard.no_plan_subtitle')}
             </p>
             <Link
               to="/plan"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all duration-200"
             >
-              Создай учебный план
+              {t('dashboard.create_plan_btn')}
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
@@ -581,14 +587,14 @@ function WeeklyTasksSection() {
       <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-lg font-bold text-gray-900">Задачи на неделю</h3>
+            <h3 className="text-lg font-bold text-gray-900">{t('dashboard.weekly_tasks_title')}</h3>
             <p className="text-sm text-gray-500 mt-0.5">
-              Неделя {studyPlan.currentWeek}
+              {t('dashboard.week_label')} {studyPlan.currentWeek}
             </p>
           </div>
           <div className="text-right">
             <p className="text-sm font-bold text-gray-900">{completedCount}/{totalCount}</p>
-            <p className="text-xs text-gray-400">выполнено</p>
+            <p className="text-xs text-gray-400">{t('dashboard.done_label')}</p>
           </div>
         </div>
 
@@ -640,7 +646,7 @@ function WeeklyTasksSection() {
               </div>
               <span className="text-xs text-gray-400 shrink-0 flex items-center gap-1">
                 <Clock className="w-3 h-3" />
-                {task.duration}м
+                {task.duration}{t('common.minutes')}
               </span>
             </button>
           ))}
@@ -651,7 +657,7 @@ function WeeklyTasksSection() {
             to="/plan"
             className="mt-3 pt-3 border-t border-gray-100 text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center justify-center gap-1"
           >
-            Все задачи ({totalCount - 6} ещё)
+            {t('dashboard.all_tasks_btn', { count: totalCount - 6 })}
             <ChevronRight className="w-4 h-4" />
           </Link>
         )}
@@ -666,6 +672,7 @@ function WeeklyTasksSection() {
 
 function UniversityPredictionsSection() {
   const { diagnosticResult } = useStore()
+  const { t } = useTranslation()
   if (
     !diagnosticResult ||
     !diagnosticResult.predictedUniversities ||
@@ -680,8 +687,8 @@ function UniversityPredictionsSection() {
       <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-6">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h3 className="text-lg font-bold text-gray-900">Прогноз поступления</h3>
-            <p className="text-sm text-gray-500 mt-0.5">На основе диагностики</p>
+            <h3 className="text-lg font-bold text-gray-900">{t('dashboard.admission_forecast_title')}</h3>
+            <p className="text-sm text-gray-500 mt-0.5">{t('dashboard.based_on_diagnostic')}</p>
           </div>
           <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-purple-50">
             <GraduationCap className="w-5 h-5 text-purple-600" />
@@ -718,6 +725,7 @@ function UniversityPredictionsSection() {
 
 function AchievementsSection() {
   const { achievements } = useStore()
+  const { t } = useTranslation()
 
   const sorted = useMemo(() => {
     return [...achievements].sort((a, b) => {
@@ -732,9 +740,12 @@ function AchievementsSection() {
       <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-6">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h3 className="text-lg font-bold text-gray-900">Достижения</h3>
+            <h3 className="text-lg font-bold text-gray-900">{t('dashboard.achievements_title')}</h3>
             <p className="text-sm text-gray-500 mt-0.5">
-              {achievements.filter((a) => a.unlockedAt).length}/{achievements.length} открыто
+              {t('dashboard.achievements_unlocked', {
+                unlocked: achievements.filter((a) => a.unlockedAt).length,
+                total: achievements.length,
+              })}
             </p>
           </div>
           <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-50">
@@ -769,7 +780,7 @@ function AchievementsSection() {
                     isUnlocked ? 'text-gray-900' : 'text-gray-400',
                   )}
                 >
-                  {ach.title}
+                  {t(`store.achieve_${ach.id.replace(/-/g, '_')}_title`, { defaultValue: ach.title })}
                 </p>
                 {isUnlocked && ach.unlockedAt && (
                   <p className="text-[10px] text-gray-400">
@@ -777,7 +788,9 @@ function AchievementsSection() {
                   </p>
                 )}
                 {!isUnlocked && (
-                  <p className="text-[10px] text-gray-400 leading-tight">{ach.description}</p>
+                  <p className="text-[10px] text-gray-400 leading-tight">
+                    {t(`store.achieve_${ach.id.replace(/-/g, '_')}_desc`, { defaultValue: ach.description })}
+                  </p>
                 )}
               </div>
             )
@@ -801,6 +814,22 @@ export default function Dashboard() {
     sidebarOpen,
     toggleSidebar,
   } = useStore()
+  const { t } = useTranslation()
+
+  const hour = new Date().getHours()
+  const greetingKey =
+    hour < 6 ? 'dashboard.greeting_night'
+    : hour < 12 ? 'dashboard.greeting_morning'
+    : hour < 18 ? 'dashboard.greeting_day'
+    : 'dashboard.greeting_evening'
+
+  const formatDuration = (minutes: number) => {
+    if (minutes < 60) return `${minutes} ${t('common.minutes')}`
+    const h = Math.floor(minutes / 60)
+    const m = minutes % 60
+    if (m === 0) return `${h}${t('common.hours')}`
+    return `${h}${t('common.hours')} ${m}${t('common.minutes')}`
+  }
 
   const overallPercentage =
     diagnosticResult && diagnosticResult.maxScore > 0
@@ -827,11 +856,11 @@ export default function Dashboard() {
 
               <div>
                 <h1 className="text-lg font-bold text-gray-900">
-                  {getGreeting()}, {user?.name || 'Ученик'}!
+                  {t(greetingKey)}, {user?.name || t('dashboard.student_default')}!
                 </h1>
                 {user?.targetUniversity && (
                   <p className="text-xs text-gray-500 hidden sm:block">
-                    Цель: {user.targetUniversity}
+                    {t('dashboard.goal_label')}: {user.targetUniversity}
                   </p>
                 )}
               </div>
@@ -875,7 +904,7 @@ export default function Dashboard() {
             {hasTakenDiagnostic ? (
               <div className="sm:col-span-1 xl:col-span-3">
                 <QuickStatCard
-                  title="Общий балл"
+                  title={t('dashboard.overall_score')}
                   icon={Target}
                   iconBg="bg-gradient-to-br from-blue-500 to-blue-600"
                 >
@@ -896,7 +925,7 @@ export default function Dashboard() {
                         {diagnosticResult?.overallScore || 0}
                       </p>
                       <p className="text-xs text-gray-400">
-                        из {diagnosticResult?.maxScore || 0}
+                        {t('dashboard.out_of', { max: diagnosticResult?.maxScore || 0 })}
                       </p>
                     </div>
                   </div>
@@ -909,7 +938,7 @@ export default function Dashboard() {
             {/* Plan progress */}
             <div className="sm:col-span-1 xl:col-span-3">
               <QuickStatCard
-                title="Прогресс плана"
+                title={t('dashboard.plan_progress')}
                 icon={TrendingUp}
                 iconBg="bg-gradient-to-br from-purple-500 to-purple-600"
               >
@@ -932,7 +961,7 @@ export default function Dashboard() {
             {/* Streak */}
             <div className="sm:col-span-1 xl:col-span-3">
               <QuickStatCard
-                title="Серия"
+                title={t('dashboard.streak_title')}
                 icon={Zap}
                 iconBg="bg-gradient-to-br from-orange-500 to-amber-500"
               >
@@ -940,7 +969,7 @@ export default function Dashboard() {
                   <p className="text-2xl font-bold text-gray-900">
                     {user?.streak || 0}
                   </p>
-                  <span className="text-sm text-gray-500">дней</span>
+                  <span className="text-sm text-gray-500">{t('dashboard.days_label')}</span>
                 </div>
                 <div className="flex gap-1 mt-2">
                   {Array.from({ length: 7 }).map((_, i) => (
@@ -961,14 +990,14 @@ export default function Dashboard() {
             {/* Study time */}
             <div className="sm:col-span-1 xl:col-span-3">
               <QuickStatCard
-                title="Время учёбы"
+                title={t('dashboard.study_time')}
                 icon={Clock}
                 iconBg="bg-gradient-to-br from-emerald-500 to-green-600"
               >
                 <p className="text-2xl font-bold text-gray-900">
-                  {minutesToHumanReadable(user?.totalStudyMinutes || 0)}
+                  {formatDuration(user?.totalStudyMinutes || 0)}
                 </p>
-                <p className="text-xs text-gray-400 mt-1">общее время</p>
+                <p className="text-xs text-gray-400 mt-1">{t('dashboard.total_time_label')}</p>
               </QuickStatCard>
             </div>
 
@@ -979,30 +1008,30 @@ export default function Dashboard() {
             {!hasTakenDiagnostic && (
               <motion.div variants={cardVariants} className="sm:col-span-2 xl:col-span-12">
                 <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
-                  <h3 className="mb-1 text-lg font-bold text-gray-900">С чего начать?</h3>
-                  <p className="mb-5 text-sm text-gray-500">3 шага к подготовке к ЕНТ</p>
+                  <h3 className="mb-1 text-lg font-bold text-gray-900">{t('dashboard.start_here_title')}</h3>
+                  <p className="mb-5 text-sm text-gray-500">{t('dashboard.start_here_subtitle')}</p>
                   <div className="space-y-3">
                     <Link to="/diagnostic" className="flex items-center gap-4 rounded-xl border border-blue-200 bg-white p-4 transition-all hover:shadow-md hover:border-blue-300">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">1</div>
                       <div className="flex-1">
-                        <p className="font-semibold text-gray-900">Пройди диагностику</p>
-                        <p className="text-xs text-gray-500">Узнай свои сильные и слабые стороны</p>
+                        <p className="font-semibold text-gray-900">{t('dashboard.step1_title')}</p>
+                        <p className="text-xs text-gray-500">{t('dashboard.step1_subtitle')}</p>
                       </div>
                       <ArrowRight className="h-4 w-4 text-blue-500" />
                     </Link>
                     <div className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white/60 p-4 opacity-60">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-300 text-sm font-bold text-white">2</div>
                       <div className="flex-1">
-                        <p className="font-semibold text-gray-700">Начни обучение с куратором</p>
-                        <p className="text-xs text-gray-400">Теория, практика и тесты по каждой теме</p>
+                        <p className="font-semibold text-gray-700">{t('dashboard.step2_title')}</p>
+                        <p className="text-xs text-gray-400">{t('dashboard.step2_subtitle')}</p>
                       </div>
                       <Lock className="h-4 w-4 text-gray-300" />
                     </div>
                     <div className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white/60 p-4 opacity-60">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-300 text-sm font-bold text-white">3</div>
                       <div className="flex-1">
-                        <p className="font-semibold text-gray-700">Сдай пробный ЕНТ</p>
-                        <p className="text-xs text-gray-400">120 вопросов, реальный формат экзамена</p>
+                        <p className="font-semibold text-gray-700">{t('dashboard.step3_title')}</p>
+                        <p className="text-xs text-gray-400">{t('dashboard.step3_subtitle')}</p>
                       </div>
                       <Lock className="h-4 w-4 text-gray-300" />
                     </div>
@@ -1021,8 +1050,8 @@ export default function Dashboard() {
                       <Sparkles className="h-7 w-7" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="mb-1 text-lg font-bold">Цифровой куратор</h3>
-                      <p className="text-sm text-white/70">Персональная подготовка к ЕНТ и IELTS с теорией, практикой и тестами</p>
+                      <h3 className="mb-1 text-lg font-bold">{t('dashboard.curator_title')}</h3>
+                      <p className="text-sm text-white/70">{t('dashboard.curator_subtitle')}</p>
                     </div>
                     <ArrowRight className="h-5 w-5 text-white/60 transition-transform group-hover:translate-x-1" />
                   </div>
@@ -1040,8 +1069,8 @@ export default function Dashboard() {
                       <Target className="h-7 w-7" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="mb-1 text-lg font-bold">Пробный ЕНТ</h3>
-                      <p className="text-sm text-white/70">Полная симуляция экзамена — 120 вопросов, 4 часа, реальный формат 2025-2026</p>
+                      <h3 className="mb-1 text-lg font-bold">{t('dashboard.practice_ent_title')}</h3>
+                      <p className="text-sm text-white/70">{t('dashboard.practice_ent_subtitle')}</p>
                     </div>
                     <ArrowRight className="h-5 w-5 text-white/60 transition-transform group-hover:translate-x-1" />
                   </div>
@@ -1057,24 +1086,24 @@ export default function Dashboard() {
                     <MessageCircle className="h-6 w-6 text-green-600" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-bold text-gray-900">Отчёт для родителей</h3>
+                    <h3 className="font-bold text-gray-900">{t('dashboard.parent_report_title')}</h3>
                     <p className="mt-0.5 text-sm text-gray-500">
-                      Отправь родителям сводку прогресса: диагностика, результаты ЕНТ и активность
+                      {t('dashboard.parent_report_subtitle')}
                     </p>
                     {user && (
                       <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500">
                         <span className="flex items-center gap-1">
                           <Flame className="h-3 w-3 text-orange-500" />
-                          {user.streak} дней подряд
+                          {user.streak} {t('dashboard.days_in_row')}
                         </span>
                         <span className="flex items-center gap-1">
                           <Timer className="h-3 w-3 text-blue-500" />
-                          {minutesToHumanReadable(user.totalStudyMinutes)} всего
+                          {formatDuration(user.totalStudyMinutes)} {t('dashboard.total_label')}
                         </span>
                         {hasTakenDiagnostic && diagnosticResult && (
                           <span className="flex items-center gap-1">
                             <Target className="h-3 w-3 text-purple-500" />
-                            Диагностика: {Math.round((diagnosticResult.overallScore / diagnosticResult.maxScore) * 100)}%
+                            {t('dashboard.diagnostic_score_label')}: {Math.round((diagnosticResult.overallScore / diagnosticResult.maxScore) * 100)}%
                           </span>
                         )}
                       </div>
@@ -1082,28 +1111,28 @@ export default function Dashboard() {
                   </div>
                   <button
                     onClick={() => {
-                      const name = user?.name || 'Ученик'
+                      const name = user?.name || t('dashboard.student_default')
                       const streak = user?.streak ?? 0
-                      const studyTime = minutesToHumanReadable(user?.totalStudyMinutes ?? 0)
+                      const studyTime = formatDuration(user?.totalStudyMinutes ?? 0)
                       const diagLine = diagnosticResult
-                        ? `✅ Диагностика: ${Math.round((diagnosticResult.overallScore / diagnosticResult.maxScore) * 100)}%\n`
+                        ? `${t('dashboard.wa_diagnostic')}: ${Math.round((diagnosticResult.overallScore / diagnosticResult.maxScore) * 100)}%\n`
                         : ''
                       const weak = diagnosticResult?.subjects
                         .filter(s => s.level === 'low' || s.level === 'medium')
                         .map(s => SUBJECT_NAMES[s.subject])
                         .join(', ')
-                      const msg = `📊 Отчёт по подготовке к ЕНТ\n\n👤 ${name}\n` +
+                      const msg = `${t('dashboard.wa_report_title')}\n\n👤 ${name}\n` +
                         diagLine +
-                        (weak ? `⚠️ Нужно подтянуть: ${weak}\n` : '') +
-                        `🔥 Серия занятий: ${streak} дней\n` +
-                        `⏱ Общее время: ${studyTime}\n\n` +
-                        `Платформа: Study Hub`
+                        (weak ? `${t('dashboard.wa_needs_work')}: ${weak}\n` : '') +
+                        `${t('dashboard.wa_streak')}: ${streak} ${t('dashboard.days_label')}\n` +
+                        `${t('dashboard.wa_total_time')}: ${studyTime}\n\n` +
+                        t('dashboard.wa_platform')
                       window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
                     }}
                     className="flex shrink-0 items-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-green-600"
                   >
                     <MessageCircle className="h-4 w-4" />
-                    Отправить в WhatsApp
+                    {t('dashboard.send_whatsapp')}
                   </button>
                 </div>
               </div>

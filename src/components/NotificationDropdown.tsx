@@ -10,9 +10,11 @@ import {
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ru } from 'date-fns/locale/ru'
+import { enUS } from 'date-fns/locale/en-US'
 import { useStore } from '@/store/useStore'
 import { cn } from '@/lib/utils'
 import type { Notification, NotificationType } from '@/types'
+import { useTranslation } from 'react-i18next'
 
 // ── Icon & colour mapping per notification type ──────────────────────────────
 
@@ -95,12 +97,13 @@ function NotificationItem({
   index: number
   onRead: (id: string) => void
 }) {
+  const { i18n } = useTranslation()
   const config = typeConfig[notification.type]
   const Icon = config.icon
 
   const timeAgo = formatDistanceToNow(new Date(notification.createdAt), {
     addSuffix: true,
-    locale: ru,
+    locale: i18n.language === 'en' ? enUS : ru,
   })
 
   return (
@@ -167,6 +170,7 @@ function NotificationItem({
 const NotificationDropdown = () => {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const { t } = useTranslation()
 
   const { notifications, markNotificationRead, markAllNotificationsRead } =
     useStore()
@@ -214,7 +218,7 @@ const NotificationDropdown = () => {
       <button
         type="button"
         onClick={toggle}
-        aria-label="Уведомления"
+        aria-label={t('dashboard.notifications')}
         aria-expanded={open}
         className={cn(
           'relative rounded-xl p-2 transition-colors',
@@ -248,13 +252,13 @@ const NotificationDropdown = () => {
               '-right-2 sm:right-0',
             )}
             role="menu"
-            aria-label="Уведомления"
+            aria-label={t('dashboard.notifications')}
           >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-semibold text-gray-900">
-                  Уведомления
+                  {t('dashboard.notifications')}
                 </h3>
                 {unreadCount > 0 && (
                   <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
@@ -276,9 +280,9 @@ const NotificationDropdown = () => {
                   >
                     <CheckCheck className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">
-                      Отметить все как прочитанные
+                      {t('dashboard.mark_all_read')}
                     </span>
-                    <span className="sm:hidden">Прочитать все</span>
+                    <span className="sm:hidden">{t('dashboard.mark_all_read_short')}</span>
                   </button>
                 )}
 
@@ -290,7 +294,7 @@ const NotificationDropdown = () => {
                     'hover:bg-gray-100 hover:text-gray-600',
                     'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1',
                   )}
-                  aria-label="Закрыть уведомления"
+                  aria-label={t('dashboard.close_notifications')}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -305,10 +309,10 @@ const NotificationDropdown = () => {
                     <Bell className="h-5 w-5 text-gray-400" />
                   </div>
                   <p className="text-sm font-medium text-gray-600">
-                    Нет уведомлений
+                    {t('dashboard.no_notifications')}
                   </p>
                   <p className="mt-1 text-xs text-gray-400">
-                    Здесь будут появляться ваши уведомления
+                    {t('dashboard.notifications_empty')}
                   </p>
                 </div>
               ) : (
@@ -330,8 +334,8 @@ const NotificationDropdown = () => {
               <div className="border-t border-gray-100 px-4 py-2.5 text-center">
                 <p className="text-xs text-gray-400">
                   {unreadCount > 0
-                    ? `${unreadCount} непрочитанн${unreadCount === 1 ? 'ое' : unreadCount < 5 ? 'ых' : 'ых'}`
-                    : 'Все прочитано'}
+                    ? t('dashboard.unread_count', { count: unreadCount })
+                    : t('dashboard.all_read')}
                 </p>
               </div>
             )}

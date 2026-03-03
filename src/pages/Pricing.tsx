@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -17,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { cn } from '@/lib/utils'
+import { openWhatsApp, buildPricingMessage } from '@/lib/whatsapp'
 
 const plans = [
   {
@@ -104,44 +104,13 @@ const testimonials = [
 
 export default function Pricing() {
   const navigate = useNavigate()
-  const { user, updateUser } = useStore()
-  const [showSuccess, setShowSuccess] = useState(false)
+  const { user } = useStore()
 
   const handleSubscribe = (planId: string) => {
     if (planId === 'free') return
-
-    // Simulate payment
-    setShowSuccess(true)
-    if (user) {
-      updateUser({ isPremium: true })
-    }
-    setTimeout(() => {
-      navigate(user?.role === 'parent' ? '/parent' : '/dashboard')
-    }, 2000)
-  }
-
-  if (showSuccess) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <motion.div
-          initial={{ scale: 0.5, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="text-center bg-white p-12 rounded-3xl shadow-xl"
-        >
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-            className="w-20 h-20 mx-auto mb-6 rounded-full bg-accent-100 flex items-center justify-center"
-          >
-            <Check className="w-10 h-10 text-accent-600" />
-          </motion.div>
-          <h2 className="text-2xl font-bold text-slate-800">Премиум активирован!</h2>
-          <p className="text-slate-500 mt-2">Добро пожаловать в мир безлимитных возможностей</p>
-          <p className="text-sm text-slate-400 mt-4">Перенаправляем...</p>
-        </motion.div>
-      </div>
-    )
+    const plan = plans.find((p) => p.id === planId)
+    const planLabel = plan ? `${plan.name} — ${plan.price}${plan.period}` : planId
+    openWhatsApp(buildPricingMessage(planLabel))
   }
 
   return (

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Play, Pause, RotateCcw, Flame, Volume2, VolumeX, ChevronRight } from 'lucide-react'
+import { Play, Pause, RotateCcw, Flame, Volume2, VolumeX, ChevronRight, Mic, MicOff } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/store/useStore'
@@ -18,10 +18,22 @@ import {
   subjectSummary,
   getHolidayGreeting,
   getRandomIdleFact,
+  evaluateStudentSpeech,
 } from '@/lib/robotContext'
+import { curatorContent } from '@/data/curatorContent'
+import { findMentorAnswer, getPageHint } from '@/data/mentorKnowledge'
+import { useLocation } from 'react-router-dom'
 import type { CuratorLevel } from '@/types/curator'
 import RobotFace from './RobotFace'
+import Robot3DFace from './Robot3DFace'
 import type { RobotMood } from '@/store/useRobotStore'
+
+// ── 3D scene URL ──────────────────────────────────────────────────────────────
+// 1. Go to https://spline.design, create your robot scene
+// 2. Export → "Viewer link" (or "Code export" → copy the .splinecode URL)
+// 3. Paste the URL here — the widget will switch from 2D SVG to 3D automatically.
+// Leave empty to keep the 2D fallback.
+const SPLINE_SCENE_URL = ''
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -66,6 +78,7 @@ const levelPillClass: Record<CuratorLevel, string> = {
 
 export default function RobotWidget() {
   const navigate = useNavigate()
+  const location = useLocation()
 
   // ── Store subscriptions ──────────────────────────────────────────────────
   const user             = useStore(s => s.user)
@@ -78,6 +91,7 @@ export default function RobotWidget() {
   const diagnosticScores = useCuratorStore(s => s.diagnosticScores)
   const plan             = useCuratorStore(s => s.plan)
   const curatorPhase     = useCuratorStore(s => s.phase)
+  const activeModuleId   = useCuratorStore(s => s.activeModuleId)
   const moduleProgress   = useCuratorStore(s => s.moduleProgress)
 
   const currentResult    = usePracticeEntStore(s => s.currentResult)
@@ -89,6 +103,7 @@ export default function RobotWidget() {
     isMuted, toggleMute, speak, stopSpeaking,
     robotName, setRobotName,
     lastGreetedDate, setLastGreetedDate,
+    isListening, startListening, stopListening,
     pomodoroPhase, secondsRemaining, timerRunning,
     startTimer, pauseTimer, resetTimer, tickTimer,
   } = useRobotStore()
@@ -97,6 +112,58 @@ export default function RobotWidget() {
   const [namingInput, setNamingInput] = useState('')
 
   const streak = user?.streak ?? 0
+
+  // ── Voice dialog ─────────────────────────────────────────────────────────
+  // Derive the active topic's keyPoints + first practice question for evaluation
+  const activeTopicContent = useMemo(() => {
+    if (!activeModuleId) return null
+    return curatorContent.find(t =>
+      // activeModuleId format: "subject-topicSlug" or match by topic name
+      activeModuleId.toLowerCase().includes(t.topic.toLowerCase().split(' ')[0].toLowerCase()) ||
+      t.topic.toLowerCase().includes(activeModuleId.toLowerCase())
+    ) ?? null
+  }, [activeModuleId])
+
+  const handleVoiceDialog = () => {
+    if (isListening) { stopListening(); return }
+
+    const isOnIelts = location.pathname === '/ielts'
+    const prompt = isOnIelts
+      ? 'Слушаю! Задай вопрос по IELTS или назови тему.'
+      : 'Слушаю! Объясни мне эту тему своими словами.'
+    setMood('thinking', prompt)
+    speak(prompt)
+
+    // Small delay to let TTS start before mic opens
+    setTimeout(() => {
+      startListening(
+        (transcript) => {
+          // 1. Check mentor knowledge base first (IELTS, ENT, general)
+          const mentorAnswer = findMentorAnswer(transcript, user?.name)
+          if (mentorAnswer) {
+            const newMood = mentorAnswer.mood ?? 'happy'
+            setMood(newMood, mentorAnswer.text.slice(0, 100))
+            speak(mentorAnswer.text.slice(0, 200))
+            return
+          }
+
+          // 2. Fall back to curator topic evaluation (if in a module)
+          const keyPoints = activeTopicContent?.theory.keyPoints ?? []
+          const topicName = activeTopicContent?.topic ?? 'этой темы'
+          const practiceText = activeTopicContent?.practice[0]?.text
+          const result = evaluateStudentSpeech(transcript, keyPoints, topicName, practiceText)
+          const fullResponse = `${result.feedback} ${result.followUp}`
+          const newMood = result.mentionedCount === result.totalCount
+            ? 'excited'
+            : result.mentionedCount > 0
+              ? 'happy'
+              : 'encouraging'
+          setMood(newMood, result.feedback)
+          speak(fullResponse)
+        },
+      )
+    }, 1200)
+  }
 
   // ── Build student context ─────────────────────────────────────────────────
   const latestScore: number | null = (() => {
@@ -150,6 +217,21 @@ export default function RobotWidget() {
     return () => clearTimeout(timer)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuth, user?.id])
+
+  // ── Page-aware hint (fires when pathname changes) ─────────────────────────
+  const prevPathRef = useRef<string>('')
+  useEffect(() => {
+    if (!isAuth || prevPathRef.current === location.pathname) return
+    prevPathRef.current = location.pathname
+    const hint = getPageHint(location.pathname)
+    if (!hint) return
+    const timer = setTimeout(() => {
+      setMood('happy', hint)
+      if (isExpanded) speak(hint)
+    }, 1500)
+    return () => clearTimeout(timer)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, isAuth])
 
   // ── Mood derivation ───────────────────────────────────────────────────────
   const prevMoodRef = useRef<RobotMood>(mood)
@@ -293,7 +375,11 @@ export default function RobotWidget() {
         aria-expanded={isExpanded}
       >
         {/* Collapsed: face only */}
-        {!isExpanded && <RobotFace mood={mood} size={40} />}
+        {!isExpanded && (
+          SPLINE_SCENE_URL
+            ? <Robot3DFace mood={mood} size={40} sceneUrl={SPLINE_SCENE_URL} />
+            : <RobotFace mood={mood} size={40} />
+        )}
 
         {/* Expanded: full widget */}
         <AnimatePresence>
@@ -320,7 +406,10 @@ export default function RobotWidget() {
               </div>
 
               {/* Face */}
-              <RobotFace mood={mood} size={72} />
+              {SPLINE_SCENE_URL
+                ? <Robot3DFace mood={mood} size={72} sceneUrl={SPLINE_SCENE_URL} />
+                : <RobotFace mood={mood} size={72} />
+              }
 
               {/* Speech bubble — clickable to replay */}
               <div className="relative w-full">
@@ -335,6 +424,25 @@ export default function RobotWidget() {
                   {message}
                 </button>
               </div>
+
+              {/* ── Voice dialog — shown while in a module ── */}
+              {curatorPhase === 'module' && (
+                <button
+                  type="button"
+                  onClick={handleVoiceDialog}
+                  title={isListening ? 'Остановить' : 'Объясни тему голосом'}
+                  className={cn(
+                    'flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all w-full justify-center',
+                    isListening
+                      ? 'bg-red-500/80 hover:bg-red-500 text-white animate-pulse'
+                      : 'bg-white/20 hover:bg-white/30 text-white',
+                  )}
+                >
+                  {isListening
+                    ? <><MicOff className="w-3.5 h-3.5" />Слушаю...</>
+                    : <><Mic className="w-3.5 h-3.5" />Объясни голосом</>}
+                </button>
+              )}
 
               {/* ── Naming prompt (shown once until robot is named) ── */}
               {robotName === null && (

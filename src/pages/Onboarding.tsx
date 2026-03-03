@@ -33,6 +33,7 @@ import {
 import { useStore } from '@/store/useStore'
 import type { OnboardingStep, OnboardingProfile, CareerPath } from '@/types'
 import { cn } from '@/lib/utils'
+import { useTranslation } from 'react-i18next'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -62,7 +63,7 @@ const SUBJECT_CARDS = [
   { id: 'literature', label: 'Литература', emoji: '📚' },
 ]
 
-const LEVEL_LABELS = ['Не знаю', 'Слабо', 'Средне', 'Хорошо', 'Отлично']
+const LEVEL_KEYS = ['level_unknown', 'level_weak', 'level_medium', 'level_good', 'level_excellent']
 const LEVEL_COLORS = ['bg-gray-300', 'bg-red-400', 'bg-amber-400', 'bg-blue-500', 'bg-emerald-500']
 
 const KZ_CITIES = [
@@ -131,11 +132,29 @@ const POPULAR_PROFESSIONS = [
 ]
 
 const GRADE_OPTIONS = [
-  { value: 9, label: '9 класс' },
-  { value: 10, label: '10 класс' },
-  { value: 11, label: '11 класс' },
-  { value: 12, label: 'Студент' },
-  { value: 13, label: 'Выпускник' },
+  { value: 9, key: 'grade_9' },
+  { value: 10, key: 'grade_10' },
+  { value: 11, key: 'grade_11' },
+  { value: 12, key: 'grade_student' },
+  { value: 13, key: 'grade_graduate' },
+]
+
+const EN_POPULAR_PROFESSIONS = [
+  'Frontend Developer',
+  'Data Scientist',
+  'UX/UI Designer',
+  'Doctor',
+  'Engineer',
+  'Lawyer',
+  'Marketer',
+  'Architect',
+  'Entrepreneur',
+  'Financial Analyst',
+  'DevOps Engineer',
+  'Product Manager',
+  'Biotechnologist',
+  'Cybersecurity Specialist',
+  'AI Engineer',
 ]
 
 // ─── Animation Variants ─────────────────────────────────────────────────────
@@ -432,17 +451,18 @@ function generateCareerPaths(
 // ─── Demand Badge ───────────────────────────────────────────────────────────
 
 function DemandBadge({ demand }: { demand: CareerPath['demand'] }) {
+  const { t } = useTranslation()
   const config = {
-    'very-high': { label: 'Очень высокий спрос', cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-    high: { label: 'Высокий спрос', cls: 'bg-blue-100 text-blue-700 border-blue-200' },
-    medium: { label: 'Средний спрос', cls: 'bg-amber-100 text-amber-700 border-amber-200' },
-    low: { label: 'Низкий спрос', cls: 'bg-gray-100 text-gray-600 border-gray-200' },
+    'very-high': { key: 'demand_very_high', cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+    high: { key: 'demand_high', cls: 'bg-blue-100 text-blue-700 border-blue-200' },
+    medium: { key: 'demand_medium', cls: 'bg-amber-100 text-amber-700 border-amber-200' },
+    low: { key: 'demand_low', cls: 'bg-gray-100 text-gray-600 border-gray-200' },
   }
   const c = config[demand]
   return (
     <span className={cn('inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border', c.cls)}>
       <Zap className="w-3 h-3" />
-      {c.label}
+      {t(`onboarding.${c.key}`)}
     </span>
   )
 }
@@ -450,13 +470,14 @@ function DemandBadge({ demand }: { demand: CareerPath['demand'] }) {
 // ─── Progress Bar ───────────────────────────────────────────────────────────
 
 function StepProgressBar({ currentIndex, total }: { currentIndex: number; total: number }) {
+  const { t } = useTranslation()
   const progress = ((currentIndex + 1) / total) * 100
 
   return (
     <div className="w-full px-6 pt-6 pb-2">
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm font-medium text-gray-500">
-          Шаг {currentIndex + 1} из {total}
+          {t('onboarding.step')} {currentIndex + 1} {t('onboarding.of')} {total}
         </span>
         <span className="text-sm font-semibold text-indigo-600">
           {Math.round(progress)}%
@@ -477,6 +498,7 @@ function StepProgressBar({ currentIndex, total }: { currentIndex: number; total:
 // ─── Step 1: Welcome ────────────────────────────────────────────────────────
 
 function WelcomeStep({ onNext }: { onNext: () => void }) {
+  const { t } = useTranslation()
   return (
     <motion.div
       className="flex flex-col items-center justify-center min-h-[70vh] text-center px-6"
@@ -518,14 +540,14 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
         variants={staggerItem}
         className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent mb-4"
       >
-        Привет! Я твой AI-навигатор
+        {t('onboarding.welcome_title')}
       </motion.h1>
 
       <motion.p
         variants={staggerItem}
         className="text-lg md:text-xl text-gray-600 max-w-lg mb-3"
       >
-        Study Hub поможет тебе найти идеальную профессию, построить путь к мечте и подготовиться к будущему.
+        {t('onboarding.welcome_subtitle')}
       </motion.p>
 
       <motion.div
@@ -533,16 +555,16 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
         className="flex flex-wrap justify-center gap-3 mb-10"
       >
         {[
-          { emoji: '🎯', text: 'Определим интересы' },
-          { emoji: '🗺️', text: 'Построим маршрут' },
-          { emoji: '🚀', text: 'Начнём подготовку' },
+          { emoji: '🎯', key: 'welcome_step1' },
+          { emoji: '🗺️', key: 'welcome_step2' },
+          { emoji: '🚀', key: 'welcome_step3' },
         ].map(item => (
           <div
-            key={item.text}
+            key={item.key}
             className="flex items-center gap-2 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-xl shadow-sm border border-gray-100"
           >
             <span className="text-xl">{item.emoji}</span>
-            <span className="text-sm font-medium text-gray-700">{item.text}</span>
+            <span className="text-sm font-medium text-gray-700">{t(`onboarding.${item.key}`)}</span>
           </div>
         ))}
       </motion.div>
@@ -559,7 +581,7 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
           {...pulseGlow}
         />
         <span className="relative flex items-center gap-2">
-          Начать
+          {t('onboarding.welcome_start')}
           <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
         </span>
       </motion.button>
@@ -585,6 +607,7 @@ function AboutStep({
   onCityChange: (v: string) => void
 }) {
   const user = useStore(s => s.user)
+  const { t } = useTranslation()
 
   return (
     <motion.div
@@ -601,7 +624,7 @@ function AboutStep({
         variants={staggerItem}
         className="text-3xl font-bold text-gray-900 mb-2 text-center"
       >
-        Расскажи о себе
+        {t('onboarding.about_title')}
       </motion.h2>
 
       {user?.name && (
@@ -609,7 +632,7 @@ function AboutStep({
           variants={staggerItem}
           className="text-gray-500 mb-8 text-center"
         >
-          {user.name}, давай узнаем тебя получше
+          {t('onboarding.about_subtitle', { name: user.name })}
         </motion.p>
       )}
 
@@ -619,7 +642,7 @@ function AboutStep({
         className="w-full bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-4"
       >
         <label className="block text-sm font-semibold text-gray-700 mb-3">
-          Сколько тебе лет?
+          {t('onboarding.about_age')}
         </label>
         <div className="flex items-center gap-4">
           <span className="text-2xl font-bold text-indigo-600 min-w-[3ch] text-center">
@@ -646,7 +669,7 @@ function AboutStep({
         className="w-full bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-4"
       >
         <label className="block text-sm font-semibold text-gray-700 mb-3">
-          Класс / статус
+          {t('onboarding.about_grade_label')}
         </label>
         <div className="grid grid-cols-3 gap-2">
           {GRADE_OPTIONS.map(opt => (
@@ -660,7 +683,7 @@ function AboutStep({
                   : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300 hover:bg-white'
               )}
             >
-              {opt.label}
+              {t(`onboarding.${opt.key}`)}
             </button>
           ))}
         </div>
@@ -673,14 +696,14 @@ function AboutStep({
       >
         <label className="block text-sm font-semibold text-gray-700 mb-3">
           <MapPin className="w-4 h-4 inline-block mr-1 -mt-0.5" />
-          Город
+          {t('onboarding.about_city_label')}
         </label>
         <select
           value={city}
           onChange={e => onCityChange(e.target.value)}
           className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-700 font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all appearance-none cursor-pointer"
         >
-          <option value="">Выбери город</option>
+          <option value="">{t('onboarding.about_city_placeholder')}</option>
           {KZ_CITIES.map(c => (
             <option key={c} value={c}>{c}</option>
           ))}
@@ -699,6 +722,7 @@ function InterestsStep({
   selected: string[]
   onToggle: (id: string) => void
 }) {
+  const { t } = useTranslation()
   return (
     <motion.div
       className="flex flex-col items-center px-6 py-4"
@@ -714,14 +738,14 @@ function InterestsStep({
         variants={staggerItem}
         className="text-3xl font-bold text-gray-900 mb-2 text-center"
       >
-        Что тебе интересно?
+        {t('onboarding.interests_title')}
       </motion.h2>
 
       <motion.p
         variants={staggerItem}
         className="text-gray-500 mb-8 text-center"
       >
-        Выбери все направления, которые тебя привлекают
+        {t('onboarding.interests_subtitle')}
       </motion.p>
 
       <motion.div
@@ -758,7 +782,7 @@ function InterestsStep({
                 <Icon className="w-6 h-6" />
               </div>
               <span className="text-sm font-medium text-gray-700 text-center leading-tight">
-                {card.label}
+                {t(`onboarding.interest_${card.id}`)}
               </span>
             </motion.button>
           )
@@ -771,7 +795,7 @@ function InterestsStep({
           animate={{ opacity: 1, y: 0 }}
           className="mt-6 text-sm text-indigo-600 font-medium"
         >
-          Выбрано: {selected.length}
+          {t('onboarding.interests_selected', { count: selected.length })}
         </motion.div>
       )}
     </motion.div>
@@ -787,6 +811,7 @@ function GoalsStep({
   selected: string[]
   onToggle: (id: string) => void
 }) {
+  const { t } = useTranslation()
   return (
     <motion.div
       className="flex flex-col items-center px-6 py-4"
@@ -802,14 +827,14 @@ function GoalsStep({
         variants={staggerItem}
         className="text-3xl font-bold text-gray-900 mb-2 text-center"
       >
-        Какие у тебя цели?
+        {t('onboarding.goals_title')}
       </motion.h2>
 
       <motion.p
         variants={staggerItem}
         className="text-gray-500 mb-8 text-center"
       >
-        Выбери, что для тебя сейчас важно
+        {t('onboarding.goals_subtitle')}
       </motion.p>
 
       <motion.div
@@ -846,7 +871,7 @@ function GoalsStep({
                 <Icon className={cn('w-6 h-6', isSelected ? 'text-indigo-600' : 'text-gray-500')} />
               </div>
               <div>
-                <span className="text-base font-semibold text-gray-800">{card.label}</span>
+                <span className="text-base font-semibold text-gray-800">{t(`onboarding.goal_${card.id}`)}</span>
                 <span className="block text-2xl mt-0.5">{card.emoji}</span>
               </div>
             </motion.button>
@@ -868,6 +893,7 @@ function SubjectsStep({
   onLevelChange: (id: string, level: number) => void
   onToggleWant: (id: string) => void
 }) {
+  const { t } = useTranslation()
   return (
     <motion.div
       className="flex flex-col items-center px-6 py-4"
@@ -883,14 +909,14 @@ function SubjectsStep({
         variants={staggerItem}
         className="text-3xl font-bold text-gray-900 mb-2 text-center"
       >
-        Как у тебя с предметами?
+        {t('onboarding.subjects_title')}
       </motion.h2>
 
       <motion.p
         variants={staggerItem}
         className="text-gray-500 mb-6 text-center max-w-md"
       >
-        Оцени свой примерный уровень и отметь предметы, которые хочешь изучать
+        {t('onboarding.subjects_subtitle')}
       </motion.p>
 
       <motion.div
@@ -914,13 +940,13 @@ function SubjectsStep({
               <span className="text-xl sm:text-2xl flex-shrink-0">{subj.emoji}</span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-sm font-semibold text-gray-800 truncate">{subj.label}</span>
+                  <span className="text-sm font-semibold text-gray-800 truncate">{t(`subjects.${subj.id}`)}</span>
                   <span className={cn(
                     'text-xs font-medium px-2 py-0.5 rounded-full',
                     LEVEL_COLORS[data.level],
                     data.level === 0 ? 'text-gray-600' : 'text-white'
                   )}>
-                    {LEVEL_LABELS[data.level]}
+                    {t(`onboarding.${LEVEL_KEYS[data.level]}`)}
                   </span>
                 </div>
                 {/* Level dots */}
@@ -948,7 +974,7 @@ function SubjectsStep({
                     ? 'bg-blue-500 border-blue-500 text-white shadow-md'
                     : 'bg-white border-gray-200 text-gray-400 hover:border-blue-300'
                 )}
-                title="Хочу изучать"
+                title={t('onboarding.subjects_want_to_learn')}
               >
                 {data.want ? (
                   <Check className="w-4 h-4" />
@@ -965,7 +991,7 @@ function SubjectsStep({
         variants={staggerItem}
         className="mt-4 text-xs text-gray-400 text-center"
       >
-        Нажми на звёздочку, чтобы отметить предмет для изучения
+        {t('onboarding.subjects_tip')}
       </motion.p>
     </motion.div>
   )
@@ -984,6 +1010,8 @@ function DreamStep({
   onDreamChange: (v: string) => void
   onToggleProfession: (v: string) => void
 }) {
+  const { t, i18n } = useTranslation()
+  const professions = i18n.language === 'en' ? EN_POPULAR_PROFESSIONS : POPULAR_PROFESSIONS
   return (
     <motion.div
       className="flex flex-col items-center px-6 py-4 max-w-lg mx-auto"
@@ -999,14 +1027,14 @@ function DreamStep({
         variants={staggerItem}
         className="text-3xl font-bold text-gray-900 mb-2 text-center"
       >
-        Кем ты мечтаешь стать?
+        {t('onboarding.dream_title')}
       </motion.h2>
 
       <motion.p
         variants={staggerItem}
         className="text-gray-500 mb-8 text-center"
       >
-        Напиши или выбери из популярных — можно пропустить
+        {t('onboarding.dream_subtitle')}
       </motion.p>
 
       <motion.div
@@ -1019,7 +1047,7 @@ function DreamStep({
             type="text"
             value={dreamText}
             onChange={e => onDreamChange(e.target.value)}
-            placeholder="Например: AI-инженер, врач, дизайнер..."
+            placeholder={t('onboarding.dream_placeholder')}
             className="w-full pl-12 pr-4 py-4 rounded-2xl border-2 border-gray-200 bg-white text-gray-800 placeholder-gray-400 font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all text-lg"
           />
         </div>
@@ -1029,9 +1057,9 @@ function DreamStep({
         variants={staggerItem}
         className="w-full"
       >
-        <p className="text-sm font-medium text-gray-500 mb-3">Популярные профессии:</p>
+        <p className="text-sm font-medium text-gray-500 mb-3">{t('onboarding.dream_popular')}</p>
         <div className="flex flex-wrap gap-2">
-          {POPULAR_PROFESSIONS.map(prof => {
+          {professions.map(prof => {
             const isSelected = selectedProfessions.includes(prof)
             return (
               <motion.button
@@ -1058,7 +1086,7 @@ function DreamStep({
         variants={staggerItem}
         className="mt-8 text-sm text-gray-400 italic"
       >
-        Это необязательный шаг — можно просто нажать «Далее»
+        {t('onboarding.dream_optional_note')}
       </motion.p>
     </motion.div>
   )
@@ -1073,6 +1101,7 @@ function ResultStep({
   careerPaths: CareerPath[]
   onComplete: () => void
 }) {
+  const { t } = useTranslation()
   return (
     <motion.div
       className="flex flex-col items-center px-6 py-4"
@@ -1088,14 +1117,14 @@ function ResultStep({
         variants={staggerItem}
         className="text-3xl font-bold text-gray-900 mb-2 text-center"
       >
-        Твой персональный путь
+        {t('onboarding.result_title')}
       </motion.h2>
 
       <motion.p
         variants={staggerItem}
         className="text-gray-500 mb-8 text-center max-w-md"
       >
-        На основе твоих интересов и целей мы подобрали лучшие направления
+        {t('onboarding.result_subtitle')}
       </motion.p>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-4xl w-full mb-10">
@@ -1116,15 +1145,15 @@ function ResultStep({
             {idx === 0 && (
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
                 <Star className="w-3 h-3" />
-                Лучшее совпадение
+                {t('onboarding.result_best_match')}
               </div>
             )}
 
             <div className="text-4xl mb-3">{path.icon}</div>
 
-            <h3 className="text-lg font-bold text-gray-900 mb-2">{path.title}</h3>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">{t(`onboarding.career_${path.id}_title`)}</h3>
 
-            <p className="text-sm text-gray-500 mb-4 leading-relaxed">{path.description}</p>
+            <p className="text-sm text-gray-500 mb-4 leading-relaxed">{t(`onboarding.career_${path.id}_desc`)}</p>
 
             {/* Match Percentage Circle */}
             <div className="flex items-center gap-3 mb-4">
@@ -1157,7 +1186,7 @@ function ResultStep({
                 </span>
               </div>
               <div>
-                <div className="text-sm font-semibold text-gray-700">Совпадение</div>
+                <div className="text-sm font-semibold text-gray-700">{t('onboarding.result_match')}</div>
                 <DemandBadge demand={path.demand} />
               </div>
             </div>
@@ -1195,7 +1224,7 @@ function ResultStep({
       >
         <span className="flex items-center gap-2">
           <Sparkles className="w-5 h-5" />
-          Начать путь
+          {t('onboarding.result_start')}
           <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
         </span>
       </motion.button>
@@ -1208,6 +1237,7 @@ function ResultStep({
 export default function Onboarding() {
   const navigate = useNavigate()
   const completeOnboarding = useStore(s => s.completeOnboarding)
+  const { t } = useTranslation()
 
   // Step tracking
   const [currentStepIdx, setCurrentStepIdx] = useState(0)
@@ -1348,7 +1378,7 @@ export default function Onboarding() {
               className="flex items-center gap-2 text-gray-500 hover:text-gray-800 font-medium text-sm transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
-              Назад
+              {t('onboarding.back')}
             </motion.button>
           </div>
         )}
@@ -1426,7 +1456,7 @@ export default function Onboarding() {
           <div className="px-6 pb-8 pt-2">
             <div className="flex justify-between items-center max-w-lg mx-auto">
               <div className="text-sm text-gray-400">
-                {(currentStep === 'dream' || currentStep === 'subjects') && 'Необязательный шаг'}
+                {(currentStep === 'dream' || currentStep === 'subjects') && t('onboarding.optional_step')}
               </div>
               <motion.button
                 onClick={goNext}
@@ -1440,7 +1470,7 @@ export default function Onboarding() {
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                 )}
               >
-                Далее
+                {t('onboarding.next')}
                 <ArrowRight className="w-4 h-4" />
               </motion.button>
             </div>
