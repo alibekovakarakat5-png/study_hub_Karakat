@@ -88,6 +88,24 @@ model EntResult {
   takenAt      DateTime @default(now())
 }
 
+// Admission deadlines — verified by admin, staleness checked automatically
+model AdmissionDeadline {
+  id          String    @id @default(cuid())
+  entryId     String                          // matches AdmissionEntry.id in frontend data
+  label       String
+  date        DateTime
+  type        String                          // 'application' | 'exam' | 'results' | 'scholarship'
+  sourceUrl   String
+  verifiedAt  DateTime  @default(now())
+  changedFrom DateTime?                       // previous date if auto-updated
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([entryId])
+  @@index([date])
+}
+
 // Content managed by admin — IELTS materials, mentor Q&As, vocab, ENT questions, curator topics
 model Content {
   id        String   @id @default(cuid())

@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
+import { Building2, FileText as FileTextIcon,
   LayoutDashboard,
   BookOpen,
   Bot,
@@ -102,6 +102,8 @@ const NAV_KEYS: { key: string; icon: React.ElementType; to: string; disabled?: b
   { key: 'nav.study_plan',  icon: BookOpen,        to: '/plan' },
   { key: 'nav.ai_mentor',   icon: Bot,             to: '/mentor' },
   { key: 'IELTS',           icon: GraduationCap,   to: '/ielts' },
+  { key: 'Поступление',     icon: Building2,       to: '/admissions' },
+  { key: 'Мотив. письмо',  icon: FileTextIcon,    to: '/motivation-letter' },
   { key: 'nav.portfolio',   icon: FolderOpen,      to: '/portfolio' },
   { key: 'nav.settings',    icon: Settings,        to: '#', disabled: true },
 ]

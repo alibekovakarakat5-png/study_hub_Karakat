@@ -9,6 +9,7 @@ import studyPlanRoutes     from './routes/studyPlan'
 import moduleProgressRoutes from './routes/moduleProgress'
 import entResultsRoutes    from './routes/entResults'
 import contentRoutes       from './routes/content'
+import admissionsRoutes    from './routes/admissions'
 
 const app = express()
 
@@ -30,6 +31,7 @@ app.use('/api/study-plans',     studyPlanRoutes)
 app.use('/api/module-progress', moduleProgressRoutes)
 app.use('/api/ent-results',     entResultsRoutes)
 app.use('/api/content',         contentRoutes)
+app.use('/api/admissions',      admissionsRoutes)
 
 // ── Health check ──────────────────────────────────────────────────────────────
 
