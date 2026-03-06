@@ -38,6 +38,60 @@ router.put('/me', verifyToken, async (req, res) => {
   res.json({ user: safeUser(user) })
 })
 
+// ── GET /api/users/:id/public — public profile, no auth ──────────────────────
+
+router.get('/:id/public', async (req, res) => {
+  const userId = String(req.params['id'])
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true, name: true, grade: true, city: true,
+      targetUniversity: true, targetSpecialty: true,
+      isPremium: true, streak: true, totalStudyMinutes: true,
+      createdAt: true,
+      diagnosticResults: { orderBy: { takenAt: 'desc' } },
+    },
+  })
+
+  if (!user) {
+    res.status(404).json({ error: 'Профиль не найден' })
+    return
+  }
+
+  const { diagnosticResults, ...publicUser } = user
+
+  // Group the most recent session (rows taken within 60 s of each other)
+  let latestDiagnostic = null
+  if (diagnosticResults.length > 0) {
+    const latestTime = diagnosticResults[0].takenAt.getTime()
+    const session = diagnosticResults.filter(
+      r => Math.abs(r.takenAt.getTime() - latestTime) < 60_000,
+    )
+
+    const subjects = session.map(r => {
+      const scores = r.scores as Record<string, unknown>
+      return { subject: r.subject, ...scores }
+    })
+
+    const overallScore = session.reduce((s, r) => s + (((r.scores as Record<string, unknown>).score as number) ?? 0), 0)
+    const maxScore     = session.reduce((s, r) => s + (((r.scores as Record<string, unknown>).maxScore as number) ?? 0), 0)
+
+    latestDiagnostic = {
+      id: session[0].id,
+      userId,
+      date: session[0].takenAt.toISOString(),
+      subjects,
+      overallScore,
+      maxScore,
+      percentile: maxScore > 0 ? Math.round((overallScore / maxScore) * 100) : 0,
+      predictedUniversities: [],
+    }
+  }
+
+  res.json({ user: publicUser, latestDiagnostic })
+})
+
 // ── GET /api/users — list all users (admin only) ─────────────────────────────
 
 router.get('/', verifyToken, requireRole('admin'), async (_req, res) => {
@@ -46,6 +100,7 @@ router.get('/', verifyToken, requireRole('admin'), async (_req, res) => {
       id: true, name: true, email: true, role: true,
       grade: true, city: true, isPremium: true,
       streak: true, totalStudyMinutes: true,
+      targetUniversity: true, targetSpecialty: true,
       createdAt: true, lastActiveDate: true,
     },
     orderBy: { createdAt: 'desc' },

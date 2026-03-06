@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   Award,
   BookOpen,
+  CheckCircle2,
   Code,
   Download,
   ExternalLink,
@@ -32,6 +33,16 @@ export default function Portfolio() {
   const navigate = useNavigate()
   const { user, diagnosticResult, studyPlan, achievements } = useStore()
   const [activeTab, setActiveTab] = useState<'overview' | 'skills' | 'achievements' | 'activity'>('overview')
+  const [copied, setCopied] = useState(false)
+
+  const handleShare = () => {
+    if (!user) return
+    const url = `${window.location.origin}/profile/${user.id}`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    })
+  }
 
   if (!user) {
     navigate('/auth')
@@ -104,9 +115,15 @@ export default function Portfolio() {
             </div>
 
             <div className="flex gap-2">
-              <button className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-colors text-sm">
-                <Share2 className="w-4 h-4" />
-                Поделиться
+              <button
+                onClick={handleShare}
+                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-colors text-sm"
+              >
+                {copied
+                  ? <CheckCircle2 className="w-4 h-4 text-green-400" />
+                  : <Share2 className="w-4 h-4" />
+                }
+                {copied ? 'Ссылка скопирована!' : 'Поделиться'}
               </button>
               <button className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-colors text-sm">
                 <Download className="w-4 h-4" />

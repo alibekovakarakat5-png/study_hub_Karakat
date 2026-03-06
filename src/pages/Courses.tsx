@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search,
@@ -22,6 +22,7 @@ import {
   Play,
 } from 'lucide-react'
 import { courses } from '@/data/courses'
+import { openWhatsApp, buildPricingMessage } from '@/lib/whatsapp'
 import {
   type Course,
   type CourseCategory,
@@ -264,6 +265,19 @@ function CourseModal({
   onClose: () => void
 }) {
   const { isAuthenticated } = useStore()
+  const navigate = useNavigate()
+
+  const handleEnroll = () => {
+    if (!isAuthenticated) {
+      navigate('/auth')
+      return
+    }
+    if (course.price === 0) {
+      navigate('/curator')
+    } else {
+      openWhatsApp(buildPricingMessage(course.title))
+    }
+  }
 
   return (
     <motion.div
@@ -385,6 +399,7 @@ function CourseModal({
               </p>
             </div>
             <button
+              onClick={handleEnroll}
               className={cn(
                 'w-full sm:w-auto px-8 py-3.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2',
                 'gradient-primary text-white hover:shadow-lg hover:shadow-primary-200 active:scale-[0.98]'
@@ -520,6 +535,7 @@ function FiltersSidebar({
   setSortBy,
   onClose,
   isMobile,
+  onReset,
 }: {
   selectedCategories: Set<CourseCategory>
   toggleCategory: (cat: CourseCategory) => void
@@ -531,6 +547,7 @@ function FiltersSidebar({
   setSortBy: (s: SortOption) => void
   onClose?: () => void
   isMobile: boolean
+  onReset: () => void
 }) {
   const allCategories = Object.entries(CATEGORY_NAMES) as [CourseCategory, string][]
   const allLevels: Course['level'][] = ['beginner', 'intermediate', 'advanced']
@@ -654,12 +671,7 @@ function FiltersSidebar({
 
       {/* Reset */}
       <button
-        onClick={() => {
-          selectedCategories.clear()
-          selectedLevels.clear()
-          setPriceFilter('all')
-          setSortBy('popular')
-        }}
+        onClick={onReset}
         className="w-full text-sm text-slate-400 hover:text-slate-600 transition-colors py-2 text-center"
       >
         Сбросить фильтры
@@ -759,6 +771,13 @@ export default function Courses() {
 
   const activeFilterCount =
     selectedCategories.size + selectedLevels.size + (priceFilter !== 'all' ? 1 : 0)
+
+  const resetFilters = () => {
+    setSelectedCategories(new Set())
+    setSelectedLevels(new Set())
+    setPriceFilter('all')
+    setSortBy('popular')
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -860,6 +879,7 @@ export default function Courses() {
                 sortBy={sortBy}
                 setSortBy={setSortBy}
                 isMobile={false}
+                onReset={resetFilters}
               />
             </div>
           </div>
@@ -875,11 +895,7 @@ export default function Courses() {
               </p>
               {activeFilterCount > 0 && (
                 <button
-                  onClick={() => {
-                    setSelectedCategories(new Set())
-                    setSelectedLevels(new Set())
-                    setPriceFilter('all')
-                  }}
+                  onClick={resetFilters}
                   className="text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors"
                 >
                   Сбросить фильтры
@@ -959,6 +975,7 @@ export default function Courses() {
                 setSortBy={setSortBy}
                 onClose={() => setMobileFiltersOpen(false)}
                 isMobile
+                onReset={resetFilters}
               />
             </motion.div>
           </>

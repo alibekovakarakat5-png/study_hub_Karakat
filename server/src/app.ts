@@ -3,6 +3,7 @@ import cors from 'cors'
 import type { Request, Response, NextFunction } from 'express'
 
 import authRoutes          from './routes/auth'
+import adminRoutes         from './routes/admin'
 import usersRoutes         from './routes/users'
 import diagnosticRoutes    from './routes/diagnostic'
 import studyPlanRoutes     from './routes/studyPlan'
@@ -10,6 +11,7 @@ import moduleProgressRoutes from './routes/moduleProgress'
 import entResultsRoutes    from './routes/entResults'
 import contentRoutes       from './routes/content'
 import admissionsRoutes    from './routes/admissions'
+import coursesRoutes       from './routes/courses'
 
 const app = express()
 
@@ -25,6 +27,7 @@ app.use(express.json({ limit: '2mb' }))
 // ── Routes ────────────────────────────────────────────────────────────────────
 
 app.use('/api/auth',            authRoutes)
+app.use('/api/admin',           adminRoutes)
 app.use('/api/users',           usersRoutes)
 app.use('/api/diagnostic',      diagnosticRoutes)
 app.use('/api/study-plans',     studyPlanRoutes)
@@ -32,6 +35,7 @@ app.use('/api/module-progress', moduleProgressRoutes)
 app.use('/api/ent-results',     entResultsRoutes)
 app.use('/api/content',         contentRoutes)
 app.use('/api/admissions',      admissionsRoutes)
+app.use('/api/courses',         coursesRoutes)
 
 // ── Health check ──────────────────────────────────────────────────────────────
 

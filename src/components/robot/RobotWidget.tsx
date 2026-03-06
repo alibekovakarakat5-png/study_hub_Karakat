@@ -111,6 +111,9 @@ export default function RobotWidget() {
   // Local state for the naming input
   const [namingInput, setNamingInput] = useState('')
 
+  // Text chat input
+  const [chatInput, setChatInput] = useState('')
+
   const streak = user?.streak ?? 0
 
   // ── Voice dialog ─────────────────────────────────────────────────────────
@@ -124,10 +127,22 @@ export default function RobotWidget() {
     ) ?? null
   }, [activeModuleId])
 
+  const isOnIelts = location.pathname === '/ielts'
+
+  const handleMentorReply = (text: string) => {
+    const mentorAnswer = findMentorAnswer(text, user?.name)
+    if (mentorAnswer) {
+      const newMood = mentorAnswer.mood ?? 'happy'
+      setMood(newMood, mentorAnswer.text)
+      speak(mentorAnswer.text)
+      return true
+    }
+    return false
+  }
+
   const handleVoiceDialog = () => {
     if (isListening) { stopListening(); return }
 
-    const isOnIelts = location.pathname === '/ielts'
     const prompt = isOnIelts
       ? 'Слушаю! Задай вопрос по IELTS или назови тему.'
       : 'Слушаю! Объясни мне эту тему своими словами.'
@@ -139,13 +154,7 @@ export default function RobotWidget() {
       startListening(
         (transcript) => {
           // 1. Check mentor knowledge base first (IELTS, ENT, general)
-          const mentorAnswer = findMentorAnswer(transcript, user?.name)
-          if (mentorAnswer) {
-            const newMood = mentorAnswer.mood ?? 'happy'
-            setMood(newMood, mentorAnswer.text.slice(0, 100))
-            speak(mentorAnswer.text.slice(0, 200))
-            return
-          }
+          if (handleMentorReply(transcript)) return
 
           // 2. Fall back to curator topic evaluation (if in a module)
           const keyPoints = activeTopicContent?.theory.keyPoints ?? []
@@ -163,6 +172,17 @@ export default function RobotWidget() {
         },
       )
     }, 1200)
+  }
+
+  const handleChatSubmit = () => {
+    const q = chatInput.trim()
+    if (!q) return
+    setChatInput('')
+    const found = handleMentorReply(q)
+    if (!found) {
+      const fallback = 'Хм, не нашёл ответа на это. Попробуй спросить про IELTS, ЕНТ, Writing, Speaking или конкретную тему.'
+      setMood('thinking', fallback)
+    }
   }
 
   // ── Build student context ─────────────────────────────────────────────────
@@ -425,12 +445,31 @@ export default function RobotWidget() {
                 </button>
               </div>
 
-              {/* ── Voice dialog — shown while in a module ── */}
-              {curatorPhase === 'module' && (
+              {/* ── Text chat input ── */}
+              <div className="flex gap-1.5 w-full">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleChatSubmit() }}
+                  placeholder="Задай вопрос..."
+                  className="flex-1 min-w-0 bg-white/15 text-white placeholder:text-white/40 text-xs rounded-lg px-2.5 py-1.5 outline-none focus:bg-white/20 border border-white/20"
+                />
+                <button
+                  type="button"
+                  onClick={handleChatSubmit}
+                  className="shrink-0 bg-white/20 hover:bg-white/30 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg transition-colors"
+                >
+                  →
+                </button>
+              </div>
+
+              {/* ── Voice dialog — shown in module or on IELTS page ── */}
+              {(curatorPhase === 'module' || isOnIelts) && (
                 <button
                   type="button"
                   onClick={handleVoiceDialog}
-                  title={isListening ? 'Остановить' : 'Объясни тему голосом'}
+                  title={isListening ? 'Остановить' : isOnIelts ? 'Задай вопрос голосом' : 'Объясни тему голосом'}
                   className={cn(
                     'flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all w-full justify-center',
                     isListening
@@ -440,7 +479,7 @@ export default function RobotWidget() {
                 >
                   {isListening
                     ? <><MicOff className="w-3.5 h-3.5" />Слушаю...</>
-                    : <><Mic className="w-3.5 h-3.5" />Объясни голосом</>}
+                    : <><Mic className="w-3.5 h-3.5" />{isOnIelts ? 'Вопрос голосом' : 'Объясни голосом'}</>}
                 </button>
               )}
 

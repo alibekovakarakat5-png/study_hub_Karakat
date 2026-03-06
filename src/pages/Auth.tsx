@@ -205,7 +205,7 @@ export default function Auth() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.1 }}
         >
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-primary shadow-lg shadow-primary-200/50">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl gradient-primary shadow-lg shadow-primary-200/50">
             <Sparkles className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-gradient">Study Hub</h1>
@@ -259,9 +259,9 @@ export default function Auth() {
             <div className="mb-6">
               <div className="flex rounded-xl bg-gray-100/80 p-1">
                 {([
-                  { key: 'login' as AuthMode, label: 'Вход' },
-                  { key: 'register' as AuthMode, label: 'Регистрация' },
-                ]).map(({ key, label }) => (
+                  { key: 'login' as AuthMode, labelKey: 'auth.login_tab' },
+                  { key: 'register' as AuthMode, labelKey: 'auth.register_tab' },
+                ]).map(({ key, labelKey }) => (
                   <button
                     key={key}
                     type="button"
@@ -279,7 +279,7 @@ export default function Auth() {
                         transition={{ type: 'spring' as const, stiffness: 400, damping: 30 }}
                       />
                     )}
-                    <span className="relative z-10">{label}</span>
+                    <span className="relative z-10">{t(labelKey)}</span>
                   </button>
                 ))}
               </div>
@@ -351,7 +351,7 @@ export default function Auth() {
                   disabled={isLoading}
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.98 }}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-primary px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-primary-200/50 transition-all duration-200 hover:shadow-xl hover:shadow-primary-300/40 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl gradient-primary px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-primary-200/50 transition-all duration-200 hover:shadow-xl hover:shadow-primary-300/40 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {isLoading ? (
                     <motion.div
@@ -519,7 +519,7 @@ export default function Auth() {
                   disabled={isLoading}
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.98 }}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-primary px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-primary-200/50 transition-all duration-200 hover:shadow-xl hover:shadow-primary-300/40 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl gradient-primary px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-primary-200/50 transition-all duration-200 hover:shadow-xl hover:shadow-primary-300/40 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {isLoading ? (
                     <motion.div

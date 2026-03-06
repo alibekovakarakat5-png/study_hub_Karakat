@@ -44,7 +44,7 @@ export function getDeadlineStatus(dateStr: string): DeadlineStatus {
   return 'upcoming'
 }
 
-export function isDataStale(verifiedAt: string, staleDays = 30): boolean {
+export function isDataStale(verifiedAt: string, staleDays = 90): boolean {
   const verified = new Date(verifiedAt)
   const now = new Date()
   return (now.getTime() - verified.getTime()) / (1000 * 60 * 60 * 24) > staleDays
@@ -88,7 +88,7 @@ export const KZ_UNIVERSITIES: AdmissionEntry[] = [
     fundingType: 'grant',
     fundingNote: 'Гранты НУ покрывают 100% обучения + стипендия. Конкурс высокий.',
     tags: ['английский', 'грант', 'международный', 'астана'],
-    verifiedAt: '2025-11-01',
+    verifiedAt: '2026-03-05',
     sourceUrl: 'https://nu.edu.kz/admissions',
   },
   {
@@ -116,7 +116,7 @@ export const KZ_UNIVERSITIES: AdmissionEntry[] = [
     fundingType: 'partial',
     fundingNote: 'Государственные гранты + внутренние гранты КБТУ. Подавайте одновременно.',
     tags: ['IT', 'инженерия', 'нефтегаз', 'алматы', 'английский'],
-    verifiedAt: '2025-11-01',
+    verifiedAt: '2026-03-05',
     sourceUrl: 'https://kbtu.edu.kz/ru/admission',
   },
   {
@@ -142,7 +142,7 @@ export const KZ_UNIVERSITIES: AdmissionEntry[] = [
     fundingType: 'grant',
     fundingNote: 'Государственный образовательный грант через МОН РК (единый конкурс).',
     tags: ['классический', 'алматы', 'грант', 'все специальности'],
-    verifiedAt: '2025-11-01',
+    verifiedAt: '2026-03-05',
     sourceUrl: 'https://kaznu.kz/ru/content/pages/4',
   },
   {
@@ -166,7 +166,7 @@ export const KZ_UNIVERSITIES: AdmissionEntry[] = [
     ],
     fundingType: 'grant',
     tags: ['астана', 'гуманитарные', 'право', 'педагогика'],
-    verifiedAt: '2025-11-01',
+    verifiedAt: '2026-03-05',
     sourceUrl: 'https://enu.kz/ru/abiturient',
   },
 ]
@@ -197,7 +197,7 @@ export const INTERNATIONAL_UNIVERSITIES: AdmissionEntry[] = [
     fundingType: 'partial',
     fundingNote: 'Queen Mary Excellence Scholarship — до £5,000/год для международных студентов.',
     tags: ['UK', 'лондон', 'UCAS', 'стипендия'],
-    verifiedAt: '2025-11-01',
+    verifiedAt: '2026-03-05',
     sourceUrl: 'https://www.qmul.ac.uk/international/international-students/central-asia/',
   },
   {
@@ -223,7 +223,7 @@ export const INTERNATIONAL_UNIVERSITIES: AdmissionEntry[] = [
     fundingType: 'free',
     fundingNote: 'Обучение бесплатное. Нужен APS-сертификат (проверка документов, ~4-6 мес процесс).',
     tags: ['Германия', 'бесплатно', 'берлин', 'APS'],
-    verifiedAt: '2025-11-01',
+    verifiedAt: '2026-03-05',
     sourceUrl: 'https://www.fu-berlin.de/en/studium/studienbuero/international/incoming/index.html',
   },
   {
@@ -249,7 +249,7 @@ export const INTERNATIONAL_UNIVERSITIES: AdmissionEntry[] = [
     fundingType: 'grant',
     fundingNote: 'CEU Scholarship покрывает полное обучение + стипендию для студентов из СНГ.',
     tags: ['постсоветские', 'социальные науки', 'стипендия', 'вена'],
-    verifiedAt: '2025-11-01',
+    verifiedAt: '2026-03-05',
     sourceUrl: 'https://www.ceu.edu/admissions/financial-aid',
   },
 ]
@@ -281,7 +281,7 @@ export const SCHOLARSHIPS: AdmissionEntry[] = [
     fundingType: 'grant',
     fundingNote: '100% покрытие всех расходов. После окончания — обязательная работа в KZ 5 лет.',
     tags: ['государственный', 'полное покрытие', 'работа в KZ', 'топ-университеты'],
-    verifiedAt: '2025-11-01',
+    verifiedAt: '2026-03-05',
     sourceUrl: 'https://bolashak.gov.kz/ru/o-stipendii/bolashak/usloviya-uchastiya.html',
   },
   {
@@ -309,7 +309,7 @@ export const SCHOLARSHIPS: AdmissionEntry[] = [
     fundingType: 'grant',
     fundingNote: 'Полное покрытие: обучение + авиабилеты + жильё + £1,000/мес.',
     tags: ['UK', 'магистратура', 'лидерство', 'правительство', 'полное покрытие'],
-    verifiedAt: '2025-11-01',
+    verifiedAt: '2026-03-05',
     sourceUrl: 'https://www.chevening.org/scholarship/kazakhstan/',
   },
   {
@@ -334,7 +334,7 @@ export const SCHOLARSHIPS: AdmissionEntry[] = [
     fundingType: 'grant',
     fundingNote: 'От €750 до €1,200/мес + медстраховка + перелёт.',
     tags: ['Германия', 'магистратура', 'PhD', 'исследования'],
-    verifiedAt: '2025-11-01',
+    verifiedAt: '2026-03-05',
     sourceUrl: 'https://www.daad.de/en/study-and-research-in-germany/scholarships/',
   },
   {
@@ -359,7 +359,7 @@ export const SCHOLARSHIPS: AdmissionEntry[] = [
     fundingType: 'grant',
     fundingNote: 'Подавать через свой KZ-университет (отдел международного сотрудничества).',
     tags: ['обмен', 'Европа', 'семестр', 'через свой вуз'],
-    verifiedAt: '2025-11-01',
+    verifiedAt: '2026-03-05',
     sourceUrl: 'https://erasmus-plus.ec.europa.eu/opportunities/opportunities-for-individuals/students',
   },
 ]
@@ -390,7 +390,7 @@ export const INTERNSHIPS: AdmissionEntry[] = [
     fundingType: 'paid',
     fundingNote: 'Оплачиваемая стажировка. Размер оплаты зависит от компании.',
     tags: ['оплачиваемая', 'KZ', 'государственная', 'нефтегаз', 'IT'],
-    verifiedAt: '2025-11-01',
+    verifiedAt: '2026-03-05',
     sourceUrl: 'https://samruk.kz/ru/career/internship',
   },
   {
@@ -414,7 +414,7 @@ export const INTERNSHIPS: AdmissionEntry[] = [
     fundingType: 'paid',
     fundingNote: 'Конкурентная оплата. Лучшие стажёры получают оффер.',
     tags: ['финтех', 'IT', 'оплачиваемая', 'алматы'],
-    verifiedAt: '2025-11-01',
+    verifiedAt: '2026-03-05',
     sourceUrl: 'https://kaspi.kz/careers',
   },
   {
@@ -438,7 +438,7 @@ export const INTERNSHIPS: AdmissionEntry[] = [
     fundingType: 'paid',
     fundingNote: '$7,000–$9,000/мес + жильё от Google. Сильно конкурентно.',
     tags: ['международная', 'IT', 'США', 'Google', 'высокий конкурс'],
-    verifiedAt: '2025-11-01',
+    verifiedAt: '2026-03-05',
     sourceUrl: 'https://careers.google.com/programs/students/',
   },
   {
@@ -462,7 +462,7 @@ export const INTERNSHIPS: AdmissionEntry[] = [
     fundingType: 'paid',
     fundingNote: 'Небольшая стипендия + бесценный опыт для поступления в магистратуру за рубежом.',
     tags: ['исследования', 'астана', 'академия', 'наука'],
-    verifiedAt: '2025-11-01',
+    verifiedAt: '2026-03-05',
     sourceUrl: 'https://nu.edu.kz/academics/undergraduate/undergraduate-research',
   },
 ]

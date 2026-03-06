@@ -42,6 +42,8 @@ model User {
   studyPlans        StudyPlan[]
   moduleProgresses  ModuleProgress[]
   entResults        EntResult[]
+  enrollments       CourseEnrollment[]
+  lessonCompletions LessonCompletion[]
 }
 
 model DiagnosticResult {
@@ -104,6 +106,66 @@ model AdmissionDeadline {
 
   @@index([entryId])
   @@index([date])
+}
+
+// ── Course Builder ────────────────────────────────────────────────────────────
+
+model Course {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  subject     String   // 'ent' | 'ielts' | 'math' | 'physics' | 'history' | 'english'
+  level       String   // 'beginner' | 'intermediate' | 'advanced'
+  price       Int      @default(0)
+  coverColor  String   @default("#2563eb")
+  isPublished Boolean  @default(false)
+  modules     CourseModule[]
+  enrollments CourseEnrollment[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model CourseModule {
+  id       String   @id @default(cuid())
+  courseId String
+  course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title    String
+  order    Int      @default(0)
+  lessons  Lesson[]
+}
+
+model Lesson {
+  id          String       @id @default(cuid())
+  moduleId    String
+  module      CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title       String
+  duration    Int?         // estimated minutes
+  order       Int          @default(0)
+  blocks      Json         @default("[]") // LessonBlock[]
+  completions LessonCompletion[]
+}
+
+model CourseEnrollment {
+  id        String   @id @default(cuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([courseId, userId])
+}
+
+model LessonCompletion {
+  id          String   @id @default(cuid())
+  lessonId    String
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quizScore   Int?
+  completedAt DateTime @default(now())
+
+  @@unique([lessonId, userId])
 }
 
 // Content managed by admin — IELTS materials, mentor Q&As, vocab, ENT questions, curator topics

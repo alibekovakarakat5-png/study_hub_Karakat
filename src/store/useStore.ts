@@ -130,6 +130,45 @@ interface AppState {
   toggleSidebar: () => void
 }
 
+// ── Demo accounts (fallback when server is offline) ─────────────────────────
+
+const DEMO_ACCOUNTS: { email: string; password: string; user: User }[] = [
+  {
+    email: 'admin@studyhub.kz',
+    password: 'StudyHub2025!',
+    user: {
+      id: 'demo-admin',
+      name: 'Admin',
+      email: 'admin@studyhub.kz',
+      role: 'admin',
+      grade: null,
+      city: null,
+      isPremium: true,
+      streak: 0,
+      totalStudyMinutes: 0,
+      targetUniversity: null,
+      targetSpecialty: null,
+    } as unknown as User,
+  },
+  {
+    email: 'student@studyhub.kz',
+    password: 'demo123',
+    user: {
+      id: 'demo-student',
+      name: 'Тест Ученик',
+      email: 'student@studyhub.kz',
+      role: 'student',
+      grade: 11,
+      city: 'Алматы',
+      isPremium: false,
+      streak: 3,
+      totalStudyMinutes: 120,
+      targetUniversity: 'КБТУ',
+      targetSpecialty: 'IT',
+    } as unknown as User,
+  },
+]
+
 const DEMO_ACHIEVEMENTS: Achievement[] = [
   { id: 'first-test', title: 'Первый шаг', description: 'Пройди диагностический тест', icon: '🎯', category: 'score' },
   { id: 'streak-3', title: '3 дня подряд', description: 'Занимайся 3 дня подряд', icon: '🔥', category: 'streak' },
@@ -149,13 +188,28 @@ export const useStore = create<AppState>()(
       isAuthenticated: false,
 
       login: async (email, password, _role) => {
-        // _role is kept for UI compatibility but server determines the real role
-        const { user, token } = await api.post<{ user: User; token: string }>(
-          '/auth/login',
-          { email, password }
+        // Try real backend first
+        try {
+          const { user, token } = await api.post<{ user: User; token: string }>(
+            '/auth/login',
+            { email, password }
+          )
+          setToken(token)
+          set({ user, isAuthenticated: true })
+          return
+        } catch (err) {
+          // If server unavailable (Not Found / network error) — try demo accounts
+          const isServerDown = err instanceof Error &&
+            (err.message === 'Not Found' || err.message.includes('fetch') || err.message.includes('Failed'))
+          if (!isServerDown) throw err
+        }
+
+        // Fallback: demo accounts
+        const demo = DEMO_ACCOUNTS.find(
+          a => a.email.toLowerCase() === email.toLowerCase() && a.password === password
         )
-        setToken(token)
-        set({ user, isAuthenticated: true })
+        if (!demo) throw new Error('Неверный email или пароль')
+        set({ user: demo.user, isAuthenticated: true })
       },
 
       register: async (data) => {

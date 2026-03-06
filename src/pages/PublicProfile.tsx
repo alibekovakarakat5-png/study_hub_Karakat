@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -957,12 +957,49 @@ function ProfileFooter() {
 
 // ─── Main PublicProfile Page ─────────────────────────────────────────────────
 
+interface ExternalUser {
+  id: string
+  name: string
+  grade: number | null
+  city: string | null
+  targetUniversity: string | null
+  targetSpecialty: string | null
+  isPremium: boolean
+  streak: number
+  totalStudyMinutes: number
+  createdAt: string
+}
+
+interface ExternalProfileData {
+  user: ExternalUser
+  latestDiagnostic: import('@/types').DiagnosticResult | null
+}
+
 export default function PublicProfile() {
   const { id } = useParams<{ id: string }>()
   const { user, diagnosticResult, achievements, studyPlan } = useStore()
 
   // Determine if viewing own profile
   const isOwnProfile = !id || (user && id === user.id)
+
+  // External profile state
+  const [externalData, setExternalData] = useState<ExternalProfileData | null>(null)
+  const [loadingExternal, setLoadingExternal] = useState(false)
+  const [notFound, setNotFound] = useState(false)
+
+  useEffect(() => {
+    if (isOwnProfile || !id) return
+    setLoadingExternal(true)
+    setNotFound(false)
+    fetch(`/api/users/${id}/public`)
+      .then(r => r.json())
+      .then((data: ExternalProfileData & { error?: string }) => {
+        if (data.error) { setNotFound(true); return }
+        setExternalData(data)
+      })
+      .catch(() => setNotFound(true))
+      .finally(() => setLoadingExternal(false))
+  }, [id, isOwnProfile])
 
   // Build the profile data to display
   const profileData = useMemo(() => {
@@ -1048,31 +1085,92 @@ export default function PublicProfile() {
       }
     }
 
-    // Mock external profile
+    // Real external profile
+    if (!externalData) return null
+
+    const ext = externalData.user
+    const extDiag = externalData.latestDiagnostic
+    const diagPct = extDiag && extDiag.maxScore > 0
+      ? Math.round((extDiag.overallScore / extDiag.maxScore) * 100)
+      : 0
+
     return {
       profile: {
-        name: MOCK_PROFILE.name,
-        email: MOCK_PROFILE.email,
-        grade: MOCK_PROFILE.grade,
-        city: MOCK_PROFILE.city,
-        targetUniversity: MOCK_PROFILE.targetUniversity,
-        targetSpecialty: MOCK_PROFILE.targetSpecialty,
-        isPremium: MOCK_PROFILE.isPremium,
-        streak: MOCK_PROFILE.streak,
-        totalStudyMinutes: MOCK_PROFILE.totalStudyMinutes,
-        bio: MOCK_PROFILE.bio,
-        isOpenToWork: MOCK_PROFILE.isOpenToWork,
-        createdAt: MOCK_PROFILE.createdAt,
+        name: ext.name,
+        email: '',
+        grade: ext.grade ?? 11,
+        city: ext.city ?? '',
+        targetUniversity: ext.targetUniversity ?? undefined,
+        targetSpecialty: ext.targetSpecialty ?? undefined,
+        isPremium: ext.isPremium,
+        streak: ext.streak,
+        totalStudyMinutes: ext.totalStudyMinutes,
+        bio: 'Готовлюсь к поступлению на Study Hub.',
+        isOpenToWork: false,
+        createdAt: ext.createdAt,
       },
-      diagnostic: MOCK_DIAGNOSTIC,
-      achievementsList: MOCK_ACHIEVEMENTS,
-      education: MOCK_EDUCATION,
-      experience: MOCK_EXPERIENCE,
-      courses: MOCK_COURSES,
-      projects: MOCK_PROJECTS,
+      diagnostic: extDiag,
+      achievementsList: [] as Achievement[],
+      education: ext.targetUniversity
+        ? [
+            { institution: `Школа · ${ext.city ?? ''}`, degree: `Ученик ${ext.grade ?? 11} класса`, year: '2023 — настоящее время', description: '', achievements: [] as string[] },
+            { institution: ext.targetUniversity, degree: `${ext.targetSpecialty ?? 'Специальность'} (цель)`, year: '2026', description: 'Целевой университет для поступления.', achievements: [] as string[] },
+          ]
+        : [{ institution: `Школа · ${ext.city ?? ''}`, degree: `Ученик ${ext.grade ?? 11} класса`, year: '2023 — настоящее время', description: '', achievements: [] as string[] }],
+      experience: [
+        {
+          company: 'Study Hub',
+          role: 'Активный ученик',
+          period: 'Текущее',
+          description: extDiag
+            ? `Пройдена диагностика ЕНТ — ${diagPct}%. Активно готовится к поступлению.`
+            : 'Зарегистрирован на платформе. Начинает подготовку к ЕНТ.',
+        },
+      ],
+      courses: extDiag
+        ? [{ title: 'Диагностический тест Study Hub', provider: 'Study Hub', date: extDiag.date, score: `${diagPct}%` }]
+        : [],
+      projects: [] as typeof MOCK_PROJECTS,
       activityData: ACTIVITY_DATA,
     }
-  }, [isOwnProfile, user, diagnosticResult, achievements, studyPlan, id])
+  }, [isOwnProfile, user, diagnosticResult, achievements, studyPlan, id, externalData])
+
+  // ── Loading state ────────────────────────────────────────────────────────────
+  if (loadingExternal) {
+    return (
+      <div className="min-h-screen bg-gray-50/80 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 rounded-full border-4 border-indigo-200 border-t-indigo-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-500 text-sm">Загружаем профиль...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Not found ─────────────────────────────────────────────────────────────────
+  if (notFound) {
+    return (
+      <div className="min-h-screen bg-gray-50/80 flex items-center justify-center px-4">
+        <div className="text-center max-w-sm">
+          <div className="text-6xl mb-4">🔍</div>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">Профиль не найден</h1>
+          <p className="text-gray-500 text-sm mb-6">Ссылка устарела или профиль был удалён.</p>
+          <Link to="/" className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition">
+            На главную
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  // ── No data yet (own profile but no user in store) ────────────────────────────
+  if (!profileData) {
+    return (
+      <div className="min-h-screen bg-gray-50/80 flex items-center justify-center">
+        <div className="w-12 h-12 rounded-full border-4 border-indigo-200 border-t-indigo-600 animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50/80">

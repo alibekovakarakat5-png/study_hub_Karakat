@@ -2,7 +2,7 @@
 // GET  /api/admissions/deadlines?entryId=X   — public, upcoming deadlines
 // POST /api/admissions/deadlines             — admin: create/update deadline
 // PUT  /api/admissions/verify                — admin: mark all as verified (bulk)
-// GET  /api/admissions/stale                 — admin: list entries not verified in 30+ days
+// GET  /api/admissions/stale                 — admin: list entries not verified in 90+ days
 
 import { Router } from 'express'
 import { z } from 'zod'
@@ -11,7 +11,7 @@ import { verifyToken, requireRole } from '../middleware/auth'
 
 const router = Router()
 
-const STALE_DAYS = 30
+const STALE_DAYS = 90
 
 // ── GET /api/admissions/deadlines ─────────────────────────────────────────────
 
