@@ -11,6 +11,8 @@ import { persist } from 'zustand/middleware'
 import type { IeltsSkill } from '@/data/ieltsContent'
 import { contentApi } from '@/lib/api'
 import type { ContentType } from '@/lib/api'
+import type { AbroadUniversity } from '@/data/universityAdvisor'
+import type { Scholarship } from '@/data/scholarships'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -51,6 +53,8 @@ interface ContentState {
   materials: CustomMaterial[]
   qas: CustomQA[]
   vocabWords: CustomVocabWord[]
+  universities: AbroadUniversity[]
+  scholarships: Scholarship[]
 
   /** Fetch all content from server and update local state */
   syncFromServer: () => Promise<void>
@@ -66,6 +70,14 @@ interface ContentState {
   // Vocabulary
   addVocabWord:    (w: Omit<CustomVocabWord, 'id' | 'createdAt'>) => Promise<void>
   deleteVocabWord: (id: string) => Promise<void>
+
+  // Universities
+  addUniversity:    (u: AbroadUniversity) => Promise<void>
+  deleteUniversity: (id: string) => Promise<void>
+
+  // Scholarships
+  addScholarship:    (s: Scholarship) => Promise<void>
+  deleteScholarship: (id: string) => Promise<void>
 }
 
 // ── Helper ────────────────────────────────────────────────────────────────────
@@ -86,15 +98,19 @@ export const useContentStore = create<ContentState>()(
       materials: [],
       qas: [],
       vocabWords: [],
+      universities: [],
+      scholarships: [],
 
       // ── Sync from server ────────────────────────────────────────────────────
 
       syncFromServer: async () => {
         try {
-          const [matRes, qaRes, vocabRes] = await Promise.all([
+          const [matRes, qaRes, vocabRes, uniRes, schRes] = await Promise.all([
             contentApi.list('ielts_material'),
             contentApi.list('mentor_qa'),
             contentApi.list('vocab_word'),
+            contentApi.list('university_entry'),
+            contentApi.list('scholarship_entry'),
           ])
 
           const materials = matRes.items.map((item) => ({
@@ -115,7 +131,17 @@ export const useContentStore = create<ContentState>()(
             createdAt: item.createdAt,
           })) as CustomVocabWord[]
 
-          set({ materials, qas, vocabWords })
+          const universities = uniRes.items.map((item) => ({
+            id: item.id,
+            ...(item.data as Omit<AbroadUniversity, 'id'>),
+          })) as AbroadUniversity[]
+
+          const scholarships = schRes.items.map((item) => ({
+            id: item.id,
+            ...(item.data as Omit<Scholarship, 'id'>),
+          })) as Scholarship[]
+
+          set({ materials, qas, vocabWords, universities, scholarships })
         } catch {
           // Server unavailable — keep existing localStorage data
         }
@@ -131,7 +157,6 @@ export const useContentStore = create<ContentState>()(
             type: 'ielts_material' as ContentType,
             data: m as Record<string, unknown>,
           })
-          // Replace optimistic ID with real server ID
           set((s) => ({
             materials: s.materials.map((mat) =>
               mat.id === local.id
@@ -194,6 +219,52 @@ export const useContentStore = create<ContentState>()(
 
       deleteVocabWord: async (id) => {
         set((s) => ({ vocabWords: s.vocabWords.filter((w) => w.id !== id) }))
+        try { await contentApi.remove(id) } catch {}
+      },
+
+      // ── Universities ──────────────────────────────────────────────────────────
+
+      addUniversity: async (u) => {
+        set((s) => ({ universities: [...s.universities, u] }))
+        try {
+          const { id, ...data } = u
+          const res = await contentApi.create({
+            type: 'university_entry' as ContentType,
+            data: data as Record<string, unknown>,
+          })
+          set((s) => ({
+            universities: s.universities.map((uni) =>
+              uni.id === u.id ? { ...uni, id: res.item.id } : uni
+            ),
+          }))
+        } catch { /* keep local */ }
+      },
+
+      deleteUniversity: async (id) => {
+        set((s) => ({ universities: s.universities.filter((u) => u.id !== id) }))
+        try { await contentApi.remove(id) } catch {}
+      },
+
+      // ── Scholarships ──────────────────────────────────────────────────────────
+
+      addScholarship: async (s) => {
+        set((st) => ({ scholarships: [...st.scholarships, s] }))
+        try {
+          const { id, ...data } = s
+          const res = await contentApi.create({
+            type: 'scholarship_entry' as ContentType,
+            data: data as Record<string, unknown>,
+          })
+          set((st) => ({
+            scholarships: st.scholarships.map((sch) =>
+              sch.id === s.id ? { ...sch, id: res.item.id } : sch
+            ),
+          }))
+        } catch { /* keep local */ }
+      },
+
+      deleteScholarship: async (id) => {
+        set((s) => ({ scholarships: s.scholarships.filter((sch) => sch.id !== id) }))
         try { await contentApi.remove(id) } catch {}
       },
     }),

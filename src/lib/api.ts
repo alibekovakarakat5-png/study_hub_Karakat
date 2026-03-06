@@ -55,6 +55,8 @@ export type ContentType =
   | 'vocab_word'
   | 'ent_question'
   | 'curator_topic'
+  | 'university_entry'
+  | 'scholarship_entry'
 
 export interface ContentItem {
   id: string
@@ -64,6 +66,43 @@ export interface ContentItem {
   order: number
   createdAt: string
   updatedAt: string
+}
+
+// ── Admin: Users (Leads) ───────────────────────────────────────────────────────
+
+export interface AdminUser {
+  id: string
+  name: string
+  email: string
+  role: 'student' | 'parent' | 'teacher' | 'employer' | 'admin'
+  grade: number | null
+  city: string | null
+  isPremium: boolean
+  streak: number
+  totalStudyMinutes: number
+  targetUniversity: string | null
+  targetSpecialty: string | null
+  createdAt: string
+  lastActiveDate: string | null
+}
+
+export interface AdminStats {
+  totalUsers: number
+  premiumUsers: number
+  activeToday: number
+  totalEntResults: number
+  totalStudyPlans: number
+  usersByRole: { role: string; count: number }[]
+  usersByGrade: { grade: string; count: number }[]
+  usersByCity: { city: string; count: number }[]
+  topUniversities: { name: string; count: number }[]
+  topSpecialties: { name: string; count: number }[]
+  registrationsByDay: { date: string; count: number }[]
+}
+
+export const adminApi = {
+  listUsers: () => api.get<{ users: AdminUser[] }>('/users'),
+  getStats:  () => api.get<AdminStats>('/admin/stats'),
 }
 
 export const contentApi = {

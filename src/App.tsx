@@ -24,7 +24,12 @@ import Curator from '@/pages/Curator'
 import PracticeEnt from '@/pages/PracticeEnt'
 import Ielts from '@/pages/Ielts'
 import Admissions from '@/pages/Admissions'
+import CourseLesson from '@/pages/CourseLesson'
 import MotivationLetter from '@/pages/MotivationLetter'
+import AdmissionPlan from '@/pages/AdmissionPlan'
+import AdminLogin from '@/pages/AdminLogin'
+import UniversityAdvisor from '@/pages/UniversityAdvisor'
+import ScholarshipFinder from '@/pages/ScholarshipFinder'
 import RobotWidget from '@/components/robot/RobotWidget'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -67,6 +72,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/admin-login" element={<AdminLogin />} />
         <Route path="/diagnostic" element={<Diagnostic />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/plan" element={<ProtectedRoute><Plan /></ProtectedRoute>} />
@@ -86,7 +92,11 @@ export default function App() {
         <Route path="/ielts" element={<ProtectedRoute><Ielts /></ProtectedRoute>} />
         <Route path="/admissions" element={<ProtectedRoute><Admissions /></ProtectedRoute>} />
         <Route path="/motivation-letter" element={<ProtectedRoute><MotivationLetter /></ProtectedRoute>} />
+        <Route path="/admission-plan" element={<ProtectedRoute><AdmissionPlan /></ProtectedRoute>} />
+        <Route path="/university-advisor" element={<ProtectedRoute><UniversityAdvisor /></ProtectedRoute>} />
+        <Route path="/scholarship-finder" element={<ProtectedRoute><ScholarshipFinder /></ProtectedRoute>} />
         <Route path="/courses" element={<Courses />} />
+        <Route path="/courses/:courseId/lessons/:lessonId" element={<ProtectedRoute><CourseLesson /></ProtectedRoute>} />
         <Route path="/profile/:id" element={<PublicProfile />} />
         <Route path="/support" element={<Support />} />
         <Route path="/pricing" element={<Pricing />} />
