@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -21,7 +21,7 @@ import {
   Tag,
   Play,
 } from 'lucide-react'
-import { courses } from '@/data/courses'
+import { courses as staticCourses } from '@/data/courses'
 import { openWhatsApp, buildPricingMessage } from '@/lib/whatsapp'
 import {
   type Course,
@@ -32,6 +32,45 @@ import {
 } from '@/types'
 import { useStore } from '@/store/useStore'
 import { cn } from '@/lib/utils'
+import { coursesApi, type DBCourse } from '@/lib/api'
+
+// Adapter: convert a DB course to the static Course shape for display
+function dbCourseToStaticCourse(c: DBCourse): Course & { _dbCourseId?: string } {
+  const subjectToCategory = (s: string): CourseCategory => {
+    if (['english', 'kazakh', 'russian', 'literature'].includes(s)) return 'languages'
+    if (s === 'informatics') return 'programming'
+    return 'ent-prep'
+  }
+  const totalLessons = c.modules.reduce((sum, m) => sum + m.lessons.length, 0)
+  const totalMinutes = c.modules.reduce(
+    (sum, m) => sum + m.lessons.reduce((s2, l) => s2 + (l.duration ?? 0), 0), 0
+  )
+  const durationStr = totalMinutes >= 60
+    ? `${Math.round(totalMinutes / 60)} ч`
+    : totalMinutes > 0 ? `${totalMinutes} мин` : `${totalLessons} уроков`
+
+  return {
+    id: c.id,
+    title: c.title,
+    description: c.description,
+    longDescription: c.description,
+    teacherId: 'admin',
+    teacherName: '',
+    subject: c.subject as Course['subject'],
+    category: subjectToCategory(c.subject),
+    level: c.level,
+    price: c.price,
+    rating: 0,
+    reviewCount: 0,
+    studentsCount: c._count?.enrollments ?? 0,
+    lessons: totalLessons,
+    duration: durationStr,
+    tags: [SUBJECT_NAMES[c.subject as Course['subject']] ?? c.subject],
+    createdAt: c.createdAt,
+    featured: false,
+    _dbCourseId: c.id,
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -261,15 +300,31 @@ function CourseModal({
   course,
   onClose,
 }: {
-  course: Course
+  course: Course & { _dbCourseId?: string }
   onClose: () => void
 }) {
   const { isAuthenticated } = useStore()
   const navigate = useNavigate()
+  const [enrolling, setEnrolling] = useState(false)
 
-  const handleEnroll = () => {
+  const handleEnroll = async () => {
     if (!isAuthenticated) {
       navigate('/auth')
+      return
+    }
+    // DB course: enroll and go to first lesson
+    if (course._dbCourseId) {
+      setEnrolling(true)
+      try {
+        await coursesApi.enroll(course._dbCourseId)
+        const { course: full } = await coursesApi.get(course._dbCourseId)
+        const firstLesson = full.modules[0]?.lessons[0]
+        if (firstLesson) {
+          navigate(`/courses/${full.id}/lessons/${firstLesson.id}`)
+        }
+      } catch { /* ignore */ } finally {
+        setEnrolling(false)
+      }
       return
     }
     if (course.price === 0) {
@@ -400,13 +455,19 @@ function CourseModal({
             </div>
             <button
               onClick={handleEnroll}
+              disabled={enrolling}
               className={cn(
                 'w-full sm:w-auto px-8 py-3.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2',
-                'gradient-primary text-white hover:shadow-lg hover:shadow-primary-200 active:scale-[0.98]'
+                'gradient-primary text-white hover:shadow-lg hover:shadow-primary-200 active:scale-[0.98]',
+                enrolling && 'opacity-70 cursor-not-allowed'
               )}
             >
               <Play className="w-4 h-4" />
-              {isAuthenticated ? 'Записаться на курс' : 'Войти и записаться'}
+              {!isAuthenticated
+                ? 'Войти и записаться'
+                : course._dbCourseId
+                ? (enrolling ? 'Загрузка...' : 'Начать обучение')
+                : 'Записаться на курс'}
             </button>
           </div>
         </div>
@@ -419,13 +480,16 @@ function CourseModal({
 // Stats Bar
 // ---------------------------------------------------------------------------
 
-function StatsBar() {
+function StatsBar({ courses }: { courses: Course[] }) {
   const stats = useMemo(() => {
     const uniqueTeachers = new Set(courses.map((c) => c.teacherId)).size
     const totalStudents = courses.reduce((sum, c) => sum + c.studentsCount, 0)
-    const avgRating = courses.reduce((sum, c) => sum + c.rating, 0) / courses.length
+    const ratedCourses = courses.filter((c) => c.rating > 0)
+    const avgRating = ratedCourses.length
+      ? ratedCourses.reduce((sum, c) => sum + c.rating, 0) / ratedCourses.length
+      : 0
     return { uniqueTeachers, totalStudents, avgRating }
-  }, [])
+  }, [courses])
 
   const items = [
     { icon: BookOpen, value: `${courses.length}+ курсов`, label: 'По всем направлениям' },
@@ -464,9 +528,9 @@ function StatsBar() {
 // Featured Carousel
 // ---------------------------------------------------------------------------
 
-function FeaturedCarousel({ onSelect }: { onSelect: (c: Course) => void }) {
+function FeaturedCarousel({ courses, onSelect }: { courses: Course[]; onSelect: (c: Course) => void }) {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const featured = useMemo(() => courses.filter((c) => c.featured), [])
+  const featured = useMemo(() => courses.filter((c) => c.featured), [courses])
 
   const scroll = (dir: 'left' | 'right') => {
     if (!scrollRef.current) return
@@ -695,8 +759,22 @@ export default function Courses() {
   const [sortBy, setSortBy] = useState<SortOption>('popular')
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
+  // DB courses loaded from backend
+  const [dbCourses, setDbCourses] = useState<(Course & { _dbCourseId?: string })[]>([])
+  useEffect(() => {
+    coursesApi.list().then(({ courses: list }) => {
+      setDbCourses(list.filter((c) => c.isPublished).map(dbCourseToStaticCourse))
+    }).catch(() => { /* server unavailable, use static only */ })
+  }, [])
+
+  // Merge static + DB courses (DB courses come first if they have content)
+  const courses = useMemo(() => {
+    const dbIds = new Set(dbCourses.map((c) => c.id))
+    return [...dbCourses, ...staticCourses.filter((c) => !dbIds.has(c.id))]
+  }, [dbCourses])
+
   // Modal
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
+  const [selectedCourse, setSelectedCourse] = useState<(Course & { _dbCourseId?: string }) | null>(null)
 
   // Toggle helpers that cause re-render with new Set
   const toggleCategory = (cat: CourseCategory) => {
@@ -833,11 +911,11 @@ export default function Courses() {
       {/* ── Main content ───────────────────────────────────────────────── */}
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Stats */}
-        <StatsBar />
+        <StatsBar courses={courses} />
 
         {/* Featured carousel */}
         <div className="mt-8">
-          <FeaturedCarousel onSelect={setSelectedCourse} />
+          <FeaturedCarousel courses={courses} onSelect={setSelectedCourse} />
         </div>
 
         {/* Mobile filter toggle */}

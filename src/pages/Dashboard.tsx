@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect, useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Building2, FileText as FileTextIcon,
@@ -55,6 +55,7 @@ import {
 import NotificationDropdown from '@/components/NotificationDropdown'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { useTranslation } from 'react-i18next'
+import { coursesApi, type DBCourse } from '@/lib/api'
 
 // ---------------------------------------------------------------------------
 // Animation variants
@@ -809,6 +810,93 @@ function AchievementsSection() {
 }
 
 // ---------------------------------------------------------------------------
+// My Courses — shows enrolled DB courses with progress
+// ---------------------------------------------------------------------------
+
+function MyCourses() {
+  const navigate = useNavigate()
+  const [courses, setCourses] = useState<DBCourse[]>([])
+  const [progress, setProgress] = useState<Record<string, { completedLessonIds: string[] }>>({})
+
+  useEffect(() => {
+    coursesApi.list().then(async ({ courses: list }) => {
+      // filter to enrolled courses by checking progress
+      const enrolled: DBCourse[] = []
+      const prog: Record<string, { completedLessonIds: string[] }> = {}
+      await Promise.all(
+        list.filter((c) => c.isPublished).map(async (c) => {
+          try {
+            const p = await coursesApi.progress(c.id)
+            if (p.enrolled) {
+              enrolled.push(c)
+              prog[c.id] = p
+            }
+          } catch { /* not enrolled */ }
+        })
+      )
+      setCourses(enrolled)
+      setProgress(prog)
+    }).catch(() => { /* server unavailable */ })
+  }, [])
+
+  if (courses.length === 0) return null
+
+  return (
+    <motion.div variants={cardVariants} className="sm:col-span-2 xl:col-span-12">
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-slate-800 flex items-center gap-2">
+            <GraduationCap className="h-5 w-5 text-primary-600" />
+            Мои курсы
+          </h3>
+          <Link
+            to="/courses"
+            className="text-xs text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
+          >
+            Все курсы <ChevronRight className="h-3 w-3" />
+          </Link>
+        </div>
+        <div className="space-y-3">
+          {courses.map((c) => {
+            const totalLessons = c.modules.reduce((s, m) => s + m.lessons.length, 0)
+            const completedCount = progress[c.id]?.completedLessonIds.length ?? 0
+            const pct = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0
+            const firstLesson = c.modules[0]?.lessons[0]
+            return (
+              <div
+                key={c.id}
+                className="flex items-center gap-4 p-3 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer group"
+                onClick={() => firstLesson && navigate(`/courses/${c.id}/lessons/${firstLesson.id}`)}
+              >
+                <div
+                  className="h-10 w-10 shrink-0 rounded-xl flex items-center justify-center text-white font-bold text-sm"
+                  style={{ background: c.coverColor }}
+                >
+                  {c.title.charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-800 truncate">{c.title}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary-500 rounded-full transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-slate-400 shrink-0">{completedCount}/{totalLessons}</span>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-primary-500 transition-colors shrink-0" />
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Main Dashboard Page
 // ---------------------------------------------------------------------------
 
@@ -1144,6 +1232,9 @@ export default function Dashboard() {
                 </div>
               </div>
             </motion.div>
+
+            {/* My Courses — enrolled courses with progress */}
+            <MyCourses />
 
             {/* Weekly tasks */}
             <WeeklyTasksSection />

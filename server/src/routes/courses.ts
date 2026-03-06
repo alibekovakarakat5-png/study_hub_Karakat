@@ -1,10 +1,8 @@
 import { Router } from 'express'
-import { prisma as _prisma } from '../lib/prisma'
+import { prisma } from '../lib/prisma'
 import { verifyToken, requireRole } from '../middleware/auth'
 
 const router = Router()
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const prisma = _prisma as any
 
 // ── Helper: parse course with full structure ──────────────────────────────────
 
@@ -38,6 +36,7 @@ router.get('/', async (req, res) => {
       const jwt = await import('jsonwebtoken')
       const payload = jwt.verify(token, process.env.JWT_SECRET ?? 'dev-secret') as { role: string }
       isAdmin = payload.role === 'admin'
+      void vt
     } catch { /* not authenticated */ }
   }
 
@@ -61,7 +60,7 @@ router.get('/', async (req, res) => {
 // ── GET /api/courses/:id ──────────────────────────────────────────────────────
 
 router.get('/:id', async (req, res) => {
-  const course = await fetchCourseWithStructure(req.params['id'])
+  const course = await fetchCourseWithStructure(String(req.params['id']))
   if (!course) { res.status(404).json({ error: 'Курс не найден' }); return }
   res.json({ course })
 })
@@ -95,7 +94,7 @@ router.post('/', verifyToken, requireRole('admin'), async (req, res) => {
 // modules is the full nested structure; we do a full replace
 
 router.put('/:id', verifyToken, requireRole('admin'), async (req, res) => {
-  const courseId = req.params['id']
+  const courseId = String(req.params['id'])
   const { title, description, subject, level, price, coverColor, isPublished, modules } = req.body as {
     title?: string; description?: string; subject?: string; level?: string
     price?: number; coverColor?: string; isPublished?: boolean
@@ -148,14 +147,14 @@ router.put('/:id', verifyToken, requireRole('admin'), async (req, res) => {
     }
   }
 
-  const updated = await fetchCourseWithStructure(String(courseId))
+  const updated = await fetchCourseWithStructure(courseId)
   res.json({ course: updated })
 })
 
 // ── DELETE /api/courses/:id (admin only) ──────────────────────────────────────
 
 router.delete('/:id', verifyToken, requireRole('admin'), async (req, res) => {
-  const courseId = req.params['id']
+  const courseId = String(req.params['id'])
   await prisma.course.delete({ where: { id: courseId } })
   res.json({ ok: true })
 })
@@ -164,7 +163,7 @@ router.delete('/:id', verifyToken, requireRole('admin'), async (req, res) => {
 
 router.post('/:id/enroll', verifyToken, async (req, res) => {
   const userId = (req as { userId?: string }).userId!
-  const courseId = req.params['id']
+  const courseId = String(req.params['id'])
 
   const existing = await prisma.courseEnrollment.findUnique({
     where: { courseId_userId: { courseId, userId } },
@@ -179,7 +178,7 @@ router.post('/:id/enroll', verifyToken, async (req, res) => {
 
 router.get('/:id/progress', verifyToken, async (req, res) => {
   const userId = (req as { userId?: string }).userId!
-  const courseId = req.params['id']
+  const courseId = String(req.params['id'])
 
   const enrollment = await prisma.courseEnrollment.findUnique({
     where: { courseId_userId: { courseId, userId } },
@@ -191,7 +190,7 @@ router.get('/:id/progress', verifyToken, async (req, res) => {
     where: { courseId },
     include: { lessons: { select: { id: true } } },
   })
-  const lessonIds = modules.flatMap((m: any) => m.lessons.map((l: any) => l.id as string))
+  const lessonIds = modules.flatMap((m) => m.lessons.map((l) => l.id))
 
   // Get completions
   const completions = await prisma.lessonCompletion.findMany({
@@ -201,7 +200,7 @@ router.get('/:id/progress', verifyToken, async (req, res) => {
 
   res.json({
     enrolled: true,
-    completedLessonIds: completions.map((c: any) => c.lessonId as string),
+    completedLessonIds: completions.map((c) => c.lessonId),
     completions,
   })
 })

@@ -105,6 +105,46 @@ export const adminApi = {
   getStats:  () => api.get<AdminStats>('/admin/stats'),
 }
 
+// ── Courses API ────────────────────────────────────────────────────────────────
+
+export interface DBLesson {
+  id: string
+  title: string
+  duration: number | null
+  order: number
+}
+
+export interface DBModule {
+  id: string
+  title: string
+  order: number
+  lessons: DBLesson[]
+}
+
+export interface DBCourse {
+  id: string
+  title: string
+  description: string
+  subject: string
+  level: 'beginner' | 'intermediate' | 'advanced'
+  price: number
+  coverColor: string
+  isPublished: boolean
+  modules: DBModule[]
+  _count?: { enrollments: number }
+  createdAt: string
+  updatedAt: string
+}
+
+export const coursesApi = {
+  list: () => api.get<{ courses: DBCourse[] }>('/courses'),
+  get: (id: string) => api.get<{ course: DBCourse }>(`/courses/${id}`),
+  enroll: (id: string) => api.post<{ enrolled: boolean; alreadyEnrolled?: boolean }>(`/courses/${id}/enroll`),
+  progress: (id: string) => api.get<{ enrolled: boolean; completedLessonIds: string[] }>(`/courses/${id}/progress`),
+  complete: (lessonId: string, quizScore?: number) =>
+    api.post<{ ok: boolean }>(`/courses/lessons/${lessonId}/complete`, { quizScore }),
+}
+
 export const contentApi = {
   /** Public: list active items (optionally filtered by type) */
   list: (type?: ContentType) =>
