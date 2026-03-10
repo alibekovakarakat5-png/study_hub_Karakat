@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma'
 import { signToken, verifyToken } from '../middleware/auth'
+import { tg } from '../lib/telegram'
 import type { Role } from '@prisma/client'
 
 const router = Router()
@@ -63,6 +64,9 @@ router.post('/register', async (req, res) => {
   })
 
   const token = signToken({ userId: user.id, role: user.role, email: user.email })
+
+  // Notify developer
+  tg.newUser(user.name, user.email, user.role, user.city)
 
   res.status(201).json({ user: safeUser(user), token })
 })

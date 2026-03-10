@@ -44,6 +44,8 @@ model User {
   entResults        EntResult[]
   enrollments       CourseEnrollment[]
   lessonCompletions LessonCompletion[]
+  subscriptions     Subscription[]
+  payments          Payment[]
 }
 
 model DiagnosticResult {
@@ -166,6 +168,57 @@ model LessonCompletion {
   completedAt DateTime @default(now())
 
   @@unique([lessonId, userId])
+}
+
+// ── Billing ───────────────────────────────────────────────────────────────────
+
+model Plan {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @default("")
+  price       Int      // KZT per period
+  period      String   // "month" | "year" | "forever"
+  features    Json     @default("[]") // { text: string, included: boolean }[]
+  isActive    Boolean  @default(true)
+  isPopular   Boolean  @default(false)
+  badge       String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id        String   @id @default(cuid())
+  userId    String
+  planId    String
+  status    String   // "active" | "expired" | "cancelled" | "trial"
+  startsAt  DateTime @default(now())
+  expiresAt DateTime
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan     Plan      @relation(fields: [planId], references: [id])
+  payments Payment[]
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  userId         String
+  subscriptionId String?
+  amount         Int           // KZT
+  currency       String        @default("KZT")
+  method         String        // "kaspi" | "transfer" | "cash" | "manual"
+  status         String        // "pending" | "success" | "failed" | "refunded"
+  reference      String?
+  notes          String?
+  createdAt      DateTime      @default(now())
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
 }
 
 // Content managed by admin — IELTS materials, mentor Q&As, vocab, ENT questions, curator topics

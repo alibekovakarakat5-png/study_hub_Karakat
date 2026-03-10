@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -13,18 +14,29 @@ import {
   Sparkles,
   Star,
   Zap,
+  Loader2,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { cn } from '@/lib/utils'
 import { openWhatsApp, buildPricingMessage } from '@/lib/whatsapp'
+import { plansApi } from '@/lib/api'
+import type { DBPlan } from '@/lib/api'
 
-const plans = [
+// ── Fallback plans (shown when server is offline) ─────────────────────────────
+
+const FALLBACK_PLANS: DBPlan[] = [
   {
     id: 'free',
     name: 'Бесплатный',
-    price: '0 ₸',
-    period: 'навсегда',
     description: 'Начни свой путь к поступлению',
+    price: 0,
+    period: 'forever',
+    isActive: true,
+    isPopular: false,
+    badge: null,
+    order: 0,
+    createdAt: '',
+    updatedAt: '',
     features: [
       { text: 'Диагностический тест', included: true },
       { text: 'Базовый учебный план', included: true },
@@ -37,15 +49,19 @@ const plans = [
       { text: 'Детальная аналитика', included: false },
       { text: 'Приоритетная поддержка', included: false },
     ],
-    cta: 'Текущий план',
-    popular: false,
   },
   {
     id: 'premium',
     name: 'Премиум',
-    price: '4 990 ₸',
-    period: '/месяц',
     description: 'Максимальные шансы на поступление',
+    price: 4990,
+    period: 'month',
+    isActive: true,
+    isPopular: true,
+    badge: null,
+    order: 1,
+    createdAt: '',
+    updatedAt: '',
     features: [
       { text: 'Диагностический тест', included: true },
       { text: 'Расширенный учебный план', included: true },
@@ -58,15 +74,19 @@ const plans = [
       { text: 'Еженедельные отчёты', included: true },
       { text: 'Приоритетная поддержка', included: true },
     ],
-    cta: 'Подключить Премиум',
-    popular: true,
   },
   {
     id: 'annual',
     name: 'Премиум Годовой',
-    price: '39 990 ₸',
-    period: '/год',
     description: 'Экономия 33% — лучшая инвестиция',
+    price: 39990,
+    period: 'year',
+    isActive: true,
+    isPopular: false,
+    badge: 'Выгодно',
+    order: 2,
+    createdAt: '',
+    updatedAt: '',
     features: [
       { text: 'Всё из Премиум', included: true },
       { text: 'Экономия 19 890 ₸ в год', included: true },
@@ -75,11 +95,21 @@ const plans = [
       { text: 'Доступ к вебинарам', included: true },
       { text: 'Гарантия результата', included: true },
     ],
-    cta: 'Выбрать годовой',
-    popular: false,
-    badge: 'Выгодно',
   },
 ]
+
+function formatPrice(plan: DBPlan): { price: string; period: string } {
+  if (plan.price === 0) return { price: '0 ₸', period: 'навсегда' }
+  const p = plan.price.toLocaleString('ru-RU')
+  const period = plan.period === 'month' ? '/месяц' : plan.period === 'year' ? '/год' : ''
+  return { price: `${p} ₸`, period }
+}
+
+function getCta(plan: DBPlan): string {
+  if (plan.price === 0) return 'Текущий план'
+  if (plan.period === 'year') return 'Выбрать годовой'
+  return `Подключить ${plan.name}`
+}
 
 const testimonials = [
   {
@@ -105,13 +135,25 @@ const testimonials = [
 export default function Pricing() {
   const navigate = useNavigate()
   const { user } = useStore()
+  const [plans, setPlans] = useState<DBPlan[]>(FALLBACK_PLANS)
+  const [loading, setLoading] = useState(true)
 
-  const handleSubscribe = (planId: string) => {
-    if (planId === 'free') return
-    const plan = plans.find((p) => p.id === planId)
-    const planLabel = plan ? `${plan.name} — ${plan.price}${plan.period}` : planId
-    openWhatsApp(buildPricingMessage(planLabel))
+  useEffect(() => {
+    plansApi.list()
+      .then(({ plans: data }) => {
+        if (data.length > 0) setPlans(data)
+      })
+      .catch(() => {/* keep fallback */})
+      .finally(() => setLoading(false))
+  }, [])
+
+  const handleSubscribe = (plan: DBPlan) => {
+    if (plan.price === 0) return
+    const { price, period } = formatPrice(plan)
+    openWhatsApp(buildPricingMessage(`${plan.name} — ${price}${period}`))
   }
+
+  const premiumPlan = plans.find(p => p.price > 0 && p.period === 'month') ?? plans[1]
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -143,72 +185,82 @@ export default function Pricing() {
 
       {/* Plans */}
       <div className="max-w-6xl mx-auto px-4 -mt-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {plans.map((plan, index) => (
-            <motion.div
-              key={plan.id}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className={cn(
-                'bg-white rounded-2xl shadow-sm overflow-hidden relative',
-                plan.popular && 'ring-2 ring-primary-500 shadow-lg shadow-primary-100 scale-105 z-10'
-              )}
-            >
-              {plan.popular && (
-                <div className="gradient-primary text-white text-center py-2 text-sm font-medium flex items-center justify-center gap-1">
-                  <Sparkles className="w-4 h-4" />
-                  Самый популярный
-                </div>
-              )}
-              {plan.badge && !plan.popular && (
-                <div className="bg-accent-500 text-white text-center py-2 text-sm font-medium">
-                  {plan.badge}
-                </div>
-              )}
-
-              <div className="p-8">
-                <h3 className="text-xl font-bold text-slate-800">{plan.name}</h3>
-                <p className="text-sm text-slate-500 mt-1">{plan.description}</p>
-
-                <div className="mt-6 flex items-baseline gap-1">
-                  <span className="text-4xl font-bold text-slate-900">{plan.price}</span>
-                  <span className="text-slate-500">{plan.period}</span>
-                </div>
-
-                <button
-                  onClick={() => handleSubscribe(plan.id)}
-                  disabled={plan.id === 'free' && (!user || !user.isPremium)}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {plans.map((plan, index) => {
+              const { price, period } = formatPrice(plan)
+              const cta = getCta(plan)
+              return (
+                <motion.div
+                  key={plan.id}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
                   className={cn(
-                    'w-full mt-6 py-3 rounded-xl font-medium transition-all text-sm',
-                    plan.popular
-                      ? 'gradient-primary text-white hover:shadow-lg hover:shadow-primary-200'
-                      : plan.id === 'free'
-                        ? 'bg-slate-100 text-slate-500 cursor-default'
-                        : 'bg-slate-900 text-white hover:bg-slate-800'
+                    'bg-white rounded-2xl shadow-sm overflow-hidden relative',
+                    plan.isPopular && 'ring-2 ring-primary-500 shadow-lg shadow-primary-100 scale-105 z-10'
                   )}
                 >
-                  {plan.cta}
-                </button>
+                  {plan.isPopular && (
+                    <div className="gradient-primary text-white text-center py-2 text-sm font-medium flex items-center justify-center gap-1">
+                      <Sparkles className="w-4 h-4" />
+                      Самый популярный
+                    </div>
+                  )}
+                  {plan.badge && !plan.isPopular && (
+                    <div className="bg-accent-500 text-white text-center py-2 text-sm font-medium">
+                      {plan.badge}
+                    </div>
+                  )}
 
-                <ul className="mt-8 space-y-3">
-                  {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-3 text-sm">
-                      {feature.included ? (
-                        <Check className="w-4 h-4 text-accent-500 shrink-0" />
-                      ) : (
-                        <div className="w-4 h-4 rounded-full border-2 border-slate-200 shrink-0" />
+                  <div className="p-8">
+                    <h3 className="text-xl font-bold text-slate-800">{plan.name}</h3>
+                    <p className="text-sm text-slate-500 mt-1">{plan.description}</p>
+
+                    <div className="mt-6 flex items-baseline gap-1">
+                      <span className="text-4xl font-bold text-slate-900">{price}</span>
+                      <span className="text-slate-500">{period}</span>
+                    </div>
+
+                    <button
+                      onClick={() => handleSubscribe(plan)}
+                      disabled={plan.price === 0 && (!user || !user.isPremium)}
+                      className={cn(
+                        'w-full mt-6 py-3 rounded-xl font-medium transition-all text-sm',
+                        plan.isPopular
+                          ? 'gradient-primary text-white hover:shadow-lg hover:shadow-primary-200'
+                          : plan.price === 0
+                            ? 'bg-slate-100 text-slate-500 cursor-default'
+                            : 'bg-slate-900 text-white hover:bg-slate-800'
                       )}
-                      <span className={feature.included ? 'text-slate-700' : 'text-slate-400'}>
-                        {feature.text}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+                    >
+                      {cta}
+                    </button>
+
+                    <ul className="mt-8 space-y-3">
+                      {(plan.features as { text: string; included: boolean }[]).map((feature, i) => (
+                        <li key={i} className="flex items-center gap-3 text-sm">
+                          {feature.included ? (
+                            <Check className="w-4 h-4 text-accent-500 shrink-0" />
+                          ) : (
+                            <div className="w-4 h-4 rounded-full border-2 border-slate-200 shrink-0" />
+                          )}
+                          <span className={feature.included ? 'text-slate-700' : 'text-slate-400'}>
+                            {feature.text}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </motion.div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Features Detail */}
@@ -306,12 +358,14 @@ export default function Pricing() {
           <p className="text-white/70 mt-3">
             Каждый день без подготовки — это упущенная возможность. Не жди — действуй.
           </p>
-          <button
-            onClick={() => handleSubscribe('premium')}
-            className="mt-8 px-8 py-4 bg-white text-primary-700 font-bold rounded-xl hover:shadow-xl transition-all text-lg"
-          >
-            Подключить Премиум — 4 990 ₸/мес
-          </button>
+          {premiumPlan && (
+            <button
+              onClick={() => handleSubscribe(premiumPlan)}
+              className="mt-8 px-8 py-4 bg-white text-primary-700 font-bold rounded-xl hover:shadow-xl transition-all text-lg"
+            >
+              {getCta(premiumPlan)} — {formatPrice(premiumPlan).price}{formatPrice(premiumPlan).period}
+            </button>
+          )}
           <p className="text-sm text-white/50 mt-3">Отмена в любой момент · 30 дней гарантии</p>
         </div>
       </div>

@@ -12,6 +12,9 @@ import entResultsRoutes    from './routes/entResults'
 import contentRoutes       from './routes/content'
 import admissionsRoutes    from './routes/admissions'
 import coursesRoutes       from './routes/courses'
+import plansRoutes         from './routes/plans'
+import billingRoutes       from './routes/billing'
+import { tg }              from './lib/telegram'
 
 const app = express()
 
@@ -36,6 +39,8 @@ app.use('/api/ent-results',     entResultsRoutes)
 app.use('/api/content',         contentRoutes)
 app.use('/api/admissions',      admissionsRoutes)
 app.use('/api/courses',         coursesRoutes)
+app.use('/api/plans',           plansRoutes)
+app.use('/api/billing',         billingRoutes)
 
 // ── Health check ──────────────────────────────────────────────────────────────
 
@@ -54,6 +59,7 @@ app.use((_req, res) => {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error('[Error]', err.message)
+  tg.error(err.message, err.stack)
   res.status(500).json({ error: 'Внутренняя ошибка сервера' })
 })
 

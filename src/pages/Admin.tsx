@@ -60,6 +60,7 @@ import { useContentStore } from '@/store/useContentStore'
 import { getToken } from '@/lib/api'
 import CourseBuilderComponent from '@/components/admin/CourseBuilder'
 import type { CourseData } from '@/components/admin/CourseBuilder'
+import BillingPanel from '@/components/admin/BillingPanel'
 import type { CustomMaterial, CustomQA, CustomVocabWord } from '@/store/useContentStore'
 import { VOCAB_TOPICS } from '@/data/ieltsContent'
 import type { AbroadUniversity } from '@/data/universityAdvisor'
@@ -1486,7 +1487,7 @@ const EMPTY_STATS: AdminStats = {
 export default function Admin() {
   const navigate = useNavigate()
   const { user, logout } = useStore()
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'revenue' | 'content' | 'courses'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'revenue' | 'content' | 'courses' | 'billing'>('overview')
   const [stats, setStats] = useState<AdminStats>(EMPTY_STATS)
   const [statsLoading, setStatsLoading] = useState(true)
 
@@ -1528,6 +1529,7 @@ export default function Admin() {
     { id: 'revenue' as const, label: 'Доходы' },
     { id: 'content' as const, label: 'Контент' },
     { id: 'courses' as const, label: 'Курсы' },
+    { id: 'billing' as const, label: '💳 Биллинг' },
   ]
 
   const handleLogout = () => {
@@ -1848,6 +1850,10 @@ export default function Admin() {
 
         {activeTab === 'courses' && (
           <CourseManager />
+        )}
+
+        {activeTab === 'billing' && (
+          <ErrorBoundary><BillingPanel /></ErrorBoundary>
         )}
       </div>
     </div>

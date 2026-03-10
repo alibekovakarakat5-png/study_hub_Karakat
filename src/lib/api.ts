@@ -145,6 +145,99 @@ export const coursesApi = {
     api.post<{ ok: boolean }>(`/courses/lessons/${lessonId}/complete`, { quizScore }),
 }
 
+// ── Plans API ──────────────────────────────────────────────────────────────────
+
+export interface PlanFeature {
+  text:     string
+  included: boolean
+}
+
+export interface DBPlan {
+  id:          string
+  name:        string
+  description: string
+  price:       number
+  period:      'month' | 'year' | 'forever'
+  features:    PlanFeature[]
+  isActive:    boolean
+  isPopular:   boolean
+  badge:       string | null
+  order:       number
+  createdAt:   string
+  updatedAt:   string
+}
+
+export const plansApi = {
+  list:    ()                              => api.get<{ plans: DBPlan[] }>('/plans'),
+  listAll: ()                              => api.get<{ plans: DBPlan[] }>('/plans/all'),
+  create:  (body: Partial<DBPlan>)         => api.post<{ plan: DBPlan }>('/plans', body),
+  update:  (id: string, b: Partial<DBPlan>) => api.put<{ plan: DBPlan }>(`/plans/${id}`, b),
+  remove:  (id: string)                    => api.del<{ ok: boolean }>(`/plans/${id}`),
+}
+
+// ── Billing API ────────────────────────────────────────────────────────────────
+
+export interface DBSubscription {
+  id:        string
+  userId:    string
+  planId:    string
+  status:    'active' | 'expired' | 'cancelled' | 'trial'
+  startsAt:  string
+  expiresAt: string
+  notes:     string | null
+  createdAt: string
+  user:      { id: string; name: string; email: string }
+  plan:      { id: string; name: string; period: string }
+  payments?: DBPayment[]
+}
+
+export interface DBPayment {
+  id:             string
+  userId:         string
+  subscriptionId: string | null
+  amount:         number
+  currency:       string
+  method:         'kaspi' | 'transfer' | 'cash' | 'manual'
+  status:         'pending' | 'success' | 'failed' | 'refunded'
+  reference:      string | null
+  notes:          string | null
+  createdAt:      string
+  user:           { id: string; name: string; email: string }
+  subscription:   { plan: { name: string } } | null
+}
+
+export interface BillingStats {
+  totalRevenue:        number
+  monthRevenue:        number
+  activeSubscriptions: number
+  totalSubscriptions:  number
+}
+
+export const billingApi = {
+  getSubscriptions: (params?: { status?: string; userId?: string }) => {
+    const q = params ? new URLSearchParams(params as Record<string, string>).toString() : ''
+    return api.get<{ subscriptions: DBSubscription[] }>(`/billing/subscriptions${q ? `?${q}` : ''}`)
+  },
+  createSubscription: (body: {
+    userId: string; planId: string; status?: string
+    startsAt?: string; expiresAt: string; notes?: string
+  }) => api.post<{ subscription: DBSubscription }>('/billing/subscriptions', body),
+  updateSubscription: (id: string, body: { status?: string; notes?: string; expiresAt?: string }) =>
+    api.put<{ subscription: DBSubscription }>(`/billing/subscriptions/${id}`, body),
+
+  getPayments: (params?: { status?: string; userId?: string }) => {
+    const q = params ? new URLSearchParams(params as Record<string, string>).toString() : ''
+    return api.get<{ payments: DBPayment[]; totalRevenue: number }>(`/billing/payments${q ? `?${q}` : ''}`)
+  },
+  createPayment: (body: {
+    userId: string; subscriptionId?: string; amount: number
+    method: string; status?: string; reference?: string; notes?: string
+  }) => api.post<{ payment: DBPayment }>('/billing/payments', body),
+
+  getStats:       () => api.get<BillingStats>('/billing/stats'),
+  mySubscription: () => api.get<{ subscription: DBSubscription | null }>('/billing/my'),
+}
+
 export const contentApi = {
   /** Public: list active items (optionally filtered by type) */
   list: (type?: ContentType) =>
