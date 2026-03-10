@@ -17,6 +17,9 @@ import {
   type AdvisorInputs,
 } from '@/data/universityAdvisor'
 import { useContentStore } from '@/store/useContentStore'
+import { useStore } from '@/store/useStore'
+import { usePracticeEntStore } from '@/store/usePracticeEntStore'
+import { estimateEntScore } from '@/lib/recommendations'
 
 // ── Step types ────────────────────────────────────────────────────────────────
 
@@ -63,12 +66,20 @@ const inputCls =
 export default function UniversityAdvisor() {
   const navigate = useNavigate()
   const customUniversities = useContentStore(s => s.universities)
+  const { diagnosticResult } = useStore()
+  const { history: entHistory } = usePracticeEntStore()
+
+  // Pre-fill scores from actual user data
+  const prefillEntScore = useMemo(
+    () => estimateEntScore(diagnosticResult, entHistory),
+    [diagnosticResult, entHistory],
+  )
 
   const [step, setStep]     = useState<Step>('scores')
   const [expanded, setExpanded] = useState<string | null>(null)
   const [inputs, setInputs] = useState<AdvisorInputs>({
     ielts:     0,
-    entScore:  0,
+    entScore:  prefillEntScore,
     budgetUSD: 15000,
     countries: [],
     specialty: '',
@@ -192,10 +203,17 @@ export default function UniversityAdvisor() {
 
                 {/* ENT */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Балл ЕНТ
-                    <span className="ml-2 text-xs font-normal text-gray-400">(0–140, 0 = не сдавал)</span>
-                  </label>
+                  <div className="flex items-center gap-2 mb-1">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Балл ЕНТ
+                      <span className="ml-2 text-xs font-normal text-gray-400">(0–140, 0 = не сдавал)</span>
+                    </label>
+                    {prefillEntScore > 0 && (
+                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                        ✓ Из твоих результатов
+                      </span>
+                    )}
+                  </div>
                   <div className="flex gap-3 items-center">
                     <input
                       type="number" min={0} max={140}

@@ -74,6 +74,7 @@ interface PracticeEntState {
   tick: () => void                    // called every second by timer
   finishExam: () => void
   reviewQuestion: (blockIndex: number, questionIndex: number) => void
+  reviewErrors: () => void
   resetSession: () => void
 }
 
@@ -309,6 +310,10 @@ export const usePracticeEntStore = create<PracticeEntState>()(
           currentBlockIndex: blockIndex,
           currentQuestionIndex: questionIndex,
         })
+      },
+
+      reviewErrors: () => {
+        set({ phase: 'errors', currentBlockIndex: 0, currentQuestionIndex: 0 })
       },
 
       resetSession: () =>

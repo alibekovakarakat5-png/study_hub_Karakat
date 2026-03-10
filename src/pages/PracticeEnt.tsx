@@ -6,21 +6,19 @@ import {
   ArrowRight,
   Clock,
   CheckCircle2,
-  Circle,
   Flag,
   ChevronLeft,
   ChevronRight,
   RotateCcw,
   Trophy,
   AlertTriangle,
-  BookOpen,
-  Target,
-  BarChart3,
-  Sparkles,
   Timer,
   Eye,
   X,
+  XCircle,
 } from 'lucide-react'
+import { api } from '@/lib/api'
+import { useStore } from '@/store/useStore'
 import { usePracticeEntStore } from '@/store/usePracticeEntStore'
 import { useCuratorStore } from '@/store/useCuratorStore'
 import { curatorContent } from '@/data/curatorContent'
@@ -383,7 +381,37 @@ function ExamPhase() {
 // ── Results Phase ───────────────────────────────────────────────────────────
 
 function ResultsPhase() {
-  const { currentResult, resetSession, reviewQuestion, profileSubject1, profileSubject2 } = usePracticeEntStore()
+  const { currentResult, resetSession, reviewQuestion, reviewErrors, profileSubject1, profileSubject2 } = usePracticeEntStore()
+  const { user, updateUser } = useStore()
+
+  // Save result to DB + update streak once per result
+  useEffect(() => {
+    if (!currentResult || !user) return
+
+    // Save ENT result to DB (fire-and-forget)
+    api.post('/ent-results', {
+      totalScore:   currentResult.totalCorrect,
+      percentage:   currentResult.percentage,
+      blockResults: currentResult.blocks,
+    }).catch(() => { /* silently ignore if offline */ })
+
+    // Auto-streak: increment if last active was yesterday, reset if 2+ days ago
+    const today = new Date().toDateString()
+    const lastActive = user.lastActiveDate ? new Date(user.lastActiveDate).toDateString() : null
+
+    if (lastActive === today) return // already counted today
+
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    const wasYesterday = lastActive === yesterday.toDateString()
+
+    const newStreak = wasYesterday ? (user.streak ?? 0) + 1 : 1
+    const newLastActive = new Date().toISOString()
+
+    api.put('/users/me', { streak: newStreak, lastActiveDate: newLastActive }).catch(() => {})
+    updateUser({ streak: newStreak, lastActiveDate: newLastActive })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentResult?.id])
 
   if (!currentResult) return null
 
@@ -422,11 +450,17 @@ function ResultsPhase() {
       <WeakTopicsRecommendations blocks={r.blocks} s1={profileSubject1} s2={profileSubject2} />
 
       {/* Actions */}
-      <motion.div variants={fadeUp} className="flex gap-3">
-        <button onClick={resetSession} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-3 font-medium text-gray-700 transition-colors hover:bg-gray-50">
+      <motion.div variants={fadeUp} className="grid gap-3 sm:grid-cols-3">
+        <button onClick={resetSession} className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-3 font-medium text-gray-700 transition-colors hover:bg-gray-50">
           <RotateCcw className="h-4 w-4" /> Новая попытка
         </button>
-        <Link to="/dashboard" className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 font-medium text-white transition-colors hover:bg-blue-700">
+        <button
+          onClick={reviewErrors}
+          className="flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 py-3 font-medium text-red-600 transition-colors hover:bg-red-100"
+        >
+          <XCircle className="h-4 w-4" /> Работа над ошибками
+        </button>
+        <Link to="/dashboard" className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 font-medium text-white transition-colors hover:bg-blue-700">
           На главную <ArrowRight className="h-4 w-4" />
         </Link>
       </motion.div>
@@ -626,6 +660,143 @@ function ReviewPhase() {
   )
 }
 
+// ── Errors Phase — only wrong / unanswered questions ────────────────────────
+
+function ErrorsPhase() {
+  const { exam, answers, currentBlockIndex, currentQuestionIndex, navigateTo, setPhase, profileSubject1, profileSubject2 } = usePracticeEntStore()
+
+  if (!exam) return null
+
+  // Build flat list of wrong/unanswered question pointers
+  const wrongItems = useMemo(() => {
+    const items: { bi: number; qi: number }[] = []
+    exam.blocks.forEach((block, bi) => {
+      block.questions.forEach((q, qi) => {
+        const a = answers[q.id]
+        if (!a || a.selectedAnswer === null || a.selectedAnswer !== q.correctAnswer) {
+          items.push({ bi, qi })
+        }
+      })
+    })
+    return items
+  }, [exam, answers])
+
+  if (wrongItems.length === 0) {
+    return (
+      <div className="mx-auto max-w-2xl py-20 text-center">
+        <CheckCircle2 className="mx-auto mb-4 h-16 w-16 text-emerald-500" />
+        <h2 className="text-2xl font-bold text-gray-900">Ошибок нет!</h2>
+        <p className="mt-2 text-gray-500">Вы ответили правильно на все вопросы. Отличная работа!</p>
+        <button onClick={() => setPhase('results')} className="mt-6 rounded-xl bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700">
+          К результатам
+        </button>
+      </div>
+    )
+  }
+
+  // Find current index in wrongItems list
+  const currentWrongIdx = wrongItems.findIndex(
+    w => w.bi === currentBlockIndex && w.qi === currentQuestionIndex,
+  )
+  // If navigated away from error list, show first
+  const activeIdx = currentWrongIdx >= 0 ? currentWrongIdx : 0
+  const { bi, qi } = wrongItems[activeIdx]
+
+  const block = exam.blocks[bi]
+  const question = block.questions[qi]
+  const answer = answers[question.id]
+  const isCorrectAnswer = (i: number) => question.correctAnswer === i
+  const isUserAnswer = (i: number) => answer.selectedAnswer === i
+
+  const goNext = () => {
+    if (activeIdx < wrongItems.length - 1) {
+      const next = wrongItems[activeIdx + 1]
+      navigateTo(next.bi, next.qi)
+    }
+  }
+  const goPrev = () => {
+    if (activeIdx > 0) {
+      const prev = wrongItems[activeIdx - 1]
+      navigateTo(prev.bi, prev.qi)
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-4">
+      {/* Top bar */}
+      <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+        <span className="text-sm font-medium text-red-700">
+          Работа над ошибками — {activeIdx + 1} / {wrongItems.length}
+        </span>
+        <button onClick={() => setPhase('results')} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
+          <X className="h-4 w-4" /> К результатам
+        </button>
+      </div>
+
+      {/* Subject label */}
+      <div className="text-xs font-semibold uppercase" style={{ color: BLOCK_COLORS[block.block] }}>
+        {getBlockLabel(block.block, profileSubject1, profileSubject2)}
+      </div>
+
+      {/* Question */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={question.id}
+          initial={{ opacity: 0, x: 30 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -30 }}
+          transition={{ duration: 0.2 }}
+          className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+        >
+          <p className="mb-6 text-lg leading-relaxed text-gray-900 whitespace-pre-line">{question.text}</p>
+
+          <div className="space-y-3">
+            {question.options.map((opt, i) => {
+              const letter = String.fromCharCode(65 + i)
+              let classes = 'border-gray-200 bg-white'
+              if (isCorrectAnswer(i)) classes = 'border-emerald-500 bg-emerald-50'
+              if (isUserAnswer(i) && !isCorrectAnswer(i)) classes = 'border-red-500 bg-red-50'
+
+              return (
+                <div key={i} className={`flex items-center gap-3 rounded-xl border-2 px-4 py-3 ${classes}`}>
+                  <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${isCorrectAnswer(i) ? 'bg-emerald-500 text-white' : isUserAnswer(i) ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                    {letter}
+                  </span>
+                  <span className="flex-1 text-gray-800">{opt}</span>
+                  {isCorrectAnswer(i) && <CheckCircle2 className="h-5 w-5 text-emerald-500" />}
+                  {isUserAnswer(i) && !isCorrectAnswer(i) && <X className="h-5 w-5 text-red-500" />}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Explanation */}
+          <div className="mt-4 rounded-lg bg-amber-50 p-4">
+            <div className="mb-1 text-sm font-semibold text-amber-800">Объяснение</div>
+            <p className="text-sm text-gray-700">{question.explanation}</p>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Navigation */}
+      <div className="flex items-center justify-between">
+        <button onClick={goPrev} disabled={activeIdx === 0} className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-30">
+          <ChevronLeft className="h-4 w-4" /> Назад
+        </button>
+        {activeIdx < wrongItems.length - 1 ? (
+          <button onClick={goNext} className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+            Следующая ошибка <ChevronRight className="h-4 w-4" />
+          </button>
+        ) : (
+          <button onClick={() => setPhase('results')} className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
+            <CheckCircle2 className="h-4 w-4" /> Готово
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Main Component ──────────────────────────────────────────────────────────
 
 export default function PracticeEnt() {
@@ -637,6 +808,7 @@ export default function PracticeEnt() {
       {phase === 'exam' && <ExamPhase />}
       {phase === 'results' && <ResultsPhase />}
       {phase === 'review' && <ReviewPhase />}
+      {phase === 'errors' && <ErrorsPhase />}
     </div>
   )
 }

@@ -53,6 +53,7 @@ import {
   formatDate,
 } from '@/lib/utils'
 import NotificationDropdown from '@/components/NotificationDropdown'
+import RecommendationsWidget from '@/components/RecommendationsWidget'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { useTranslation } from 'react-i18next'
 import { coursesApi, type DBCourse } from '@/lib/api'
@@ -1154,6 +1155,11 @@ export default function Dashboard() {
               </Link>
             </motion.div>
 
+            {/* Smart Recommendations */}
+            <motion.div variants={cardVariants} className="sm:col-span-2 xl:col-span-12">
+              <RecommendationsWidget />
+            </motion.div>
+
             {/* Practice ENT CTA */}
             <motion.div variants={cardVariants} className="sm:col-span-2 xl:col-span-12">
               <Link to="/practice-ent">
@@ -1168,6 +1174,35 @@ export default function Dashboard() {
                       <p className="text-sm text-white/70">{t('dashboard.practice_ent_subtitle')}</p>
                     </div>
                     <ArrowRight className="h-5 w-5 text-white/60 transition-transform group-hover:translate-x-1" />
+                  </div>
+                </div>
+              </Link>
+            </motion.div>
+
+            {/* Daily Challenge CTA */}
+            <motion.div variants={cardVariants} className="sm:col-span-2 xl:col-span-12">
+              <Link to="/daily-challenge">
+                <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 p-6 text-white transition-all hover:shadow-xl hover:shadow-amber-200">
+                  <div className="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/10 transition-transform group-hover:scale-150" />
+                  <div className="relative flex items-center gap-5">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20">
+                      <Zap className="h-7 w-7" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="mb-0.5 flex items-center gap-2">
+                        <h3 className="text-lg font-bold">Ежедневный челлендж</h3>
+                        <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">10 вопросов</span>
+                      </div>
+                      <p className="text-sm text-white/70">Вопросы по твоим слабым темам · +1 к серии</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      {user?.streak ? (
+                        <div className="flex items-center gap-1 rounded-full bg-white/20 px-2 py-1 text-xs font-semibold">
+                          <Flame className="h-3.5 w-3.5" /> {user.streak}д
+                        </div>
+                      ) : null}
+                      <ArrowRight className="h-5 w-5 text-white/60 transition-transform group-hover:translate-x-1" />
+                    </div>
                   </div>
                 </div>
               </Link>

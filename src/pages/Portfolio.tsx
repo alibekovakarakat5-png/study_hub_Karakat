@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeft,
   Award,
@@ -17,11 +17,22 @@ import {
   Trophy,
   Clock,
   Target,
+  ChevronRight,
+  Sparkles,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
+import { usePracticeEntStore } from '@/store/usePracticeEntStore'
 import { SUBJECT_NAMES, SUBJECT_COLORS } from '@/types'
 import type { Subject } from '@/types'
 import { cn, formatDate, minutesToHumanReadable } from '@/lib/utils'
+import {
+  detectProfileType,
+  computeUniMatches,
+  estimateEntScore,
+  getStrongSubjects,
+  getWeakSubjects,
+  generateRecommendations,
+} from '@/lib/recommendations'
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -32,8 +43,17 @@ const fadeInUp = {
 export default function Portfolio() {
   const navigate = useNavigate()
   const { user, diagnosticResult, studyPlan, achievements } = useStore()
+  const { history: entHistory } = usePracticeEntStore()
   const [activeTab, setActiveTab] = useState<'overview' | 'skills' | 'achievements' | 'activity'>('overview')
   const [copied, setCopied] = useState(false)
+
+  // Smart data
+  const profileType = useMemo(() => detectProfileType(diagnosticResult, entHistory), [diagnosticResult, entHistory])
+  const entScore = useMemo(() => estimateEntScore(diagnosticResult, entHistory), [diagnosticResult, entHistory])
+  const strongSubjects = useMemo(() => getStrongSubjects(diagnosticResult, entHistory), [diagnosticResult, entHistory])
+  const weakSubjects = useMemo(() => getWeakSubjects(diagnosticResult, entHistory), [diagnosticResult, entHistory])
+  const uniMatches = useMemo(() => computeUniMatches(entScore, undefined, ['KZ']).slice(0, 4), [entScore])
+  const nextSteps = useMemo(() => generateRecommendations({ user, diagnostic: diagnosticResult, entHistory, studyPlan }).slice(0, 3), [user, diagnosticResult, entHistory, studyPlan])
 
   const handleShare = () => {
     if (!user) return
@@ -256,6 +276,120 @@ export default function Portfolio() {
                 </div>
               </div>
             )}
+
+            {/* ── Profile Type Card ── */}
+            <div className="md:col-span-1 lg:col-span-1 bg-gradient-to-br from-violet-600 to-purple-700 rounded-2xl p-6 text-white shadow-sm">
+              <div className="text-3xl mb-2">{profileType.icon}</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-white/60 mb-1">Твой профиль</div>
+              <h3 className="text-xl font-bold mb-2">{profileType.title}</h3>
+              <p className="text-sm text-white/80 mb-4 leading-snug">{profileType.description}</p>
+              <div className="space-y-1">
+                {profileType.careerExamples.slice(0, 3).map(c => (
+                  <div key={c} className="flex items-center gap-2 text-sm text-white/80">
+                    <span className="h-1.5 w-1.5 rounded-full bg-white/60 shrink-0" />
+                    {c}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Strong / Weak subjects ── */}
+            <div className="md:col-span-1 lg:col-span-1 bg-white rounded-2xl p-6 shadow-sm">
+              <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-amber-500" /> Сильные и слабые
+              </h3>
+              {strongSubjects.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-xs font-semibold text-emerald-600 uppercase mb-2">Сила</p>
+                  <div className="space-y-1.5">
+                    {strongSubjects.slice(0, 2).map(s => (
+                      <div key={s.subject} className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: SUBJECT_COLORS[s.subject as Subject] ?? '#6366f1' }} />
+                        <span className="text-sm text-slate-700 flex-1">{SUBJECT_NAMES[s.subject as Subject] ?? s.subject}</span>
+                        <span className="text-xs font-bold text-emerald-600">{s.pct}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {weakSubjects.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-red-500 uppercase mb-2">Нужно подтянуть</p>
+                  <div className="space-y-1.5">
+                    {weakSubjects.slice(0, 2).map(s => (
+                      <div key={s.subject} className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-red-400 shrink-0" />
+                        <span className="text-sm text-slate-700 flex-1">{SUBJECT_NAMES[s.subject as Subject] ?? s.subject}</span>
+                        <span className="text-xs font-bold text-red-500">{s.pct}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {strongSubjects.length === 0 && weakSubjects.length === 0 && (
+                <p className="text-sm text-slate-400">Пройди диагностику или пробный ЕНТ для анализа</p>
+              )}
+            </div>
+
+            {/* ── University Match ── */}
+            <div className="md:col-span-2 lg:col-span-1 bg-white rounded-2xl p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-slate-800">Подходящие вузы</h3>
+                <Link to="/university-advisor" className="text-xs text-primary-600 hover:underline flex items-center gap-1">
+                  Все <ChevronRight className="h-3 w-3" />
+                </Link>
+              </div>
+              {entScore > 0 ? (
+                <div className="space-y-2">
+                  {uniMatches.map(u => {
+                    const color = u.status === 'safety' ? 'text-emerald-600 bg-emerald-50'
+                      : u.status === 'target' ? 'text-blue-600 bg-blue-50'
+                      : u.status === 'reach' ? 'text-amber-600 bg-amber-50'
+                      : 'text-red-500 bg-red-50'
+                    const label = u.status === 'safety' ? 'Реально' : u.status === 'target' ? 'Цель' : u.status === 'reach' ? 'Сложно' : 'Мечта'
+                    return (
+                      <div key={u.name} className="flex items-center gap-2 rounded-lg border border-slate-100 px-3 py-2">
+                        <span className="text-base">{u.flag}</span>
+                        <span className="text-sm font-medium text-slate-800 flex-1 truncate">{u.name}</span>
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${color}`}>{label}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-sm text-slate-400 mb-3">Пройди тест чтобы увидеть подходящие вузы</p>
+                  <Link to="/diagnostic" className="text-xs font-semibold text-primary-600 hover:underline">
+                    Диагностика →
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* ── Next Steps ── */}
+            <div className="md:col-span-2 lg:col-span-3 bg-white rounded-2xl p-6 shadow-sm">
+              <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                <Target className="h-4 w-4 text-primary-600" /> Следующие шаги
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {nextSteps.map(step => (
+                  <Link
+                    key={step.id}
+                    to={step.href}
+                    className="flex items-start gap-3 rounded-xl border border-slate-200 p-4 hover:border-primary-300 hover:bg-primary-50 transition-all group"
+                  >
+                    <span className="text-xl">{step.icon}</span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-800 leading-snug">{step.title}</p>
+                      <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{step.description}</p>
+                      <span className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-primary-600 group-hover:underline">
+                        {step.cta} <ChevronRight className="h-3 w-3" />
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
 
             {/* Recent Activity */}
             <div className="md:col-span-2 lg:col-span-3 bg-white rounded-2xl p-6 shadow-sm">

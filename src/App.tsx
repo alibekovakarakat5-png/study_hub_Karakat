@@ -22,6 +22,7 @@ import Internships from '@/pages/Internships'
 import Support from '@/pages/Support'
 import Curator from '@/pages/Curator'
 import PracticeEnt from '@/pages/PracticeEnt'
+import DailyChallenge from '@/pages/DailyChallenge'
 import Ielts from '@/pages/Ielts'
 import Admissions from '@/pages/Admissions'
 import CourseLesson from '@/pages/CourseLesson'
@@ -89,6 +90,7 @@ export default function App() {
         <Route path="/internships" element={<ProtectedRoute><Internships /></ProtectedRoute>} />
         <Route path="/curator" element={<ProtectedRoute><Curator /></ProtectedRoute>} />
         <Route path="/practice-ent" element={<ProtectedRoute><PracticeEnt /></ProtectedRoute>} />
+        <Route path="/daily-challenge" element={<ProtectedRoute><DailyChallenge /></ProtectedRoute>} />
         <Route path="/ielts" element={<ProtectedRoute><Ielts /></ProtectedRoute>} />
         <Route path="/admissions" element={<ProtectedRoute><Admissions /></ProtectedRoute>} />
         <Route path="/motivation-letter" element={<ProtectedRoute><MotivationLetter /></ProtectedRoute>} />

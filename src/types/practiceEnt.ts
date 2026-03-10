@@ -78,7 +78,7 @@ export interface ProfileQuestionBank {
 
 // ── Test Session ────────────────────────────────────────────────────────────
 
-export type EntSessionPhase = 'select' | 'exam' | 'review' | 'results'
+export type EntSessionPhase = 'select' | 'exam' | 'review' | 'results' | 'errors'
 
 export interface EntSessionConfig {
   variantId: string
