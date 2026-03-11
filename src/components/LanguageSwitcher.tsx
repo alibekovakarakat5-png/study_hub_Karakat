@@ -1,13 +1,14 @@
 import { useTranslation } from 'react-i18next'
 
 const LANGS = [
-  { code: 'ru', label: 'RU' },
-  { code: 'en', label: 'EN' },
+  { code: 'kk', label: 'ҚАЗ' },
+  { code: 'ru', label: 'РУС' },
+  { code: 'en', label: 'ENG' },
 ]
 
 export function LanguageSwitcher({ className = '' }: { className?: string }) {
   const { i18n } = useTranslation()
-  const current = i18n.language.startsWith('en') ? 'en' : 'ru'
+  const current = i18n.language.startsWith('en') ? 'en' : i18n.language.startsWith('kk') ? 'kk' : 'ru'
 
   return (
     <div className={`flex items-center gap-0.5 rounded-lg border border-gray-200 bg-white/70 p-0.5 ${className}`}>
