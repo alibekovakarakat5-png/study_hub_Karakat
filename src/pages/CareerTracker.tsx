@@ -452,6 +452,12 @@ export default function CareerTracker() {
   const [activeTab, setActiveTab] = useState<TabId>('goal')
   const [milestones, setMilestones] = useState<CareerMilestone[]>(INITIAL_MILESTONES)
   const [resume] = useState<ResumeData>(INITIAL_RESUME)
+  const [toastMsg, setToastMsg] = useState('')
+
+  const showToast = useCallback((msg: string) => {
+    setToastMsg(msg)
+    setTimeout(() => setToastMsg(''), 3000)
+  }, [])
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null)
   const [interviewCategory, setInterviewCategory] = useState<InterviewQuestion['category'] | 'all'>('all')
   const [practiceMode, setPracticeMode] = useState(false)
@@ -514,8 +520,8 @@ export default function CareerTracker() {
   }, [getRandomQuestion])
 
   const handleDownloadPdf = useCallback(() => {
-    alert('Функция скоро будет доступна')
-  }, [])
+    showToast('PDF экспорт скоро будет доступен 🚀')
+  }, [showToast])
 
   // ── Render helpers ─────────────────────────────────────────────────────
 
@@ -523,6 +529,12 @@ export default function CareerTracker() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Toast notification */}
+      {toastMsg && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-white text-sm font-medium px-5 py-3 rounded-2xl shadow-xl animate-fade-in">
+          {toastMsg}
+        </div>
+      )}
       {/* ── Header ────────────────────────────────────────────────────── */}
       <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-violet-600 text-white">
         <div className="max-w-6xl mx-auto px-4 py-8">

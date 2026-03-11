@@ -550,7 +550,7 @@ export default function HistoryKZCourse() {
           <button
             type="button"
             onClick={() => setSidebarOpen(s => !s)}
-            className="p-2 rounded-xl hover:bg-slate-100 transition-colors lg:hidden"
+            className="p-2 rounded-xl hover:bg-slate-100 transition-colors"
           >
             <BookOpen className="w-5 h-5 text-slate-500" />
           </button>
@@ -568,31 +568,39 @@ export default function HistoryKZCourse() {
 
       {/* Body */}
       <div className="max-w-6xl mx-auto px-4 py-6 flex gap-6">
-        {/* Sidebar */}
+        {/* Sidebar — overlay on mobile, inline on lg+ */}
         <AnimatePresence>
           {sidebarOpen && (
-            <motion.aside
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 280, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              className="shrink-0 overflow-hidden"
-            >
-              <div className="w-70 space-y-4">
-                {/* Stats */}
-                <div className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl p-4 text-white">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Flame className="w-4 h-4" />
-                    <span className="font-bold text-sm">Прогресс курса</span>
+            <>
+              {/* Mobile overlay backdrop */}
+              <div
+                className="fixed inset-0 z-20 bg-black/40 lg:hidden"
+                onClick={() => setSidebarOpen(false)}
+              />
+              <motion.aside
+                initial={{ x: -300, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: -300, opacity: 0 }}
+                transition={{ type: 'spring', damping: 26, stiffness: 300 }}
+                className="fixed top-0 left-0 h-full z-30 w-72 bg-slate-50 overflow-y-auto pt-16 px-3 pb-6 shadow-xl lg:static lg:shadow-none lg:z-auto lg:h-auto lg:w-auto lg:pt-0 lg:px-0 lg:overflow-visible shrink-0"
+              >
+                <div className="w-64 space-y-4">
+                  {/* Stats */}
+                  <div className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl p-4 text-white">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Flame className="w-4 h-4" />
+                      <span className="font-bold text-sm">Прогресс курса</span>
+                    </div>
+                    <div className="text-3xl font-bold">{pct}%</div>
+                    <div className="text-white/80 text-xs mt-1">{completedCount} из {totalLessons} уроков пройдено</div>
+                    <div className="mt-3 h-2 bg-white/30 rounded-full overflow-hidden">
+                      <div className="h-full bg-white rounded-full transition-all" style={{ width: `${pct}%` }} />
+                    </div>
                   </div>
-                  <div className="text-3xl font-bold">{pct}%</div>
-                  <div className="text-white/80 text-xs mt-1">{completedCount} из {totalLessons} уроков пройдено</div>
-                  <div className="mt-3 h-2 bg-white/30 rounded-full overflow-hidden">
-                    <div className="h-full bg-white rounded-full transition-all" style={{ width: `${pct}%` }} />
-                  </div>
+                  <Sidebar progress={progress} activeId={activeLessonId} onSelect={(id) => { setActiveLessonId(id); setSidebarOpen(false) }} />
                 </div>
-                <Sidebar progress={progress} activeId={activeLessonId} onSelect={setActiveLessonId} />
-              </div>
-            </motion.aside>
+              </motion.aside>
+            </>
           )}
         </AnimatePresence>
 

@@ -45,9 +45,19 @@ export default function Support() {
     goals: '',
   })
   const [submitted, setSubmitted] = useState(false)
+  const [errors, setErrors] = useState<Partial<typeof form>>({})
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    const newErrors: Partial<typeof form> = {}
+    if (!form.name.trim()) newErrors.name = 'Введи имя'
+    if (!form.story.trim()) newErrors.story = 'Расскажи о себе'
+    if (!form.goals.trim()) newErrors.goals = 'Укажи свои цели'
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      return
+    }
+    setErrors({})
     openWhatsApp(buildSupportMessage(form))
     setSubmitted(true)
   }
@@ -288,12 +298,12 @@ export default function Support() {
                   <label className="mb-1.5 block text-sm font-semibold text-slate-700">Имя</label>
                   <input
                     type="text"
-                    required
                     value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    onChange={(e) => { setForm({ ...form, name: e.target.value }); setErrors(prev => ({ ...prev, name: '' })) }}
                     placeholder="Как тебя зовут?"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:border-primary-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-100"
+                    className={`w-full rounded-xl border bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-100 ${errors.name ? 'border-red-400 focus:border-red-400' : 'border-slate-200 focus:border-primary-400'}`}
                   />
+                  {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
                 </div>
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold text-slate-700">Возраст</label>
@@ -337,13 +347,13 @@ export default function Support() {
                   Расскажи о себе и своей ситуации
                 </label>
                 <textarea
-                  required
                   rows={4}
                   value={form.story}
-                  onChange={(e) => setForm({ ...form, story: e.target.value })}
+                  onChange={(e) => { setForm({ ...form, story: e.target.value }); setErrors(prev => ({ ...prev, story: '' })) }}
                   placeholder="Почему тебе важен доступ к платформе? Расскажи свободно, в 3-5 предложениях..."
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:border-primary-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-100 resize-none"
+                  className={`w-full rounded-xl border bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-100 resize-none ${errors.story ? 'border-red-400 focus:border-red-400' : 'border-slate-200 focus:border-primary-400'}`}
                 />
+                {errors.story && <p className="mt-1 text-xs text-red-500">{errors.story}</p>}
               </div>
 
               <div className="mt-5">
@@ -353,10 +363,11 @@ export default function Support() {
                 <textarea
                   rows={3}
                   value={form.goals}
-                  onChange={(e) => setForm({ ...form, goals: e.target.value })}
+                  onChange={(e) => { setForm({ ...form, goals: e.target.value }); setErrors(prev => ({ ...prev, goals: '' })) }}
                   placeholder="Кем хочешь стать? Куда хочешь поступить? Что хочешь изменить в своей жизни?"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:border-primary-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-100 resize-none"
+                  className={`w-full rounded-xl border bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-100 resize-none ${errors.goals ? 'border-red-400 focus:border-red-400' : 'border-slate-200 focus:border-primary-400'}`}
                 />
+                {errors.goals && <p className="mt-1 text-xs text-red-500">{errors.goals}</p>}
               </div>
 
               <div className="mt-6 flex items-start gap-2.5 rounded-xl bg-slate-50 border border-slate-100 p-4">

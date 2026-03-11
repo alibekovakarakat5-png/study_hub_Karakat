@@ -278,10 +278,24 @@ function Sidebar() {
         {NAV_KEYS.map((item) => {
           const isActive = location.pathname === item.to
           const Icon = item.icon
+          if (item.disabled) {
+            return (
+              <div
+                key={item.to}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-400 cursor-not-allowed"
+              >
+                <Icon className="w-5 h-5 shrink-0" />
+                {t(item.key)}
+                <span className="ml-auto text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-md font-normal">
+                  Soon
+                </span>
+              </div>
+            )
+          }
           return (
             <Link
               key={item.to}
-              to={item.disabled ? '#' : item.to}
+              to={item.to}
               onClick={() => {
                 if (sidebarOpen) toggleSidebar()
               }}
@@ -289,18 +303,11 @@ function Sidebar() {
                 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
                 isActive
                   ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 shadow-sm'
-                  : item.disabled
-                    ? 'text-gray-400 cursor-not-allowed'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
               )}
             >
               <Icon className={cn('w-5 h-5 shrink-0', isActive && 'text-blue-600')} />
               {t(item.key)}
-              {item.disabled && (
-                <span className="ml-auto text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-md font-normal">
-                  Soon
-                </span>
-              )}
             </Link>
           )
         })}
