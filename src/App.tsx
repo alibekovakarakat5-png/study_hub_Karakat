@@ -33,6 +33,7 @@ import UniversityAdvisor from '@/pages/UniversityAdvisor'
 import ScholarshipFinder from '@/pages/ScholarshipFinder'
 import EntTheory from '@/pages/EntTheory'
 import TopicDrill from '@/pages/TopicDrill'
+import HistoryKZCourse from '@/pages/HistoryKZCourse'
 import RobotWidget from '@/components/robot/RobotWidget'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -101,6 +102,7 @@ export default function App() {
         <Route path="/scholarship-finder" element={<ProtectedRoute><ScholarshipFinder /></ProtectedRoute>} />
         <Route path="/ent-theory" element={<ProtectedRoute><EntTheory /></ProtectedRoute>} />
         <Route path="/topic-drill" element={<ProtectedRoute><TopicDrill /></ProtectedRoute>} />
+        <Route path="/courses/history-kz" element={<ProtectedRoute><HistoryKZCourse /></ProtectedRoute>} />
         <Route path="/courses" element={<Courses />} />
         <Route path="/courses/:courseId/lessons/:lessonId" element={<ProtectedRoute><CourseLesson /></ProtectedRoute>} />
         <Route path="/profile/:id" element={<PublicProfile />} />

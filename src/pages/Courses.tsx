@@ -312,6 +312,11 @@ function CourseModal({
       navigate('/auth')
       return
     }
+    // Static built-in courses — direct navigation
+    if (course.id === 'course-5') {
+      navigate('/courses/history-kz')
+      return
+    }
     // DB course: enroll and go to first lesson
     if (course._dbCourseId) {
       setEnrolling(true)
