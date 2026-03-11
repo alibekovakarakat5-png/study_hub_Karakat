@@ -35,6 +35,11 @@ import EntTheory from '@/pages/EntTheory'
 import TopicDrill from '@/pages/TopicDrill'
 import HistoryKZCourse from '@/pages/HistoryKZCourse'
 import StartupLab from '@/pages/StartupLab'
+import EntLab from '@/pages/EntLab'
+import IeltsLab from '@/pages/IeltsLab'
+import AdmitLab from '@/pages/AdmitLab'
+import StartupLabLanding from '@/pages/StartupLabLanding'
+import CareerLab from '@/pages/CareerLab'
 import RobotWidget from '@/components/robot/RobotWidget'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -105,6 +110,12 @@ export default function App() {
         <Route path="/topic-drill" element={<ProtectedRoute><TopicDrill /></ProtectedRoute>} />
         <Route path="/courses/history-kz" element={<ProtectedRoute><HistoryKZCourse /></ProtectedRoute>} />
         <Route path="/startup-lab" element={<ProtectedRoute><StartupLab /></ProtectedRoute>} />
+        {/* ── Lab landing pages (public, entry points) ── */}
+        <Route path="/ent" element={<EntLab />} />
+        <Route path="/ielts-lab" element={<IeltsLab />} />
+        <Route path="/admit-lab" element={<AdmitLab />} />
+        <Route path="/startup" element={<StartupLabLanding />} />
+        <Route path="/career-lab" element={<CareerLab />} />
         <Route path="/courses" element={<Courses />} />
         <Route path="/courses/:courseId/lessons/:lessonId" element={<ProtectedRoute><CourseLesson /></ProtectedRoute>} />
         <Route path="/profile/:id" element={<PublicProfile />} />

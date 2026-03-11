@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   GraduationCap,
@@ -51,6 +51,8 @@ const GRADES = [9, 10, 11]
 
 export default function Auth() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const fromSource = searchParams.get('from') // ent | ielts | admit | startup | career
   const { t } = useTranslation()
   const { login, register, isAuthenticated, user, onboardingCompleted } = useStore()
 
@@ -72,6 +74,15 @@ export default function Auth() {
   const [city, setCity] = useState('Алматы')
   const [childEmail, setChildEmail] = useState('')
 
+  // Context onboarding: redirect based on landing entry point
+  const SOURCE_REDIRECT: Record<string, string> = {
+    ent:     '/diagnostic',
+    ielts:   '/ielts',
+    admit:   '/admissions',
+    startup: '/startup-lab',
+    career:  '/career-tracker',
+  }
+
   useEffect(() => {
     if (isAuthenticated && user) {
       if (user.role === 'admin') {
@@ -82,11 +93,13 @@ export default function Auth() {
         navigate('/teacher', { replace: true })
       } else if (user.role === 'employer') {
         navigate('/employer', { replace: true })
+      } else if (fromSource && SOURCE_REDIRECT[fromSource]) {
+        navigate(SOURCE_REDIRECT[fromSource], { replace: true })
       } else {
         navigate(onboardingCompleted ? '/dashboard' : '/onboarding', { replace: true })
       }
     }
-  }, [isAuthenticated, user, onboardingCompleted, navigate])
+  }, [isAuthenticated, user, onboardingCompleted, navigate, fromSource])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
