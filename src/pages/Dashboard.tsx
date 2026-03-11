@@ -1208,6 +1208,28 @@ export default function Dashboard() {
               </Link>
             </motion.div>
 
+            {/* Startup Lab CTA */}
+            <motion.div variants={cardVariants} className="sm:col-span-2 xl:col-span-12">
+              <Link to="/startup-lab">
+                <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 p-6 text-white transition-all hover:shadow-xl hover:shadow-violet-300">
+                  <div className="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/10 transition-transform group-hover:scale-150" />
+                  <div className="relative flex items-center gap-5">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-3xl">
+                      🚀
+                    </div>
+                    <div className="flex-1">
+                      <div className="mb-0.5 flex items-center gap-2">
+                        <h3 className="text-lg font-bold">Startup Lab</h3>
+                        <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">AI Co-Founder</span>
+                      </div>
+                      <p className="text-sm text-white/70">Напиши идею — получи roadmap до инвестиций</p>
+                    </div>
+                    <ArrowRight className="h-5 w-5 text-white/60 transition-transform group-hover:translate-x-1" />
+                  </div>
+                </div>
+              </Link>
+            </motion.div>
+
             {/* Share with parents */}
             <motion.div variants={cardVariants} className="sm:col-span-2 xl:col-span-12">
               <div className="rounded-2xl border border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 p-5">
