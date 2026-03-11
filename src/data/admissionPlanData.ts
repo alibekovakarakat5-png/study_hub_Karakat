@@ -324,6 +324,7 @@ export const SUBJECT_LABELS: Record<Subject, string> = {
   history:     'История Казахстана',
   english:     'Английский',
   kazakh:      'Казахский язык',
+  russian:     'Русский язык',
   informatics: 'Информатика',
   geography:   'География',
   literature:  'Литература',

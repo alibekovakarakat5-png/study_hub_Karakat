@@ -341,7 +341,7 @@ export default function CourseLesson() {
         if (d.completedLessonIds) setCompletedIds(new Set(d.completedLessonIds as string[]))
       })
       .catch(() => {})
-  }, [courseId, token])
+  }, [courseId, user])
 
   // Find current lesson
   const allLessons = course?.modules.flatMap(m => m.lessons) ?? []

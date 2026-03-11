@@ -97,7 +97,7 @@ function formatTheoryResponse(topic: TopicContent, name: string): string {
 function formatPracticeResponse(topic: TopicContent, name: string): string {
   const q = topic.practice[Math.floor(Math.random() * topic.practice.length)]
   let response = `${name}, вот задача по теме **${topic.topic}**:\n\n`
-  response += `**${q.question}**\n\n`
+  response += `**${q.text}**\n\n`
   q.options.forEach((opt, i) => {
     response += `${String.fromCharCode(65 + i)}) ${opt}\n`
   })

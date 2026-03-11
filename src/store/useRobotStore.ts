@@ -36,7 +36,7 @@ type AnyRecognition = {
   maxAlternatives: number
   start(): void
   abort(): void
-  onresult: ((event: SpeechRecognitionEvent) => void) | null
+  onresult: ((event: { results: { [index: number]: { [index: number]: { transcript: string } } } }) => void) | null
   onend: (() => void) | null
   onerror: (() => void) | null
 }
@@ -199,7 +199,7 @@ export const useRobotStore = create<RobotState>()(
 
         set({ isListening: true })
 
-        rec.onresult = (event: SpeechRecognitionEvent) => {
+        rec.onresult = (event) => {
           const transcript = event.results[0]?.[0]?.transcript ?? ''
           onResult(transcript)
         }

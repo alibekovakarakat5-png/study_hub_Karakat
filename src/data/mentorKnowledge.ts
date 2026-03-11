@@ -318,11 +318,12 @@ export function findMentorAnswer(userInput: string, studentName?: string): Mento
 
   // 1. Check admin-added Q&As from content store (imported lazily to avoid circular deps)
   try {
-    const { useContentStore } = require('@/store/useContentStore') as typeof import('@/store/useContentStore')
-    const customQAs = useContentStore.getState().qas
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mod = (globalThis as any).__useContentStore ?? null
+    const customQAs = mod ? mod.getState().qas : []
     for (const qa of customQAs) {
       const keys = qa.keywords.split(',').map((k: string) => k.trim().toLowerCase()).filter(Boolean)
-      if (keys.some(k => normalized.includes(k))) {
+      if (keys.some((k: string) => normalized.includes(k))) {
         const answer: MentorAnswer = {
           text: qa.answer,
           followUp: qa.followUp || undefined,

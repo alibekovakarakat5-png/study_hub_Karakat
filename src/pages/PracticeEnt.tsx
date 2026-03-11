@@ -477,8 +477,8 @@ function WeakTopicsRecommendations({ blocks, s1, s2 }: { blocks: EntBlockResult[
     const weak: { topic: string; subject: Subject; pct: number }[] = []
     for (const block of blocks) {
       if (!block.byTopic || block.byTopic.length === 0) continue
-      const blockSubject = block.block === 'profileSubject1' ? s1
-        : block.block === 'profileSubject2' ? s2
+      const blockSubject = block.block === 'profile1' ? s1
+        : block.block === 'profile2' ? s2
         : block.block === 'history' ? 'history' as Subject
         : null
       if (!blockSubject) continue

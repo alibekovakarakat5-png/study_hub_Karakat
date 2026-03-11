@@ -29,11 +29,12 @@ const stagger = {
   visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
 }
 
-const slideIn = {
+const slideInVariants = {
   hidden: { opacity: 0, x: 60 },
   visible: { opacity: 1, x: 0, transition: { duration: 0.4, type: 'spring' as const, stiffness: 300, damping: 30 } },
   exit: { opacity: 0, x: -60, transition: { duration: 0.2 } },
 }
+const slideIn = { variants: slideInVariants, initial: 'hidden', animate: 'visible', exit: 'exit' } as const
 
 const scaleIn = {
   hidden: { opacity: 0, scale: 0.9 },
