@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, useInView } from 'framer-motion'
 import { ArrowRight, CheckCircle, Star, Users, ChevronRight } from 'lucide-react'
@@ -97,6 +97,37 @@ function Section({ children, className = '' }: { children: React.ReactNode; clas
 
 export default function LabLanding({ config }: { config: LabConfig }) {
   const { SectionIcon } = config
+
+  // ── SEO: set page title + meta tags ────────────────────────────────────────
+  useEffect(() => {
+    const title = `${config.badge} — ${config.headline.replace('\n', ' ')} | StudyHub`
+    document.title = title
+
+    function setMeta(property: string, content: string) {
+      let el = document.querySelector<HTMLMetaElement>(`meta[property="${property}"]`)
+        ?? document.querySelector<HTMLMetaElement>(`meta[name="${property}"]`)
+      if (!el) {
+        el = document.createElement('meta')
+        const attr = property.startsWith('og:') || property.startsWith('twitter:') ? 'property' : 'name'
+        el.setAttribute(attr, property)
+        document.head.appendChild(el)
+      }
+      el.setAttribute('content', content)
+    }
+
+    const description = config.subline
+    setMeta('description', description)
+    setMeta('og:title', title)
+    setMeta('og:description', description)
+    setMeta('og:type', 'website')
+    setMeta('twitter:card', 'summary')
+    setMeta('twitter:title', title)
+    setMeta('twitter:description', description)
+
+    return () => {
+      document.title = 'StudyHub — AI платформа подготовки к ЕНТ и IELTS'
+    }
+  }, [config.badge, config.headline, config.subline])
   const authUrl = `/auth?from=${config.source}`
 
   return (

@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { z } from 'zod'
+import bcrypt from 'bcryptjs'
 import { prisma } from '../lib/prisma'
 import { verifyToken, requireRole } from '../middleware/auth'
 
@@ -14,6 +15,7 @@ function safeUser(u: { passwordHash: string; [key: string]: unknown }) {
 
 const UpdateProfileSchema = z.object({
   name:             z.string().min(2).max(80).optional(),
+  email:            z.string().email().optional(),
   grade:            z.number().int().min(9).max(11).optional(),
   city:             z.string().max(80).optional(),
   targetUniversity: z.string().max(200).optional(),
@@ -36,6 +38,38 @@ router.put('/me', verifyToken, async (req, res) => {
   })
 
   res.json({ user: safeUser(user) })
+})
+
+// ── POST /api/users/me/password — change password ────────────────────────────
+
+const ChangePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword:     z.string().min(6, 'Минимум 6 символов'),
+})
+
+router.post('/me/password', verifyToken, async (req, res) => {
+  const parsed = ChangePasswordSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0].message })
+    return
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: req.user!.userId } })
+  if (!user) {
+    res.status(404).json({ error: 'Пользователь не найден' })
+    return
+  }
+
+  const valid = await bcrypt.compare(parsed.data.currentPassword, user.passwordHash)
+  if (!valid) {
+    res.status(400).json({ error: 'Неверный текущий пароль' })
+    return
+  }
+
+  const passwordHash = await bcrypt.hash(parsed.data.newPassword, 10)
+  await prisma.user.update({ where: { id: user.id }, data: { passwordHash } })
+
+  res.json({ ok: true })
 })
 
 // ── GET /api/users/:id/public — public profile, no auth ──────────────────────

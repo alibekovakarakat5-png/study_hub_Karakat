@@ -112,7 +112,7 @@ const NAV_KEYS: { key: string; icon: React.ElementType; to: string; disabled?: b
   { key: 'nav.university_advisor',   icon: Globe,   to: '/university-advisor' },
   { key: 'nav.scholarship_finder',  icon: Award,   to: '/scholarship-finder' },
   { key: 'nav.portfolio',   icon: FolderOpen,      to: '/portfolio' },
-  { key: 'nav.settings',    icon: Settings,        to: '#', disabled: true },
+  { key: 'nav.settings',    icon: Settings,        to: '/settings' },
 ]
 
 // ---------------------------------------------------------------------------
