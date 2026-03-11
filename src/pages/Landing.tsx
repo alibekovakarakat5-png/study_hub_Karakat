@@ -999,7 +999,123 @@ function ShowcaseCard3({ inView }: { inView: boolean }) {
 }
 
 // ---------------------------------------------------------------------------
-// 6. HOW IT WORKS (4 steps)
+// 6. STUDYHUB LABS — entry point cards
+// ---------------------------------------------------------------------------
+
+function LabsSection() {
+  const { ref, inView } = useSectionInView(0.1);
+
+  const labs = [
+    {
+      href: '/ent',
+      emoji: '🎯',
+      badge: 'ENT Lab',
+      title: 'Подготовка к ЕНТ',
+      description: 'Диагностика, персональный план, теория и тренировки. Набери 120+ баллов.',
+      color: 'from-amber-500 to-orange-500',
+      bg: 'bg-amber-50',
+      border: 'border-amber-200',
+      textAccent: 'text-amber-600',
+    },
+    {
+      href: '/ielts-lab',
+      emoji: '🌍',
+      badge: 'IELTS Lab',
+      title: 'Подготовка к IELTS',
+      description: 'Roadmap по всем 4 навыкам, writing practice, подбор университетов.',
+      color: 'from-blue-500 to-cyan-500',
+      bg: 'bg-blue-50',
+      border: 'border-blue-200',
+      textAccent: 'text-blue-600',
+    },
+    {
+      href: '/admit-lab',
+      emoji: '🏛️',
+      badge: 'Admit Lab',
+      title: 'Поступление за рубеж',
+      description: 'AI подберёт университеты, найдёт стипендии и поможет с mотивационным письмом.',
+      color: 'from-violet-500 to-purple-500',
+      bg: 'bg-violet-50',
+      border: 'border-violet-200',
+      textAccent: 'text-violet-600',
+    },
+    {
+      href: '/startup',
+      emoji: '🚀',
+      badge: 'Startup Lab',
+      title: 'Запусти стартап',
+      description: 'AI Co-Founder: roadmap от идеи до инвестиций + акселераторы Казахстана.',
+      color: 'from-purple-600 to-indigo-600',
+      bg: 'bg-purple-50',
+      border: 'border-purple-200',
+      textAccent: 'text-purple-600',
+    },
+    {
+      href: '/career-lab',
+      emoji: '💼',
+      badge: 'Career Lab',
+      title: 'Карьера и портфолио',
+      description: 'Skill Map, CV конструктор, публичное портфолио и база стажировок.',
+      color: 'from-emerald-500 to-teal-500',
+      bg: 'bg-emerald-50',
+      border: 'border-emerald-200',
+      textAccent: 'text-emerald-600',
+    },
+  ];
+
+  return (
+    <section ref={ref} className="py-20 lg:py-28 bg-slate-900">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <motion.div
+          variants={fadeUp}
+          initial="hidden"
+          animate={inView ? 'visible' : 'hidden'}
+          className="text-center mb-14"
+        >
+          <span className="mb-3 inline-block rounded-full bg-white/10 px-4 py-1.5 text-sm font-semibold text-white/70">
+            StudyHub Labs
+          </span>
+          <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+            Выбери свой путь
+          </h2>
+          <p className="mt-4 text-lg text-slate-400 max-w-xl mx-auto">
+            Каждый Lab — отдельная точка входа под твою конкретную цель
+          </p>
+        </motion.div>
+
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          {labs.map((lab, i) => (
+            <motion.a
+              key={lab.href}
+              href={lab.href}
+              variants={fadeUp}
+              initial="hidden"
+              animate={inView ? 'visible' : 'hidden'}
+              custom={i}
+              className={`group relative flex flex-col rounded-2xl border p-6 transition-all hover:-translate-y-1 hover:shadow-xl ${lab.bg} ${lab.border}`}
+            >
+              <div className={`mb-4 text-4xl`}>{lab.emoji}</div>
+              <span className={`text-xs font-bold uppercase tracking-wider ${lab.textAccent} mb-1`}>
+                {lab.badge}
+              </span>
+              <h3 className="font-bold text-slate-800 text-base mb-2">{lab.title}</h3>
+              <p className="text-slate-500 text-sm leading-relaxed flex-1">{lab.description}</p>
+              <div className={`mt-4 flex items-center gap-1 text-sm font-semibold ${lab.textAccent}`}>
+                Подробнее
+                <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </motion.a>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 7. HOW IT WORKS (4 steps)
 // ---------------------------------------------------------------------------
 
 function HowItWorksSection() {
@@ -1659,6 +1775,7 @@ export default function Landing() {
         <LiveStatsBar />
         <ProblemSolutionSection />
         <ProductShowcaseSection />
+        <LabsSection />
         <HowItWorksSection />
         <TestimonialsSection />
         <PricingSection onNavigate={handleNavigate} />
