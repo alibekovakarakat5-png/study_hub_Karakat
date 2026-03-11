@@ -61,6 +61,7 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [justRegistered, setJustRegistered] = useState(false)
 
   // Login fields
   const [email, setEmail] = useState('')
@@ -93,13 +94,19 @@ export default function Auth() {
         navigate('/teacher', { replace: true })
       } else if (user.role === 'employer') {
         navigate('/employer', { replace: true })
+      } else if (justRegistered && user.role === 'student') {
+        // New student → welcome flow, then destination
+        const dest = fromSource && SOURCE_REDIRECT[fromSource]
+          ? SOURCE_REDIRECT[fromSource]
+          : (onboardingCompleted ? '/dashboard' : '/dashboard')
+        navigate(`/welcome?to=${encodeURIComponent(dest)}`, { replace: true })
       } else if (fromSource && SOURCE_REDIRECT[fromSource]) {
         navigate(SOURCE_REDIRECT[fromSource], { replace: true })
       } else {
         navigate(onboardingCompleted ? '/dashboard' : '/onboarding', { replace: true })
       }
     }
-  }, [isAuthenticated, user, onboardingCompleted, navigate, fromSource])
+  }, [isAuthenticated, user, onboardingCompleted, navigate, fromSource, justRegistered])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -160,6 +167,7 @@ export default function Auth() {
         city: role === 'student' ? city : undefined,
         childEmail: role === 'parent' ? childEmail : undefined,
       })
+      setJustRegistered(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка при регистрации. Попробуйте ещё раз.')
     } finally {

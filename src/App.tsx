@@ -42,6 +42,7 @@ import StartupLabLanding from '@/pages/StartupLabLanding'
 import CareerLab from '@/pages/CareerLab'
 import CareerTest from '@/pages/CareerTest'
 import Settings from '@/pages/Settings'
+import WelcomeFlow from '@/pages/WelcomeFlow'
 import RobotWidget from '@/components/robot/RobotWidget'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -84,6 +85,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/welcome" element={<ProtectedRoute><WelcomeFlow /></ProtectedRoute>} />
         <Route path="/admin-login" element={<AdminLogin />} />
         <Route path="/diagnostic" element={<Diagnostic />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
