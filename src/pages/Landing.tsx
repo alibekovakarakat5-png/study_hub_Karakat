@@ -1109,6 +1109,28 @@ function LabsSection() {
             </motion.a>
           ))}
         </div>
+
+        {/* Career Test viral banner */}
+        <motion.a
+          href="/career-test"
+          variants={fadeUp}
+          initial="hidden"
+          animate={inView ? 'visible' : 'hidden'}
+          custom={6}
+          className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 p-6 sm:p-8 hover:opacity-95 transition-opacity cursor-pointer"
+        >
+          <div className="flex items-center gap-4 text-center sm:text-left">
+            <span className="text-5xl">🔮</span>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-white/60 mb-1">Бесплатный тест · 3 минуты</p>
+              <h3 className="text-xl sm:text-2xl font-extrabold text-white">Узнай свою карьерную личность</h3>
+              <p className="text-white/70 text-sm mt-1">12 вопросов → твой тип + топ-3 профессии где ты преуспеешь</p>
+            </div>
+          </div>
+          <div className="flex-shrink-0 rounded-xl bg-white px-6 py-3 font-bold text-purple-700 text-sm sm:text-base hover:bg-white/90 transition-colors whitespace-nowrap">
+            Пройти тест →
+          </div>
+        </motion.a>
       </div>
     </section>
   );
