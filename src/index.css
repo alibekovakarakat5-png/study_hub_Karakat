@@ -55,35 +55,33 @@
   }
 }
 
-@layer utilities {
-  .glass {
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-  }
+@utility glass {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
 
-  .gradient-primary {
-    background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-  }
+@utility gradient-primary {
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+}
 
-  .gradient-hero {
-    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #1e40af 100%);
-  }
+@utility gradient-hero {
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #1e40af 100%);
+}
 
-  .gradient-card {
-    background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
-  }
+@utility gradient-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+}
 
-  .text-gradient {
-    background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
+@utility text-gradient {
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
 
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
-  }
+@utility animate-float {
+  animation: float 6s ease-in-out infinite;
 }
 
 @keyframes float {
@@ -114,7 +112,42 @@
   100% { opacity: 0; transform: translate(8px, -16px) scale(1); }
 }
 
-@layer utilities {
-  .animate-robot-bounce { animation: robot-bounce 2s ease-in-out infinite; }
-  .animate-robot-sleep  { animation: robot-sleep-bob 3s ease-in-out infinite; }
+@utility animate-robot-bounce { animation: robot-bounce 2s ease-in-out infinite; }
+@utility animate-robot-sleep  { animation: robot-sleep-bob 3s ease-in-out infinite; }
+
+/* ── Avatar Mood Animations ──────────────────────────────────── */
+
+@keyframes avatar-bounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  40%      { transform: translateY(-8px) scale(1.05); }
+  60%      { transform: translateY(-4px) scale(1.02); }
 }
+
+@keyframes avatar-spin-bounce {
+  0%   { transform: translateY(0) rotate(0deg) scale(1); }
+  20%  { transform: translateY(-10px) rotate(10deg) scale(1.08); }
+  40%  { transform: translateY(-6px) rotate(-6deg) scale(1.04); }
+  100% { transform: translateY(0) rotate(0deg) scale(1); }
+}
+
+@keyframes avatar-tilt {
+  0%, 100% { transform: rotate(0deg); }
+  30%      { transform: rotate(-6deg); }
+  70%      { transform: rotate(5deg); }
+}
+
+@keyframes avatar-sleep {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50%      { transform: translateY(4px) rotate(3deg); }
+}
+
+@keyframes avatar-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(249,115,22,0); }
+  50%      { transform: scale(1.07); box-shadow: 0 0 16px 4px rgba(249,115,22,0.3); }
+}
+
+.avatar-face.avatar-bounce       { animation: avatar-bounce 1.6s ease-in-out infinite; }
+.avatar-face.avatar-spin-bounce  { animation: avatar-spin-bounce 1.2s ease-in-out infinite; }
+.avatar-face.avatar-tilt         { animation: avatar-tilt 2.4s ease-in-out infinite; }
+.avatar-face.avatar-sleep        { animation: avatar-sleep 3s ease-in-out infinite; }
+.avatar-face.avatar-pulse        { animation: avatar-pulse 1.4s ease-in-out infinite; }

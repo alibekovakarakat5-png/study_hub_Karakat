@@ -26,6 +26,7 @@ import { useLocation } from 'react-router-dom'
 import type { CuratorLevel } from '@/types/curator'
 import RobotFace from './RobotFace'
 import Robot3DFace from './Robot3DFace'
+import AvatarFace, { AVATAR_STYLES } from './AvatarFace'
 import type { RobotMood } from '@/store/useRobotStore'
 
 // ── 3D scene URL ──────────────────────────────────────────────────────────────
@@ -106,10 +107,14 @@ export default function RobotWidget() {
     isListening, startListening, stopListening,
     pomodoroPhase, secondsRemaining, timerRunning,
     startTimer, pauseTimer, resetTimer, tickTimer,
+    avatarCharacter, avatarStyle, setAvatar,
   } = useRobotStore()
 
   // Local state for the naming input
   const [namingInput, setNamingInput] = useState('')
+  // Avatar picker state
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false)
+  const [avatarInput, setAvatarInput] = useState(avatarCharacter)
 
   // Text chat input
   const [chatInput, setChatInput] = useState('')
@@ -396,9 +401,11 @@ export default function RobotWidget() {
       >
         {/* Collapsed: face only */}
         {!isExpanded && (
-          SPLINE_SCENE_URL
-            ? <Robot3DFace mood={mood} size={40} sceneUrl={SPLINE_SCENE_URL} />
-            : <RobotFace mood={mood} size={40} />
+          avatarCharacter
+            ? <AvatarFace characterName={avatarCharacter} avatarStyle={avatarStyle} mood={mood} size={42} />
+            : SPLINE_SCENE_URL
+              ? <Robot3DFace mood={mood} size={40} sceneUrl={SPLINE_SCENE_URL} />
+              : <RobotFace mood={mood} size={40} />
         )}
 
         {/* Expanded: full widget */}
@@ -426,9 +433,11 @@ export default function RobotWidget() {
               </div>
 
               {/* Face */}
-              {SPLINE_SCENE_URL
-                ? <Robot3DFace mood={mood} size={72} sceneUrl={SPLINE_SCENE_URL} />
-                : <RobotFace mood={mood} size={72} />
+              {avatarCharacter
+                ? <AvatarFace characterName={avatarCharacter} avatarStyle={avatarStyle} mood={mood} size={74} />
+                : SPLINE_SCENE_URL
+                  ? <Robot3DFace mood={mood} size={72} sceneUrl={SPLINE_SCENE_URL} />
+                  : <RobotFace mood={mood} size={72} />
               }
 
               {/* Speech bubble — clickable to replay */}
@@ -518,6 +527,70 @@ export default function RobotWidget() {
                       OK
                     </button>
                   </div>
+                </div>
+              )}
+
+              {/* ── Avatar picker ── */}
+              <button
+                type="button"
+                onClick={() => { setShowAvatarPicker(p => !p); setAvatarInput(avatarCharacter) }}
+                className="w-full flex items-center justify-between bg-white/10 hover:bg-white/15 rounded-xl px-3 py-1.5 transition-colors"
+              >
+                <span className="text-white/70 text-[10px]">
+                  {avatarCharacter ? `🎨 ${avatarCharacter}` : '🎨 Выбрать персонажа'}
+                </span>
+                <ChevronRight className={cn('w-3 h-3 text-white/40 transition-transform', showAvatarPicker && 'rotate-90')} />
+              </button>
+
+              {showAvatarPicker && (
+                <div className="w-full flex flex-col gap-2 bg-white/5 rounded-xl p-2.5 border border-white/10">
+                  <p className="text-white/60 text-[10px] leading-relaxed">
+                    Введи имя персонажа — Железный человек, Наруто, Sonic и т.д.
+                  </p>
+                  <input
+                    type="text"
+                    value={avatarInput}
+                    onChange={e => setAvatarInput(e.target.value)}
+                    placeholder="Напр. Iron Man"
+                    maxLength={30}
+                    className="w-full bg-white/15 text-white placeholder:text-white/40 text-xs rounded-lg px-2.5 py-1.5 outline-none focus:bg-white/20 border border-white/20"
+                  />
+                  <p className="text-white/50 text-[10px]">Стиль аватара:</p>
+                  <div className="grid grid-cols-4 gap-1">
+                    {AVATAR_STYLES.map(s => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setAvatar(avatarInput || avatarCharacter, s.id)}
+                        className={cn(
+                          'flex flex-col items-center gap-0.5 p-1.5 rounded-lg border text-[9px] transition-all',
+                          avatarStyle === s.id
+                            ? 'border-white/60 bg-white/20 text-white'
+                            : 'border-white/15 bg-white/5 text-white/50 hover:bg-white/10',
+                        )}
+                        title={s.description}
+                      >
+                        <span>{s.icon}</span>
+                        <span className="leading-tight text-center">{s.label.split(' ')[0]}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const name = avatarInput.trim()
+                      if (name) {
+                        setAvatar(name, avatarStyle)
+                        const msg = `Теперь я выгляжу как ${name}! 🎨`
+                        setMood('excited', msg)
+                        speak(msg)
+                      }
+                      setShowAvatarPicker(false)
+                    }}
+                    className="w-full bg-violet-500/60 hover:bg-violet-500/80 text-white text-xs font-semibold py-1.5 rounded-lg transition-colors"
+                  >
+                    Применить
+                  </button>
                 </div>
               )}
 

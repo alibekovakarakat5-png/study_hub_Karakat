@@ -31,6 +31,8 @@ import AdmissionPlan from '@/pages/AdmissionPlan'
 import AdminLogin from '@/pages/AdminLogin'
 import UniversityAdvisor from '@/pages/UniversityAdvisor'
 import ScholarshipFinder from '@/pages/ScholarshipFinder'
+import EntTheory from '@/pages/EntTheory'
+import TopicDrill from '@/pages/TopicDrill'
 import RobotWidget from '@/components/robot/RobotWidget'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -97,6 +99,8 @@ export default function App() {
         <Route path="/admission-plan" element={<ProtectedRoute><AdmissionPlan /></ProtectedRoute>} />
         <Route path="/university-advisor" element={<ProtectedRoute><UniversityAdvisor /></ProtectedRoute>} />
         <Route path="/scholarship-finder" element={<ProtectedRoute><ScholarshipFinder /></ProtectedRoute>} />
+        <Route path="/ent-theory" element={<ProtectedRoute><EntTheory /></ProtectedRoute>} />
+        <Route path="/topic-drill" element={<ProtectedRoute><TopicDrill /></ProtectedRoute>} />
         <Route path="/courses" element={<Courses />} />
         <Route path="/courses/:courseId/lessons/:lessonId" element={<ProtectedRoute><CourseLesson /></ProtectedRoute>} />
         <Route path="/profile/:id" element={<PublicProfile />} />

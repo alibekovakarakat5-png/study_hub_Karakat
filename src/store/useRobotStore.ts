@@ -83,6 +83,11 @@ interface RobotState {
   robotName: string | null
   setRobotName: (name: string) => void
 
+  // Avatar — favorite character + style
+  avatarCharacter: string   // e.g. "Iron Man", "Naruto", "Соник"
+  avatarStyle: string       // DiceBear style id, e.g. "bottts"
+  setAvatar: (character: string, style: string) => void
+
   // Greeting — persisted: tracks if we already greeted today
   lastGreetedDate: string | null
   setLastGreetedDate: (date: string) => void
@@ -222,6 +227,11 @@ export const useRobotStore = create<RobotState>()(
       robotName: null,
       setRobotName: (name) => set({ robotName: name.trim() || null }),
 
+      // ── Avatar ─────────────────────────────────────────────────────────────
+      avatarCharacter: '',
+      avatarStyle: 'bottts',
+      setAvatar: (character, style) => set({ avatarCharacter: character.trim(), avatarStyle: style }),
+
       // ── Greeting ───────────────────────────────────────────────────────────
       lastGreetedDate: null,
       setLastGreetedDate: (date) => set({ lastGreetedDate: date }),
@@ -283,6 +293,8 @@ export const useRobotStore = create<RobotState>()(
         isMuted: state.isMuted,
         lastGreetedDate: state.lastGreetedDate,
         robotName: state.robotName,
+        avatarCharacter: state.avatarCharacter,
+        avatarStyle: state.avatarStyle,
       }),
     }
   )
