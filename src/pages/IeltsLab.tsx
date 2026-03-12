@@ -1,6 +1,7 @@
 import LabLanding from '@/components/LabLanding'
 import type { LabConfig } from '@/components/LabLanding'
 import { Globe } from 'lucide-react'
+import { PageMeta } from '@/components/PageMeta'
 
 const config: LabConfig = {
   source: 'ielts',
@@ -105,5 +106,14 @@ const config: LabConfig = {
 }
 
 export default function IeltsLab() {
-  return <LabLanding config={config} />
+  return (
+    <>
+      <PageMeta
+        title="IELTS Lab — Получи IELTS 7.0+ и поступи за рубеж"
+        description="Персональный план подготовки к IELTS, разбор всех 4 навыков, подбор зарубежных университетов. Бесплатно."
+        path="/ielts-lab"
+      />
+      <LabLanding config={config} />
+    </>
+  )
 }

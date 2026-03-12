@@ -1,6 +1,7 @@
 import LabLanding from '@/components/LabLanding'
 import type { LabConfig } from '@/components/LabLanding'
 import { Target } from 'lucide-react'
+import { PageMeta } from '@/components/PageMeta'
 
 const config: LabConfig = {
   source: 'ent',
@@ -105,5 +106,14 @@ const config: LabConfig = {
 }
 
 export default function EntLab() {
-  return <LabLanding config={config} />
+  return (
+    <>
+      <PageMeta
+        title="ENT Lab — Сдай ЕНТ на 120+ с AI-наставником"
+        description="Персональный план подготовки к ЕНТ, диагностика слабых мест, теория и практика. Бесплатно для казахстанских школьников."
+        path="/ent"
+      />
+      <LabLanding config={config} />
+    </>
+  )
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { PageMeta } from '@/components/PageMeta';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
@@ -1790,6 +1791,12 @@ export default function Landing() {
   }, [navigate]);
 
   return (
+    <>
+    <PageMeta
+      title="StudyHub — Подготовка к ЕНТ, IELTS и поступление за рубеж"
+      description="AI-платформа для казахстанских школьников. Персональный план подготовки к ЕНТ и IELTS, диагностика слабых мест, практика — бесплатно."
+      path="/"
+    />
     <div className="min-h-screen overflow-x-hidden bg-white">
       <Header onNavigate={handleNavigate} />
       <main>
@@ -1805,5 +1812,6 @@ export default function Landing() {
       </main>
       <Footer />
     </div>
+    </>
   );
 }

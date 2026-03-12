@@ -1,6 +1,7 @@
 import LabLanding from '@/components/LabLanding'
 import type { LabConfig } from '@/components/LabLanding'
 import { Rocket } from 'lucide-react'
+import { PageMeta } from '@/components/PageMeta'
 
 const config: LabConfig = {
   source: 'startup',
@@ -105,5 +106,14 @@ const config: LabConfig = {
 }
 
 export default function StartupLabLanding() {
-  return <LabLanding config={config} />
+  return (
+    <>
+      <PageMeta
+        title="Startup Lab — Преврати идею в реальный стартап"
+        description="AI Co-Founder построит roadmap, найдёт рынок, подготовит pitch deck и поможет подать заявку в акселераторы Казахстана."
+        path="/startup"
+      />
+      <LabLanding config={config} />
+    </>
+  )
 }

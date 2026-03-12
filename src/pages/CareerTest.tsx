@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Share2, Lock, CheckCircle, ChevronRight, TrendingUp, Zap } from 'lucide-react'
+import { PageMeta } from '@/components/PageMeta'
 import {
   CAREER_TEST_QUESTIONS,
   PERSONALITY_TYPES,
@@ -431,6 +432,12 @@ export default function CareerTest() {
   }
 
   return (
+    <>
+    <PageMeta
+      title="Тест профориентации — узнай свою профессию за 3 минуты"
+      description="12 вопросов — и ты узнаешь свой тип личности и топ-3 профессии. Бесплатный тест от StudyHub для казахстанских школьников."
+      path="/career-test"
+    />
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-violet-950/40 to-slate-900">
       {/* Nav */}
       <div className="sticky top-0 z-20 bg-slate-950/80 backdrop-blur-md border-b border-white/10">
@@ -486,5 +493,6 @@ export default function CareerTest() {
         </AnimatePresence>
       </div>
     </div>
+    </>
   )
 }

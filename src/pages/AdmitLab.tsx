@@ -1,6 +1,7 @@
 import LabLanding from '@/components/LabLanding'
 import type { LabConfig } from '@/components/LabLanding'
 import { Building2 } from 'lucide-react'
+import { PageMeta } from '@/components/PageMeta'
 
 const config: LabConfig = {
   source: 'admit',
@@ -105,5 +106,14 @@ const config: LabConfig = {
 }
 
 export default function AdmitLab() {
-  return <LabLanding config={config} />
+  return (
+    <>
+      <PageMeta
+        title="Admit Lab — Поступи в зарубежный вуз без консультанта"
+        description="AI подберёт университеты, найдёт стипендии и поможет написать мотивационное письмо. Сэкономь $500+ на консультантах."
+        path="/admit-lab"
+      />
+      <LabLanding config={config} />
+    </>
+  )
 }

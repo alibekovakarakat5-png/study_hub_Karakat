@@ -1,6 +1,7 @@
 import LabLanding from '@/components/LabLanding'
 import type { LabConfig } from '@/components/LabLanding'
 import { Briefcase } from 'lucide-react'
+import { PageMeta } from '@/components/PageMeta'
 
 const config: LabConfig = {
   source: 'career',
@@ -105,5 +106,14 @@ const config: LabConfig = {
 }
 
 export default function CareerLab() {
-  return <LabLanding config={config} />
+  return (
+    <>
+      <PageMeta
+        title="Career Lab — Построй карьеру и собери портфолио"
+        description="Skill Map, карьерный трекер, CV-конструктор и публичное портфолио — для старта карьеры ещё до окончания университета."
+        path="/career-lab"
+      />
+      <LabLanding config={config} />
+    </>
+  )
 }
