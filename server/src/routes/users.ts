@@ -72,6 +72,39 @@ router.post('/me/password', verifyToken, async (req, res) => {
   res.json({ ok: true })
 })
 
+// ── POST /api/users/me/telegram-link — generate one-time 6-digit code ────────
+
+router.post('/me/telegram-link', verifyToken, async (req, res) => {
+  const userId = req.user!.userId
+
+  // Generate a 6-char alphanumeric code
+  const token = Math.random().toString(36).slice(2, 8).toUpperCase()
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000) // 15 minutes
+
+  await prisma.telegramLinkToken.upsert({
+    where:  { userId },
+    create: { userId, token, expiresAt },
+    update: { token, expiresAt },
+  })
+
+  const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME ?? 'StudyHubKZBot'
+  res.json({
+    code:   token,
+    botUrl: `https://t.me/${BOT_USERNAME}?start=${token}`,
+    expiresAt: expiresAt.toISOString(),
+  })
+})
+
+// ── DELETE /api/users/me/telegram-link — unlink Telegram ─────────────────────
+
+router.delete('/me/telegram-link', verifyToken, async (req, res) => {
+  await prisma.user.update({
+    where: { id: req.user!.userId },
+    data:  { telegramChatId: null },
+  })
+  res.json({ ok: true })
+})
+
 // ── GET /api/users/:id/public — public profile, no auth ──────────────────────
 
 router.get('/:id/public', async (req, res) => {

@@ -14,6 +14,7 @@ import admissionsRoutes    from './routes/admissions'
 import coursesRoutes       from './routes/courses'
 import plansRoutes         from './routes/plans'
 import billingRoutes       from './routes/billing'
+import telegramRoutes      from './routes/telegram'
 import { tg }              from './lib/telegram'
 
 const app = express()
@@ -41,6 +42,7 @@ app.use('/api/admissions',      admissionsRoutes)
 app.use('/api/courses',         coursesRoutes)
 app.use('/api/plans',           plansRoutes)
 app.use('/api/billing',         billingRoutes)
+app.use('/api/telegram',        telegramRoutes)
 
 // ── Health check ──────────────────────────────────────────────────────────────
 

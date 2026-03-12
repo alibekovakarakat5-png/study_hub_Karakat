@@ -32,6 +32,9 @@ model User {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
+  // Telegram bot
+  telegramChatId    String?  @unique
+
   // Parent-child relationship (optional)
   parentId          String?
   parent            User?    @relation("ParentChild", fields: [parentId], references: [id])
@@ -219,6 +222,15 @@ model Payment {
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+}
+
+// One-time token for linking Telegram account to StudyHub account
+model TelegramLinkToken {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  token     String   @unique  // 6-digit code shown to user
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
 
 // Content managed by admin — IELTS materials, mentor Q&As, vocab, ENT questions, curator topics
