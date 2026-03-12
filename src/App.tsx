@@ -34,6 +34,7 @@ import ScholarshipFinder from '@/pages/ScholarshipFinder'
 import EntTheory from '@/pages/EntTheory'
 import TopicDrill from '@/pages/TopicDrill'
 import HistoryKZCourse from '@/pages/HistoryKZCourse'
+import MathEntCourse from '@/pages/MathEntCourse'
 import StartupLab from '@/pages/StartupLab'
 import EntLab from '@/pages/EntLab'
 import IeltsLab from '@/pages/IeltsLab'
@@ -113,6 +114,7 @@ export default function App() {
         <Route path="/ent-theory" element={<ProtectedRoute><EntTheory /></ProtectedRoute>} />
         <Route path="/topic-drill" element={<ProtectedRoute><TopicDrill /></ProtectedRoute>} />
         <Route path="/courses/history-kz" element={<ProtectedRoute><HistoryKZCourse /></ProtectedRoute>} />
+        <Route path="/courses/math-ent" element={<ProtectedRoute><MathEntCourse /></ProtectedRoute>} />
         <Route path="/startup-lab" element={<ProtectedRoute><StartupLab /></ProtectedRoute>} />
         {/* ── Lab landing pages (public, entry points) ── */}
         <Route path="/ent" element={<EntLab />} />

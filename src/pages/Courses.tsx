@@ -317,6 +317,10 @@ function CourseModal({
       navigate('/courses/history-kz')
       return
     }
+    if (course.id === 'course-1') {
+      navigate('/courses/math-ent')
+      return
+    }
     // DB course: enroll and go to first lesson
     if (course._dbCourseId) {
       setEnrolling(true)
