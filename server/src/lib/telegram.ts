@@ -13,6 +13,7 @@
 //        -d '{"url":"https://YOUR_SERVER/api/telegram/webhook"}'
 
 import { prisma } from './prisma'
+import { askTutor, getRemainingQuestions } from './claude'
 
 const BOT_TOKEN   = process.env.TELEGRAM_BOT_TOKEN
 const ADMIN_CHAT  = process.env.TELEGRAM_ADMIN_CHAT ?? process.env.TELEGRAM_CHAT_ID
@@ -39,6 +40,10 @@ async function editMsg(chat_id: string | number, message_id: number, text: strin
 
 async function answerCallback(callback_query_id: string, text?: string) {
   return call('answerCallbackQuery', { callback_query_id, text })
+}
+
+async function sendTyping(chat_id: number) {
+  return call('sendChatAction', { chat_id, action: 'typing' })
 }
 
 // ── ENT question bank (fallback if DB is empty) ───────────────────────────────
@@ -168,17 +173,22 @@ function buildQuestionKeyboard(questionId: string) {
 const WELCOME_TEXT =
   `👋 <b>Привет! Я StudyHub Bot</b>\n\n` +
   `Помогу тебе готовиться к ЕНТ прямо в Telegram.\n\n` +
+  `<b>Просто напиши любой вопрос по ЕНТ</b> — я отвечу как репетитор! 🤖\n` +
+  `(до 10 AI-ответов в день, бесплатно)\n\n` +
   `<b>Команды:</b>\n` +
-  `🎯 /question — вопрос ЕНТ с вариантами\n` +
+  `🎯 /question — вопрос ЕНТ с вариантами ответа\n` +
   `📊 /progress — твой прогресс на платформе\n` +
   `🔗 /link <код> — привязать аккаунт StudyHub\n` +
   `❓ /help — все команды\n\n` +
   `Чтобы видеть свой прогресс — привяжи аккаунт:\n` +
-  `Зайди на <a href="https://skylla.netlify.app/settings">skylla.netlify.app/settings</a> → "Подключить Telegram" → скопируй код → отправь /link КОД`
+  `<a href="https://skylla.netlify.app/settings">skylla.netlify.app/settings</a> → "Подключить Telegram"`
 
 const HELP_TEXT =
-  `<b>Команды StudyHub Bot</b>\n\n` +
-  `🎯 /question — случайный вопрос ЕНТ\n` +
+  `<b>StudyHub Bot — AI репетитор ЕНТ</b>\n\n` +
+  `🤖 <b>Просто напиши вопрос</b> — получи объяснение от AI\n` +
+  `   Математика, История КЗ, Физика, Химия, Биология...\n` +
+  `   Лимит: 10 вопросов в день (бесплатно)\n\n` +
+  `🎯 /question — случайный вопрос ЕНТ с вариантами\n` +
   `📊 /progress — прогресс (нужен привязанный аккаунт)\n` +
   `🔗 /link <6-значный код> — привязать аккаунт\n` +
   `❓ /help — это сообщение\n\n` +
@@ -278,6 +288,52 @@ async function handleLink(chatId: number, token: string) {
   )
 }
 
+// ── AI tutor handler ──────────────────────────────────────────────────────────
+
+async function handleAiTutor(
+  chatId: number,
+  text: string,
+  from?: { id: number; first_name?: string; username?: string },
+) {
+  const userId = String(chatId) // use chatId as rate-limit key (no auth needed)
+  const remaining = getRemainingQuestions(userId)
+
+  if (remaining === 0) {
+    await sendMsg(
+      chatId,
+      `⏳ <b>Лимит исчерпан</b>\n\nТы использовал все ${10} AI-ответов на сегодня.\n\nЛимит сбросится в полночь.\n\nПока можешь тренироваться: /question`,
+    )
+    return
+  }
+
+  // Show typing indicator while Claude is thinking
+  await sendTyping(chatId)
+
+  try {
+    const result = await askTutor(userId, text, from?.first_name)
+
+    if ('limitReached' in result) {
+      await sendMsg(chatId, `⏳ <b>Лимит AI-вопросов исчерпан.</b> Сбросится в полночь.`)
+      return
+    }
+
+    const { answer, remaining: left } = result
+
+    // Append remaining count hint when getting low
+    const hint = left <= 3
+      ? `\n\n<i>AI-вопросов осталось сегодня: ${left}</i>`
+      : ''
+
+    await sendMsg(chatId, `🤖 ${answer}${hint}`)
+  } catch (err) {
+    console.error('[Bot] AI tutor error:', err)
+    await sendMsg(
+      chatId,
+      `⚠️ AI-репетитор временно недоступен. Попробуй позже или используй /question`,
+    )
+  }
+}
+
 // ── Callback query handler (inline button answers) ────────────────────────────
 
 const pendingQuestions = new Map<string, typeof FALLBACK_QUESTIONS[0]>()
@@ -373,11 +429,8 @@ export async function handleUpdate(update: TelegramUpdate): Promise<void> {
       if (text === '/progress')         { await handleProgress(chatId); return }
       if (text.startsWith('/link'))     { await handleLink(chatId, text.slice(5).trim()); return }
 
-      // Unknown command or plain text
-      await sendMsg(
-        chatId,
-        `Не понял 🤔\n\nПопробуй:\n🎯 /question — вопрос ЕНТ\n📊 /progress — мой прогресс\n❓ /help — все команды`,
-      )
+      // Unknown command or plain text → AI tutor
+      await handleAiTutor(chatId, text, update.message.from)
       return
     }
 
