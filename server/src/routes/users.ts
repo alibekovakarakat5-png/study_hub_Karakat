@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import crypto from 'crypto'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import { prisma } from '../lib/prisma'
@@ -6,9 +7,9 @@ import { verifyToken, requireRole } from '../middleware/auth'
 
 const router = Router()
 
-function safeUser(u: { passwordHash: string; [key: string]: unknown }) {
-  const { passwordHash: _, ...rest } = u
-  return rest
+function safeUser(u: { passwordHash: string; telegramChatId?: string | null; [key: string]: unknown }) {
+  const { passwordHash: _, telegramChatId, ...rest } = u
+  return { ...rest, telegramLinked: !!telegramChatId }
 }
 
 // ── PUT /api/users/me — update own profile ────────────────────────────────────
@@ -78,7 +79,7 @@ router.post('/me/telegram-link', verifyToken, async (req, res) => {
   const userId = req.user!.userId
 
   // Generate a 6-char alphanumeric code
-  const token = Math.random().toString(36).slice(2, 8).toUpperCase()
+  const token = crypto.randomBytes(3).toString('hex').toUpperCase()
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000) // 15 minutes
 
   await prisma.telegramLinkToken.upsert({

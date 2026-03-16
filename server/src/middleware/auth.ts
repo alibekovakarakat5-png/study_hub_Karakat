@@ -13,7 +13,10 @@ declare global {
 
 // ── JWT helpers ───────────────────────────────────────────────────────────────
 
-const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-secret-change-in-production'
+const JWT_SECRET = process.env.JWT_SECRET ?? (() => {
+  console.warn('⚠️  JWT_SECRET not set — using insecure default. Set JWT_SECRET in .env for production!')
+  return 'dev-secret-change-in-production'
+})()
 
 export interface JwtPayload {
   userId: string

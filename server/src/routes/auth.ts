@@ -14,7 +14,7 @@ const RegisterSchema = z.object({
   name:     z.string().min(2).max(80),
   email:    z.string().email(),
   password: z.string().min(6).max(100),
-  role:     z.enum(['student', 'parent', 'teacher', 'employer', 'admin']).default('student'),
+  role:     z.enum(['student', 'parent', 'teacher', 'employer']).default('student'),
   grade:    z.number().int().min(9).max(11).optional(),
   city:     z.string().max(80).optional(),
 })
@@ -26,9 +26,9 @@ const LoginSchema = z.object({
 
 // ── Strip passwordHash before returning user ──────────────────────────────────
 
-function safeUser(u: { passwordHash: string; [key: string]: unknown }) {
-  const { passwordHash: _, ...rest } = u
-  return rest
+function safeUser(u: { passwordHash: string; telegramChatId?: string | null; [key: string]: unknown }) {
+  const { passwordHash: _, telegramChatId, ...rest } = u
+  return { ...rest, telegramLinked: !!telegramChatId }
 }
 
 // ── POST /api/auth/register ───────────────────────────────────────────────────

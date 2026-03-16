@@ -17,6 +17,7 @@ export interface User {
   streak: number
   totalStudyMinutes: number
   lastActiveDate: string
+  telegramLinked?: boolean
 }
 
 export interface DiagnosticResult {

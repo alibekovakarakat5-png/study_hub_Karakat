@@ -26,17 +26,13 @@ async function fetchCourseWithStructure(id: string) {
 // Admin sees all; authenticated users see published + enrolled; public sees published
 
 router.get('/', async (req, res) => {
-  const token = req.headers.authorization?.split(' ')[1]
   let isAdmin = false
-
-  if (token) {
+  const header = req.headers.authorization
+  if (header?.startsWith('Bearer ')) {
     try {
-      const { verifyToken: vt } = await import('../middleware/auth')
-      // Simple decode without full middleware
       const jwt = await import('jsonwebtoken')
-      const payload = jwt.verify(token, process.env.JWT_SECRET ?? 'dev-secret') as { role: string }
+      const payload = jwt.verify(header.slice(7), process.env.JWT_SECRET ?? 'dev-secret-change-in-production') as { role: string }
       isAdmin = payload.role === 'admin'
-      void vt
     } catch { /* not authenticated */ }
   }
 
@@ -162,7 +158,7 @@ router.delete('/:id', verifyToken, requireRole('admin'), async (req, res) => {
 // ── POST /api/courses/:id/enroll (authenticated) ─────────────────────────────
 
 router.post('/:id/enroll', verifyToken, async (req, res) => {
-  const userId = (req as { userId?: string }).userId!
+  const userId = req.user!.userId
   const courseId = String(req.params['id'])
 
   const existing = await prisma.courseEnrollment.findUnique({
@@ -177,7 +173,7 @@ router.post('/:id/enroll', verifyToken, async (req, res) => {
 // ── GET /api/courses/:id/progress (authenticated) ────────────────────────────
 
 router.get('/:id/progress', verifyToken, async (req, res) => {
-  const userId = (req as { userId?: string }).userId!
+  const userId = req.user!.userId
   const courseId = String(req.params['id'])
 
   const enrollment = await prisma.courseEnrollment.findUnique({
@@ -208,7 +204,7 @@ router.get('/:id/progress', verifyToken, async (req, res) => {
 // ── POST /api/courses/lessons/:lessonId/complete (authenticated) ──────────────
 
 router.post('/lessons/:lessonId/complete', verifyToken, async (req, res) => {
-  const userId = (req as { userId?: string }).userId!
+  const userId = req.user!.userId
   const lessonId = String(req.params['lessonId'])
   const { quizScore } = req.body as { quizScore?: number }
 

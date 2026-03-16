@@ -39,6 +39,7 @@ export default function Settings() {
       await api.del('/users/me/telegram-link')
       setTgData(null)
       setTgStatus({ type: 'success', msg: 'Telegram отвязан' })
+      updateUser({ telegramLinked: false })
     } catch (err) {
       setTgStatus({ type: 'error', msg: (err as Error).message })
     }
@@ -360,8 +361,8 @@ export default function Settings() {
               </div>
             )}
 
-            {/* Unlink button */}
-            {!tgData && (
+            {/* Unlink button — only if Telegram is actually linked */}
+            {!tgData && user?.telegramLinked && (
               <button
                 type="button"
                 onClick={unlinkTelegram}

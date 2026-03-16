@@ -98,7 +98,7 @@ export default function Auth() {
         // New student → welcome flow, then destination
         const dest = fromSource && SOURCE_REDIRECT[fromSource]
           ? SOURCE_REDIRECT[fromSource]
-          : (onboardingCompleted ? '/dashboard' : '/dashboard')
+          : '/dashboard'
         navigate(`/welcome?to=${encodeURIComponent(dest)}`, { replace: true })
       } else if (fromSource && SOURCE_REDIRECT[fromSource]) {
         navigate(SOURCE_REDIRECT[fromSource], { replace: true })
