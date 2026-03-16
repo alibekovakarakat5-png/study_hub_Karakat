@@ -58,6 +58,9 @@ model DiagnosticResult {
   subject String
   scores  Json     // { score, maxScore, percentage, level, weakTopics, strongTopics }
   takenAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, takenAt])
 }
 
 model StudyPlan {
@@ -70,6 +73,8 @@ model StudyPlan {
   weeks            Json     // serialized plan weeks array
   createdAt        DateTime @default(now())
   isActive         Boolean  @default(true)
+
+  @@index([userId, isActive])
 }
 
 model ModuleProgress {
@@ -93,6 +98,9 @@ model EntResult {
   percentage   Float
   blockResults Json     // per-subject breakdown
   takenAt      DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, takenAt])
 }
 
 // Admission deadlines — verified by admin, staleness checked automatically
@@ -137,6 +145,8 @@ model CourseModule {
   title    String
   order    Int      @default(0)
   lessons  Lesson[]
+
+  @@index([courseId])
 }
 
 model Lesson {
@@ -148,6 +158,8 @@ model Lesson {
   order       Int          @default(0)
   blocks      Json         @default("[]") // LessonBlock[]
   completions LessonCompletion[]
+
+  @@index([moduleId])
 }
 
 model CourseEnrollment {
@@ -159,6 +171,7 @@ model CourseEnrollment {
   createdAt DateTime @default(now())
 
   @@unique([courseId, userId])
+  @@index([userId])
 }
 
 model LessonCompletion {
@@ -171,6 +184,7 @@ model LessonCompletion {
   completedAt DateTime @default(now())
 
   @@unique([lessonId, userId])
+  @@index([userId])
 }
 
 // ── Billing ───────────────────────────────────────────────────────────────────
@@ -206,6 +220,9 @@ model Subscription {
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   plan     Plan      @relation(fields: [planId], references: [id])
   payments Payment[]
+
+  @@index([userId, status])
+  @@index([status])
 }
 
 model Payment {
@@ -222,6 +239,9 @@ model Payment {
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  @@index([userId])
+  @@index([status])
 }
 
 // One-time token for linking Telegram account to StudyHub account
@@ -242,4 +262,6 @@ model Content {
   order     Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([type, active])
 }

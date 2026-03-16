@@ -78,15 +78,14 @@ router.put('/:id', verifyToken, requireRole('admin'), async (req, res) => {
 
   const { data: rawData, ...rest } = parsed.data
 
-  try {
-    const item = await prisma.content.update({
-      where: { id },
-      data: { ...rest, ...(rawData !== undefined ? { data: rawData as Prisma.InputJsonValue } : {}) },
-    })
-    res.json({ item })
-  } catch {
-    res.status(404).json({ error: 'Контент не найден' })
-  }
+  const existing = await prisma.content.findUnique({ where: { id } })
+  if (!existing) { res.status(404).json({ error: 'Контент не найден' }); return }
+
+  const item = await prisma.content.update({
+    where: { id },
+    data: { ...rest, ...(rawData !== undefined ? { data: rawData as Prisma.InputJsonValue } : {}) },
+  })
+  res.json({ item })
 })
 
 // ── DELETE /api/content/:id — admin: delete content item ──────────────────────

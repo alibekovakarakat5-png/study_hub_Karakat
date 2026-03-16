@@ -13,7 +13,7 @@ import { prisma } from './prisma'
 
 const BOT_TOKEN  = process.env.TELEGRAM_BOT_TOKEN
 const ADMIN_CHAT = process.env.TELEGRAM_ADMIN_CHAT ?? process.env.TELEGRAM_CHAT_ID
-const APP_URL    = 'https://skylla.netlify.app'
+const APP_URL    = process.env.APP_URL ?? 'https://skylla.netlify.app'
 
 // ── Low-level helpers ─────────────────────────────────────────────────────────
 
@@ -135,22 +135,33 @@ interface UserState {
   score: number
   answers: number[]
   questions: Question[]
+  lastActive: number
 }
 
 const userStates = new Map<string, UserState>()
 
+const STATE_TTL = 60 * 60 * 1000 // 1 hour
+
+// Periodic cleanup of stale states every 30 minutes
+setInterval(() => {
+  const cutoff = Date.now() - STATE_TTL
+  for (const [key, state] of userStates) {
+    if (state.lastActive < cutoff) userStates.delete(key)
+  }
+}, 30 * 60 * 1000)
+
 function getState(chatId: number): UserState {
   const key = String(chatId)
-  if (!userStates.has(key)) userStates.set(key, { flow: 'idle', step: 0, score: 0, answers: [], questions: [] })
+  if (!userStates.has(key)) userStates.set(key, { flow: 'idle', step: 0, score: 0, answers: [], questions: [], lastActive: Date.now() })
   return userStates.get(key)!
 }
 
 function setState(chatId: number, patch: Partial<UserState>): void {
-  userStates.set(String(chatId), { ...getState(chatId), ...patch })
+  userStates.set(String(chatId), { ...getState(chatId), ...patch, lastActive: Date.now() })
 }
 
 function resetState(chatId: number): void {
-  userStates.set(String(chatId), { flow: 'idle', step: 0, score: 0, answers: [], questions: [] })
+  userStates.delete(String(chatId))
 }
 
 // ── Main menu ─────────────────────────────────────────────────────────────────
@@ -294,6 +305,7 @@ async function startAbroadFlow(chatId: number) {
 
 async function handleAbroadAns(chatId: number, idx: number) {
   const s = getState(chatId)
+  if (s.flow !== 'abroad') return
   const newAnswers = [...s.answers, idx]
   const nextStep = s.step + 1
 
@@ -370,6 +382,7 @@ async function startCareerFlow(chatId: number) {
 
 async function handleCareerAns(chatId: number, idx: number) {
   const s = getState(chatId)
+  if (s.flow !== 'career') return
   const newAnswers = [...s.answers, idx]
   const nextStep = s.step + 1
 
@@ -463,6 +476,7 @@ async function startStartupFlow(chatId: number) {
 
 async function handleStartupAns(chatId: number, idx: number) {
   const s = getState(chatId)
+  if (s.flow !== 'startup') return
   const newAnswers = [...s.answers, idx]
   const nextStep = s.step + 1
 
@@ -709,7 +723,11 @@ export async function handleUpdate(update: TelegramUpdate): Promise<void> {
       const chatId = update.message.chat.id
       const text   = update.message.text.trim()
 
-      if (text.startsWith('/start')) { await showMainMenu(chatId); return }
+      if (text.startsWith('/start')) {
+        const payload = text.slice(6).trim()
+        if (payload) { await handleLink(chatId, payload); return }
+        await showMainMenu(chatId); return
+      }
       if (text === '/help')          { await showMainMenu(chatId); return }
       if (text === '/question')      { await handleQuestion(chatId); return }
       if (text === '/progress')      { await handleProgress(chatId); return }
@@ -737,6 +755,10 @@ export async function handleUpdate(update: TelegramUpdate): Promise<void> {
 
 function now() { return new Date().toLocaleString('ru-KZ', { timeZone: 'Asia/Almaty' }) }
 
+function escHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 async function adminSend(text: string) {
   if (!BOT_TOKEN || !ADMIN_CHAT) return
   try { await sendMsg(ADMIN_CHAT, text) } catch (e) { console.error('[Telegram] admin send failed:', e) }
@@ -746,19 +768,19 @@ export const tg = {
   serverStart: () => adminSend(`✅ <b>Сервер запущен</b>\n🕐 ${now()}`),
 
   newUser: (name: string, email: string, role: string, city?: string | null) =>
-    adminSend(`🆕 <b>Новый пользователь</b>\n👤 ${name}\n📧 ${email}\n🎭 ${role}${city ? `\n📍 ${city}` : ''}\n🕐 ${now()}`),
+    adminSend(`🆕 <b>Новый пользователь</b>\n👤 ${escHtml(name)}\n📧 ${escHtml(email)}\n🎭 ${escHtml(role)}${city ? `\n📍 ${escHtml(city)}` : ''}\n🕐 ${now()}`),
 
   newSubscription: (userName: string, planName: string, expires: string) =>
-    adminSend(`🔔 <b>Новая подписка</b>\n👤 ${userName}\n📦 ${planName}\n📅 до ${expires}\n🕐 ${now()}`),
+    adminSend(`🔔 <b>Новая подписка</b>\n👤 ${escHtml(userName)}\n📦 ${escHtml(planName)}\n📅 до ${escHtml(expires)}\n🕐 ${now()}`),
 
   newPayment: (userName: string, amount: number, method: string, planName?: string) =>
-    adminSend(`💰 <b>Оплата</b>\n👤 ${userName}\n💵 ${amount.toLocaleString('ru-RU')} ₸\n💳 ${method}${planName ? `\n📦 ${planName}` : ''}\n🕐 ${now()}`),
+    adminSend(`💰 <b>Оплата</b>\n👤 ${escHtml(userName)}\n💵 ${amount.toLocaleString('ru-RU')} ₸\n💳 ${escHtml(method)}${planName ? `\n📦 ${escHtml(planName)}` : ''}\n🕐 ${now()}`),
 
   support: (name: string, email: string, message: string) =>
-    adminSend(`💬 <b>Поддержка</b>\n👤 ${name}\n📧 ${email}\n📝 ${message.slice(0, 500)}\n🕐 ${now()}`),
+    adminSend(`💬 <b>Поддержка</b>\n👤 ${escHtml(name)}\n📧 ${escHtml(email)}\n📝 ${escHtml(message.slice(0, 500))}\n🕐 ${now()}`),
 
   error: (message: string, stack?: string) =>
-    adminSend(`🚨 <b>Ошибка</b>\n<code>${message.slice(0, 300)}</code>${stack ? `\n<code>${stack.slice(0, 400)}</code>` : ''}\n🕐 ${now()}`),
+    adminSend(`🚨 <b>Ошибка</b>\n<code>${escHtml(message.slice(0, 300))}</code>${stack ? `\n<code>${escHtml(stack.slice(0, 400))}</code>` : ''}\n🕐 ${now()}`),
 
   dailyStats: (users: number, premium: number, revenueToday: number) =>
     adminSend(`📊 <b>Статистика</b>\n👥 ${users.toLocaleString('ru-RU')} пользователей\n👑 Премиум: ${premium.toLocaleString('ru-RU')}\n💰 Доход: ${revenueToday.toLocaleString('ru-RU')} ₸\n🕐 ${now()}`),

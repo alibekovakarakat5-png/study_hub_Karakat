@@ -71,6 +71,14 @@ router.post('/subscriptions', verifyToken, requireRole('admin'), async (req, res
   const { userId, planId, status, expiresAt, notes } = parsed.data
   const startsAt = parsed.data.startsAt ? new Date(parsed.data.startsAt) : new Date()
 
+  // Validate that user and plan exist
+  const [user, plan] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { id: true } }),
+    prisma.plan.findUnique({ where: { id: planId }, select: { id: true } }),
+  ])
+  if (!user) { res.status(404).json({ error: 'Пользователь не найден' }); return }
+  if (!plan) { res.status(404).json({ error: 'Тарифный план не найден' }); return }
+
   // Activate isPremium on User
   await prisma.user.update({ where: { id: userId }, data: { isPremium: true } })
 
@@ -170,6 +178,15 @@ router.post('/payments', verifyToken, requireRole('admin'), async (req, res) => 
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.issues[0].message })
     return
+  }
+
+  // Validate user exists
+  const user = await prisma.user.findUnique({ where: { id: parsed.data.userId }, select: { id: true } })
+  if (!user) { res.status(404).json({ error: 'Пользователь не найден' }); return }
+
+  if (parsed.data.subscriptionId) {
+    const sub = await prisma.subscription.findUnique({ where: { id: parsed.data.subscriptionId }, select: { id: true } })
+    if (!sub) { res.status(404).json({ error: 'Подписка не найдена' }); return }
   }
 
   const payment = await prisma.payment.create({
