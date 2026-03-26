@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-build:
+    name: Lint & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # ── Frontend ──
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: TypeScript check (frontend)
+        run: npx tsc --noEmit
+
+      - name: Lint (frontend)
+        run: npm run lint
+
+      - name: Build (frontend)
+        run: npm run build
+
+      # ── Backend ──
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: server
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+        working-directory: server
+
+      - name: TypeScript check (backend)
+        run: npx tsc --noEmit
+        working-directory: server
+
+      - name: Build (backend)
+        run: npm run build
+        working-directory: server
