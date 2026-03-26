@@ -3,7 +3,7 @@ import { PageMeta } from '@/components/PageMeta';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
-import { openWhatsApp, buildPricingMessage } from '@/lib/whatsapp';
+
 import { motion, useInView } from 'framer-motion';
 import {
   GraduationCap,
@@ -13,7 +13,6 @@ import {
   Target,
   Trophy,
   Bot,
-  Sparkles,
   ArrowRight,
   Check,
   Star,
@@ -181,10 +180,10 @@ function Header({ onNavigate }: { onNavigate: (path: string) => void }) {
   }, []);
 
   const navLinks = [
-    { label: 'Как это работает', href: '#how-it-works' },
-    { label: 'Возможности', href: '#features' },
-    { label: 'Отзывы', href: '#testimonials' },
-    { label: 'Цены', href: '#pricing' },
+    { label: t('landing.nav_how_it_works'), href: '#how-it-works' },
+    { label: t('landing.nav_features'), href: '#features' },
+    { label: t('landing.nav_testimonials'), href: '#testimonials' },
+    { label: t('landing.nav_pricing'), href: '#pricing' },
   ];
 
   return (
@@ -226,7 +225,7 @@ function Header({ onNavigate }: { onNavigate: (path: string) => void }) {
 
           {/* Desktop CTA */}
           <div className="hidden items-center gap-3 lg:flex">
-            <LanguageSwitcher />
+            <LanguageSwitcher dark={!scrolled} />
             <button
               onClick={() => onNavigate('/auth')}
               className={`rounded-xl px-5 py-2.5 text-sm font-semibold transition-colors ${
@@ -304,221 +303,122 @@ function Header({ onNavigate }: { onNavigate: (path: string) => void }) {
 
 function HeroSection({ onNavigate }: { onNavigate: (path: string) => void }) {
   const { t } = useTranslation();
+  const audiences = [
+    {
+      emoji: '🎯',
+      title: t('landing.audience_ent_title'),
+      desc: t('landing.audience_ent_desc'),
+      href: '/ent',
+      bg: 'bg-amber-500/10',
+      border: 'border-amber-400/20',
+    },
+    {
+      emoji: '🌍',
+      title: t('landing.audience_ielts_title'),
+      desc: t('landing.audience_ielts_desc'),
+      href: '/ielts-lab',
+      bg: 'bg-blue-500/10',
+      border: 'border-blue-400/20',
+    },
+    {
+      emoji: '🎓',
+      title: t('landing.audience_admission_title'),
+      desc: t('landing.audience_admission_desc'),
+      href: '/admit-lab',
+      bg: 'bg-violet-500/10',
+      border: 'border-violet-400/20',
+    },
+    {
+      emoji: '🧭',
+      title: t('landing.audience_career_title'),
+      desc: t('landing.audience_career_desc'),
+      href: '/career-test',
+      bg: 'bg-emerald-500/10',
+      border: 'border-emerald-400/20',
+    },
+  ];
+
   return (
     <section className="gradient-hero relative overflow-hidden pt-28 pb-20 lg:pt-36 lg:pb-28">
       {/* Decorative blobs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 h-[600px] w-[600px] rounded-full bg-primary-500/10 blur-3xl" />
         <div className="absolute -bottom-40 -left-40 h-[500px] w-[500px] rounded-full bg-purple-500/10 blur-3xl" />
-        <div className="absolute top-1/3 left-1/3 h-[300px] w-[300px] rounded-full bg-pink-500/5 blur-3xl" />
       </div>
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-          {/* Left side — text */}
-          <div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary-400/20 bg-primary-500/10 px-4 py-1.5 text-sm font-medium text-primary-300"
-            >
-              <Sparkles className="h-4 w-4" />
-              <span>{t('landing.hero_badge')}</span>
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.1 }}
-              className="text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl xl:text-7xl"
-            >
-              {t('landing.hero_title')}{' '}
-              <span className="bg-gradient-to-r from-primary-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                {t('landing.hero_title_highlight')}
-              </span>{' '}
-              {t('landing.hero_title_end')}
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.25 }}
-              className="mt-6 max-w-lg text-lg leading-relaxed text-slate-300 sm:text-xl"
-            >
-              {t('landing.hero_subtitle')}
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="mt-8 flex flex-col gap-4 sm:flex-row"
-            >
-              <button
-                onClick={() => onNavigate('/diagnostic')}
-                className="group flex items-center justify-center gap-2 rounded-2xl bg-white px-8 py-4 text-base font-bold text-primary-700 shadow-xl shadow-white/10 transition-all hover:shadow-2xl hover:shadow-white/20 hover:-translate-y-0.5"
-              >
-                {t('landing.hero_cta_primary')}
-                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-              </button>
-              <a
-                href="#features"
-                className="group flex items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 px-8 py-4 text-base font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/10 hover:border-white/30"
-              >
-                <Play className="h-5 w-5" />
-                {t('landing.hero_cta_secondary')}
-              </a>
-            </motion.div>
-
-            {/* Social proof */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.55 }}
-              className="mt-10 flex items-center gap-4"
-            >
-              {/* Avatar stack */}
-              <div className="flex -space-x-3">
-                {['bg-gradient-to-br from-primary-400 to-purple-500',
-                  'bg-gradient-to-br from-pink-400 to-rose-500',
-                  'bg-gradient-to-br from-amber-400 to-orange-500',
-                  'bg-gradient-to-br from-emerald-400 to-teal-500',
-                ].map((bg, i) => (
-                  <div
-                    key={i}
-                    className={`flex h-10 w-10 items-center justify-center rounded-full ${bg} text-xs font-bold text-white ring-2 ring-slate-900`}
-                  >
-                    {['А', 'Д', 'М', 'К'][i]}
-                  </div>
-                ))}
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-white">{t('landing.social_proof')}</p>
-                <div className="mt-0.5 flex gap-0.5">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Right side — Phone mockup */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.3, ease: [0.22, 1, 0.36, 1] as const }}
-            className="relative mx-auto w-full max-w-md lg:max-w-none"
+        {/* Centered text */}
+        <div className="mx-auto max-w-3xl text-center">
+          <motion.h1
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7 }}
+            className="text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl"
           >
-            <div className="relative flex justify-center">
-              {/* Phone frame */}
-              <div className="relative w-[260px] rounded-[2.5rem] border-[6px] border-slate-700 bg-slate-900 p-3 shadow-2xl shadow-black/50">
-                {/* Notch */}
-                <div className="absolute top-0 left-1/2 h-6 w-24 -translate-x-1/2 rounded-b-2xl bg-slate-700" />
-                {/* Screen */}
-                <div className="rounded-[2rem] bg-gradient-to-b from-slate-800 to-slate-900 p-4 pt-8">
-                  {/* Mini header */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center">
-                        <GraduationCap className="h-4 w-4 text-white" />
-                      </div>
-                      <span className="text-xs font-bold text-white">Study Hub</span>
-                    </div>
-                    <div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary-400 to-purple-500 flex items-center justify-center text-[10px] font-bold text-white">А</div>
-                  </div>
+            {t('landing.hero_title')}{' '}
+            <span className="bg-gradient-to-r from-primary-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+              {t('landing.hero_title_highlight')}
+            </span>
+          </motion.h1>
 
-                  {/* Greeting */}
-                  <p className="text-[11px] text-slate-400">Привет, Айдана!</p>
-                  <p className="text-sm font-bold text-white mt-0.5">Твой прогресс</p>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.15 }}
+            className="mt-6 text-lg leading-relaxed text-slate-300 sm:text-xl"
+          >
+            {t('landing.hero_subtitle')}
+          </motion.p>
 
-                  {/* Progress bar */}
-                  <div className="mt-3 rounded-xl bg-slate-700/50 p-3">
-                    <div className="flex items-center justify-between text-[10px]">
-                      <span className="text-slate-300">Общий балл</span>
-                      <span className="font-bold text-primary-400">76%</span>
-                    </div>
-                    <div className="mt-1.5 h-2 rounded-full bg-slate-700">
-                      <div className="h-full w-[76%] rounded-full bg-gradient-to-r from-primary-500 to-purple-500" />
-                    </div>
-                  </div>
-
-                  {/* Subject list */}
-                  <div className="mt-3 space-y-2">
-                    {[
-                      { name: 'Математика', score: '87%', color: 'from-blue-500 to-cyan-500' },
-                      { name: 'Физика', score: '72%', color: 'from-purple-500 to-pink-500' },
-                      { name: 'История КЗ', score: '91%', color: 'from-emerald-500 to-teal-500' },
-                    ].map((s) => (
-                      <div key={s.name} className="flex items-center justify-between rounded-lg bg-slate-700/30 px-3 py-2">
-                        <span className="text-[10px] text-slate-300">{s.name}</span>
-                        <span className={`text-[10px] font-bold bg-gradient-to-r ${s.color} bg-clip-text text-transparent`}>{s.score}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* AI tip */}
-                  <div className="mt-3 rounded-xl bg-primary-500/10 border border-primary-500/20 p-2.5">
-                    <div className="flex items-start gap-2">
-                      <Bot className="h-3.5 w-3.5 text-primary-400 mt-0.5 shrink-0" />
-                      <p className="text-[10px] text-primary-300 leading-relaxed">Советую повторить логарифмы перед тестом</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Floating card: Score */}
-              <motion.div
-                animate={{ y: [0, -8, 0] }}
-                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-                className="absolute -left-8 top-12 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 p-3 shadow-xl lg:-left-16"
-              >
-                <div className="flex items-center gap-2.5">
-                  <ProgressRing progress={87} size={40} strokeWidth={3} />
-                  <div>
-                    <p className="text-[10px] text-slate-400">Математика</p>
-                    <p className="text-sm font-bold text-white">87%</p>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Floating card: Streak */}
-              <motion.div
-                animate={{ y: [0, 10, 0] }}
-                transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-                className="absolute -right-6 top-28 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2.5 shadow-xl lg:-right-14"
-              >
-                <p className="text-lg">🔥</p>
-                <p className="text-xs font-bold text-white">12 дней подряд</p>
-              </motion.div>
-
-              {/* Floating card: Achievement */}
-              <motion.div
-                animate={{ y: [0, -6, 0] }}
-                transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
-                className="absolute -left-4 bottom-24 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2.5 shadow-xl lg:-left-12"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">⭐</span>
-                  <p className="text-xs font-bold text-white">Отличник</p>
-                </div>
-              </motion.div>
-
-              {/* Floating card: AI message */}
-              <motion.div
-                animate={{ y: [0, 8, 0] }}
-                transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-                className="absolute -right-4 bottom-16 rounded-2xl bg-gradient-to-r from-primary-500/20 to-purple-500/20 backdrop-blur-xl border border-primary-400/20 px-3 py-2 shadow-xl lg:-right-10"
-              >
-                <div className="flex items-center gap-2">
-                  <Bot className="h-4 w-4 text-primary-400" />
-                  <p className="text-[10px] text-primary-300 max-w-[120px]">Советую повторить логарифмы</p>
-                </div>
-              </motion.div>
-            </div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="mt-8 flex flex-col gap-4 sm:flex-row sm:justify-center"
+          >
+            <button
+              onClick={() => onNavigate('/diagnostic')}
+              className="group flex items-center justify-center gap-2 rounded-2xl bg-white px-8 py-4 text-base font-bold text-primary-700 shadow-xl shadow-white/10 transition-all hover:shadow-2xl hover:shadow-white/20 hover:-translate-y-0.5"
+            >
+              {t('landing.hero_cta_primary')}
+              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+            </button>
+            <a
+              href="#features"
+              className="group flex items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 px-8 py-4 text-base font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/10 hover:border-white/30"
+            >
+              <Play className="h-5 w-5" />
+              {t('landing.hero_cta_secondary')}
+            </a>
           </motion.div>
         </div>
+
+        {/* Audience cards — choose your goal */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.45 }}
+          className="mx-auto mt-16 grid max-w-4xl gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        >
+          {audiences.map((a, i) => (
+            <motion.button
+              key={a.href}
+              onClick={() => onNavigate(a.href)}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.5 + i * 0.1 }}
+              className={`group flex flex-col items-start rounded-2xl ${a.bg} ${a.border} border backdrop-blur-sm p-5 text-left transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-black/10`}
+            >
+              <span className="text-3xl mb-3">{a.emoji}</span>
+              <h3 className="text-sm font-bold text-white">{a.title}</h3>
+              <p className="mt-1 text-xs text-white/60 leading-relaxed">{a.desc}</p>
+              <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-white/50 group-hover:text-white/80 transition-colors">
+                {t('landing.learn_more')}
+                <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+              </div>
+            </motion.button>
+          ))}
+        </motion.div>
       </div>
     </section>
   );
@@ -575,19 +475,20 @@ function LiveStatsBar() {
 
 function ProblemSolutionSection() {
   const { ref, inView } = useSectionInView();
+  const { t } = useTranslation();
 
   const pairs = [
     {
-      problem: 'Не знаю кем стать',
-      solution: 'AI определит твои сильные стороны и подберёт профессию',
+      problem: t('landing.problem_1'),
+      solution: t('landing.solution_1'),
     },
     {
-      problem: 'Не понимаю как готовиться к ЕНТ',
-      solution: 'Персональный план подготовки, адаптированный под тебя',
+      problem: t('landing.problem_2'),
+      solution: t('landing.solution_2'),
     },
     {
-      problem: 'Родители переживают, а я не знаю что делать',
-      solution: 'Родители видят прогресс в реальном времени',
+      problem: t('landing.problem_3'),
+      solution: t('landing.solution_3'),
     },
   ];
 
@@ -601,10 +502,10 @@ function ProblemSolutionSection() {
           className="mx-auto max-w-2xl text-center mb-16"
         >
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
-            Мы знаем, каково это
+            {t('landing.problem_title')}
           </h2>
           <p className="mt-4 text-lg text-slate-500">
-            И у нас есть решение для каждой проблемы
+            {t('landing.problem_subtitle')}
           </p>
         </motion.div>
 
@@ -626,7 +527,7 @@ function ProblemSolutionSection() {
             animate={inView ? 'visible' : 'hidden'}
           >
             <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-red-50 px-4 py-1.5 text-sm font-semibold text-red-600">
-              Знакомо?
+              {t('landing.problem_badge')}
             </div>
             <div className="space-y-4">
               {pairs.map((p, i) => (
@@ -652,7 +553,7 @@ function ProblemSolutionSection() {
             animate={inView ? 'visible' : 'hidden'}
           >
             <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-1.5 text-sm font-semibold text-emerald-600">
-              Study Hub решает
+              {t('landing.solution_badge')}
             </div>
             <div className="space-y-4">
               {pairs.map((p, i) => (
@@ -684,6 +585,7 @@ function ProblemSolutionSection() {
 
 function ProductShowcaseSection() {
   const { ref, inView } = useSectionInView(0.1);
+  const { t } = useTranslation();
 
   return (
     <section ref={ref} id="features" className="relative py-20 lg:py-28 bg-gradient-to-b from-slate-50 to-white">
@@ -695,14 +597,14 @@ function ProductShowcaseSection() {
           className="mx-auto max-w-2xl text-center mb-16"
         >
           <span className="mb-3 inline-block rounded-full bg-primary-50 px-4 py-1.5 text-sm font-semibold text-primary-600">
-            Возможности
+            {t('landing.showcase_badge')}
           </span>
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
-            Вся экосистема{' '}
-            <span className="text-gradient">в одном месте</span>
+            {t('landing.showcase_title')}{' '}
+            <span className="text-gradient">{t('landing.showcase_title_highlight')}</span>
           </h2>
           <p className="mt-4 text-lg text-slate-500">
-            Три мощных инструмента, которые ведут тебя от школы до карьеры
+            {t('landing.showcase_subtitle')}
           </p>
         </motion.div>
 
@@ -720,6 +622,7 @@ function ProductShowcaseSection() {
 }
 
 function ShowcaseCard1({ inView }: { inView: boolean }) {
+  const { t } = useTranslation();
   return (
     <motion.div
       variants={fadeUp}
@@ -737,7 +640,7 @@ function ShowcaseCard1({ inView }: { inView: boolean }) {
             transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
             className="absolute top-6 right-6 rounded-full bg-primary-500 px-3 py-1 text-[10px] font-bold text-white shadow-lg z-10"
           >
-            AI-адаптивный
+            {t('landing.showcase1_badge')}
           </motion.div>
 
           {/* Laptop frame */}
@@ -757,7 +660,7 @@ function ShowcaseCard1({ inView }: { inView: boolean }) {
               <div className="rounded-lg bg-white p-4">
                 {/* Progress */}
                 <div className="flex items-center justify-between text-[10px] text-slate-500 mb-2">
-                  <span>Вопрос 12 из 30</span>
+                  <span>{t('landing.showcase1_question_progress')}</span>
                   <span className="font-bold text-primary-600">40%</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-slate-100 mb-4">
@@ -766,7 +669,7 @@ function ShowcaseCard1({ inView }: { inView: boolean }) {
 
                 {/* Question */}
                 <p className="text-xs font-semibold text-slate-800 mb-3">
-                  Решите уравнение: log₂(x+3) = 5
+                  {t('landing.showcase1_question_text')}
                 </p>
 
                 {/* Options */}
@@ -795,16 +698,15 @@ function ShowcaseCard1({ inView }: { inView: boolean }) {
           <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50">
             <Brain className="h-6 w-6 text-primary-600" />
           </div>
-          <h3 className="text-2xl font-extrabold text-slate-900 lg:text-3xl">Умная диагностика</h3>
+          <h3 className="text-2xl font-extrabold text-slate-900 lg:text-3xl">{t('landing.showcase1_title')}</h3>
           <p className="mt-3 text-base text-slate-500 leading-relaxed">
-            AI-тест, который адаптируется к твоему уровню в реальном времени.
-            Сложнее, если справляешься. Проще, если нужно закрепить базу.
+            {t('landing.showcase1_desc')}
           </p>
           <ul className="mt-6 space-y-3">
             {[
-              'Определяет сильные и слабые стороны за 15 минут',
-              'Адаптируется к уровню — каждый вопрос подобран под тебя',
-              'Детальный отчёт по каждой теме',
+              t('landing.showcase1_feature1'),
+              t('landing.showcase1_feature2'),
+              t('landing.showcase1_feature3'),
             ].map((item) => (
               <li key={item} className="flex items-start gap-3">
                 <Check className="h-5 w-5 text-primary-500 mt-0.5 shrink-0" />
@@ -819,7 +721,8 @@ function ShowcaseCard1({ inView }: { inView: boolean }) {
 }
 
 function ShowcaseCard2({ inView }: { inView: boolean }) {
-  const aiMessage = useTypingEffect('Привет! Я вижу, что тебе сложно с логарифмами. Давай разберём пошагово?', inView, 35);
+  const { t } = useTranslation();
+  const aiMessage = useTypingEffect(t('landing.showcase2_ai_typing'), inView, 35);
 
   return (
     <motion.div
@@ -835,16 +738,15 @@ function ShowcaseCard2({ inView }: { inView: boolean }) {
           <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50">
             <Bot className="h-6 w-6 text-purple-600" />
           </div>
-          <h3 className="text-2xl font-extrabold text-slate-900 lg:text-3xl">AI-ментор</h3>
+          <h3 className="text-2xl font-extrabold text-slate-900 lg:text-3xl">{t('landing.showcase2_title')}</h3>
           <p className="mt-3 text-base text-slate-500 leading-relaxed">
-            Персональный помощник, который доступен 24/7. Спроси что угодно —
-            он объяснит простым языком и поможет разобраться.
+            {t('landing.showcase2_desc')}
           </p>
           <ul className="mt-6 space-y-3">
             {[
-              'Объясняет любую тему простым языком',
-              'Помогает с домашними заданиями',
-              'Мотивирует и следит за прогрессом',
+              t('landing.showcase2_feature1'),
+              t('landing.showcase2_feature2'),
+              t('landing.showcase2_feature3'),
             ].map((item) => (
               <li key={item} className="flex items-start gap-3">
                 <Check className="h-5 w-5 text-purple-500 mt-0.5 shrink-0" />
@@ -862,7 +764,7 @@ function ShowcaseCard2({ inView }: { inView: boolean }) {
             transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
             className="absolute top-6 left-6 rounded-full bg-purple-500 px-3 py-1 text-[10px] font-bold text-white shadow-lg z-10"
           >
-            24/7 доступ
+            {t('landing.showcase2_badge')}
           </motion.div>
 
           {/* Phone frame */}
@@ -875,8 +777,8 @@ function ShowcaseCard2({ inView }: { inView: boolean }) {
                   <Bot className="h-4 w-4 text-white" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-white">AI-ментор</p>
-                  <p className="text-[9px] text-emerald-400">онлайн</p>
+                  <p className="text-xs font-bold text-white">{t('landing.showcase2_ai_name')}</p>
+                  <p className="text-[9px] text-emerald-400">{t('landing.showcase2_ai_status')}</p>
                 </div>
               </div>
 
@@ -885,7 +787,7 @@ function ShowcaseCard2({ inView }: { inView: boolean }) {
                 {/* User message */}
                 <div className="flex justify-end">
                   <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-primary-500 px-3 py-2">
-                    <p className="text-[10px] text-white">Не понимаю логарифмы, помоги!</p>
+                    <p className="text-[10px] text-white">{t('landing.showcase2_user_msg1')}</p>
                   </div>
                 </div>
 
@@ -902,14 +804,14 @@ function ShowcaseCard2({ inView }: { inView: boolean }) {
                 {/* User follow-up */}
                 <div className="flex justify-end">
                   <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-primary-500 px-3 py-2">
-                    <p className="text-[10px] text-white">Да, давай!</p>
+                    <p className="text-[10px] text-white">{t('landing.showcase2_user_msg2')}</p>
                   </div>
                 </div>
               </div>
 
               {/* Input */}
               <div className="mt-4 flex items-center gap-2 rounded-2xl bg-slate-700/50 px-3 py-2">
-                <p className="flex-1 text-[10px] text-slate-500">Напиши сообщение...</p>
+                <p className="flex-1 text-[10px] text-slate-500">{t('landing.showcase2_input_placeholder')}</p>
                 <Send className="h-3.5 w-3.5 text-primary-400" />
               </div>
             </div>
@@ -921,6 +823,7 @@ function ShowcaseCard2({ inView }: { inView: boolean }) {
 }
 
 function ShowcaseCard3({ inView }: { inView: boolean }) {
+  const { t } = useTranslation();
   return (
     <motion.div
       variants={fadeUp}
@@ -938,18 +841,18 @@ function ShowcaseCard3({ inView }: { inView: boolean }) {
             transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
             className="absolute top-6 right-6 rounded-full bg-emerald-500 px-3 py-1 text-[10px] font-bold text-white shadow-lg z-10"
           >
-            От школы до работы
+            {t('landing.showcase3_badge')}
           </motion.div>
 
           {/* Career path timeline */}
           <div className="w-full max-w-sm">
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <p className="text-xs font-bold text-slate-800 mb-6 text-center">Твой карьерный путь</p>
+              <p className="text-xs font-bold text-slate-800 mb-6 text-center">{t('landing.showcase3_career_path')}</p>
               <div className="space-y-0">
                 {[
-                  { icon: BookOpen, label: '11 класс', sub: 'Подготовка к ЕНТ', color: 'bg-primary-500', active: true },
-                  { icon: GraduationCap, label: 'Университет', sub: 'IT / Computer Science', color: 'bg-purple-500', active: false },
-                  { icon: Briefcase, label: 'Карьера', sub: 'Software Engineer', color: 'bg-emerald-500', active: false },
+                  { icon: BookOpen, label: t('landing.showcase3_step1_label'), sub: t('landing.showcase3_step1_sub'), color: 'bg-primary-500', active: true },
+                  { icon: GraduationCap, label: t('landing.showcase3_step2_label'), sub: t('landing.showcase3_step2_sub'), color: 'bg-purple-500', active: false },
+                  { icon: Briefcase, label: t('landing.showcase3_step3_label'), sub: t('landing.showcase3_step3_sub'), color: 'bg-emerald-500', active: false },
                 ].map((step, i) => (
                   <div key={step.label} className="flex items-start gap-4">
                     <div className="flex flex-col items-center">
@@ -976,16 +879,15 @@ function ShowcaseCard3({ inView }: { inView: boolean }) {
           <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50">
             <Compass className="h-6 w-6 text-emerald-600" />
           </div>
-          <h3 className="text-2xl font-extrabold text-slate-900 lg:text-3xl">Карьерный навигатор</h3>
+          <h3 className="text-2xl font-extrabold text-slate-900 lg:text-3xl">{t('landing.showcase3_title')}</h3>
           <p className="mt-3 text-base text-slate-500 leading-relaxed">
-            Не просто подготовка к ЕНТ — мы помогаем выстроить путь
-            от школы до работы мечты.
+            {t('landing.showcase3_desc')}
           </p>
           <ul className="mt-6 space-y-3">
             {[
-              'Подбор профессии на основе твоих интересов и способностей',
-              'Рекомендации по вузам и специальностям',
-              'Пошаговый план от текущего момента до трудоустройства',
+              t('landing.showcase3_feature1'),
+              t('landing.showcase3_feature2'),
+              t('landing.showcase3_feature3'),
             ].map((item) => (
               <li key={item} className="flex items-start gap-3">
                 <Check className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
@@ -1005,14 +907,15 @@ function ShowcaseCard3({ inView }: { inView: boolean }) {
 
 function LabsSection() {
   const { ref, inView } = useSectionInView(0.1);
+  const { t } = useTranslation();
 
   const labs = [
     {
       href: '/ent',
       emoji: '🎯',
       badge: 'ENT Lab',
-      title: 'Подготовка к ЕНТ',
-      description: 'Диагностика, персональный план, теория и тренировки. Набери 120+ баллов.',
+      title: t('landing.lab_ent_title'),
+      description: t('landing.lab_ent_desc'),
       color: 'from-amber-500 to-orange-500',
       bg: 'bg-amber-50',
       border: 'border-amber-200',
@@ -1022,8 +925,8 @@ function LabsSection() {
       href: '/ielts-lab',
       emoji: '🌍',
       badge: 'IELTS Lab',
-      title: 'Подготовка к IELTS',
-      description: 'Roadmap по всем 4 навыкам, writing practice, подбор университетов.',
+      title: t('landing.lab_ielts_title'),
+      description: t('landing.lab_ielts_desc'),
       color: 'from-blue-500 to-cyan-500',
       bg: 'bg-blue-50',
       border: 'border-blue-200',
@@ -1033,8 +936,8 @@ function LabsSection() {
       href: '/admit-lab',
       emoji: '🏛️',
       badge: 'Admit Lab',
-      title: 'Поступление за рубеж',
-      description: 'AI подберёт университеты, найдёт стипендии и поможет с mотивационным письмом.',
+      title: t('landing.lab_abroad_title'),
+      description: t('landing.lab_abroad_desc'),
       color: 'from-violet-500 to-purple-500',
       bg: 'bg-violet-50',
       border: 'border-violet-200',
@@ -1044,8 +947,8 @@ function LabsSection() {
       href: '/startup',
       emoji: '🚀',
       badge: 'Startup Lab',
-      title: 'Запусти стартап',
-      description: 'AI Co-Founder: roadmap от идеи до инвестиций + акселераторы Казахстана.',
+      title: t('landing.lab_startup_title'),
+      description: t('landing.lab_startup_desc'),
       color: 'from-purple-600 to-indigo-600',
       bg: 'bg-purple-50',
       border: 'border-purple-200',
@@ -1055,8 +958,8 @@ function LabsSection() {
       href: '/career-lab',
       emoji: '💼',
       badge: 'Career Lab',
-      title: 'Карьера и портфолио',
-      description: 'Skill Map, CV конструктор, публичное портфолио и база стажировок.',
+      title: t('landing.lab_career_title'),
+      description: t('landing.lab_career_desc'),
       color: 'from-emerald-500 to-teal-500',
       bg: 'bg-emerald-50',
       border: 'border-emerald-200',
@@ -1074,13 +977,13 @@ function LabsSection() {
           className="text-center mb-14"
         >
           <span className="mb-3 inline-block rounded-full bg-white/10 px-4 py-1.5 text-sm font-semibold text-white/70">
-            StudyHub Labs
+            {t('landing.labs_badge')}
           </span>
           <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-            Выбери свой путь
+            {t('landing.labs_title')}
           </h2>
           <p className="mt-4 text-lg text-slate-400 max-w-xl mx-auto">
-            Каждый Lab — отдельная точка входа под твою конкретную цель
+            {t('landing.labs_subtitle')}
           </p>
         </motion.div>
 
@@ -1102,7 +1005,7 @@ function LabsSection() {
               <h3 className="font-bold text-slate-800 text-base mb-2">{lab.title}</h3>
               <p className="text-slate-500 text-sm leading-relaxed flex-1">{lab.description}</p>
               <div className={`mt-4 flex items-center gap-1 text-sm font-semibold ${lab.textAccent}`}>
-                Подробнее
+                {t('landing.learn_more')}
                 <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -1123,13 +1026,13 @@ function LabsSection() {
           <div className="flex items-center gap-4 text-center sm:text-left">
             <span className="text-5xl">🔮</span>
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-white/60 mb-1">Бесплатный тест · 3 минуты</p>
-              <h3 className="text-xl sm:text-2xl font-extrabold text-white">Узнай свою карьерную личность</h3>
-              <p className="text-white/70 text-sm mt-1">12 вопросов → твой тип + топ-3 профессии где ты преуспеешь</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-white/60 mb-1">{t('landing.lab_career_test_badge')}</p>
+              <h3 className="text-xl sm:text-2xl font-extrabold text-white">{t('landing.lab_career_test_title')}</h3>
+              <p className="text-white/70 text-sm mt-1">{t('landing.lab_career_test_desc')}</p>
             </div>
           </div>
           <div className="flex-shrink-0 rounded-xl bg-white px-6 py-3 font-bold text-purple-700 text-sm sm:text-base hover:bg-white/90 transition-colors whitespace-nowrap">
-            Пройти тест →
+            {t('landing.lab_career_test_cta')}
           </div>
         </motion.a>
       </div>
@@ -1143,33 +1046,34 @@ function LabsSection() {
 
 function HowItWorksSection() {
   const { ref, inView } = useSectionInView();
+  const { t } = useTranslation();
 
   const steps = [
     {
       icon: Target,
-      title: 'Пройди онбординг',
-      description: 'Расскажи о себе, своих целях и интересах за 5 минут.',
+      title: t('landing.step1_title'),
+      description: t('landing.step1_desc'),
       color: 'from-primary-500 to-primary-600',
       shadow: 'rgba(59,130,246,.3)',
     },
     {
       icon: MapPin,
-      title: 'Цифровой куратор',
-      description: 'AI составит персональный план подготовки к ЕНТ/IELTS с теорией и практикой.',
+      title: t('landing.step2_title'),
+      description: t('landing.step2_desc'),
       color: 'from-purple-500 to-purple-600',
       shadow: 'rgba(168,85,247,.3)',
     },
     {
       icon: Bot,
-      title: 'Учись с AI-ментором',
-      description: 'Занимайся по плану с персональным AI-помощником 24/7.',
+      title: t('landing.step3_title'),
+      description: t('landing.step3_desc'),
       color: 'from-pink-500 to-pink-600',
       shadow: 'rgba(236,72,153,.3)',
     },
     {
       icon: Trophy,
-      title: 'Достигни цели',
-      description: 'Сдай ЕНТ на максимум и поступи в вуз мечты.',
+      title: t('landing.step4_title'),
+      description: t('landing.step4_desc'),
       color: 'from-accent-500 to-accent-600',
       shadow: 'rgba(34,197,94,.3)',
     },
@@ -1185,14 +1089,14 @@ function HowItWorksSection() {
           className="mx-auto max-w-2xl text-center"
         >
           <span className="mb-3 inline-block rounded-full bg-primary-50 px-4 py-1.5 text-sm font-semibold text-primary-600">
-            Как это работает
+            {t('landing.how_it_works_badge')}
           </span>
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
-            4 шага к{' '}
-            <span className="text-gradient">твоей мечте</span>
+            {t('landing.how_it_works_title')}{' '}
+            <span className="text-gradient">{t('landing.how_it_works_title_highlight')}</span>
           </h2>
           <p className="mt-4 text-lg text-slate-500">
-            Простой и понятный путь от первого шага до результата
+            {t('landing.how_it_works_subtitle')}
           </p>
         </motion.div>
 
@@ -1249,27 +1153,28 @@ function HowItWorksSection() {
 
 function TestimonialsSection() {
   const { ref, inView } = useSectionInView();
+  const { t } = useTranslation();
 
   const testimonials = [
     {
-      name: 'Айгерим',
-      role: 'Ученица 11 класса, Алматы',
-      text: 'Подняла баллы с 67 до 89 за 2 месяца. AI-ментор объясняет лучше, чем репетитор — и доступен в любое время!',
-      avatar: 'А',
+      name: t('landing.testimonial1_name'),
+      role: t('landing.testimonial1_role'),
+      text: t('landing.testimonial1_text'),
+      avatar: t('landing.testimonial1_name').charAt(0),
       color: 'from-primary-500 to-purple-500',
     },
     {
-      name: 'Дамир',
-      role: 'Ученик 10 класса, Астана',
-      text: 'Наконец-то понял кем хочу стать! Карьерный навигатор показал, что мне подходит IT, и теперь у меня есть чёткий план.',
-      avatar: 'Д',
+      name: t('landing.testimonial2_name'),
+      role: t('landing.testimonial2_role'),
+      text: t('landing.testimonial2_text'),
+      avatar: t('landing.testimonial2_name').charAt(0),
       color: 'from-purple-500 to-pink-500',
     },
     {
-      name: 'Анара',
-      role: 'Мама ученика, Караганда',
-      text: 'Теперь вижу прогресс ребёнка каждый день. Наконец спокойна — знаю, что подготовка идёт по плану.',
-      avatar: 'А',
+      name: t('landing.testimonial3_name'),
+      role: t('landing.testimonial3_role'),
+      text: t('landing.testimonial3_text'),
+      avatar: t('landing.testimonial3_name').charAt(0),
       color: 'from-pink-500 to-rose-500',
     },
   ];
@@ -1284,21 +1189,21 @@ function TestimonialsSection() {
           className="mx-auto max-w-2xl text-center"
         >
           <span className="mb-3 inline-block rounded-full bg-amber-50 px-4 py-1.5 text-sm font-semibold text-amber-600">
-            Отзывы
+            {t('landing.testimonials_badge')}
           </span>
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
-            Нам доверяют{' '}
-            <span className="text-gradient">тысячи учеников</span>
+            {t('landing.testimonials_title')}{' '}
+            <span className="text-gradient">{t('landing.testimonials_title_highlight')}</span>
           </h2>
           <p className="mt-4 text-lg text-slate-500">
-            Реальные истории учеников и их родителей
+            {t('landing.testimonials_subtitle')}
           </p>
         </motion.div>
 
         <div className="mt-14 grid gap-6 md:grid-cols-3 lg:gap-8">
-          {testimonials.map((t, i) => (
+          {testimonials.map((tm, i) => (
             <motion.div
-              key={t.name}
+              key={tm.name}
               variants={scaleIn}
               initial="hidden"
               animate={inView ? 'visible' : 'hidden'}
@@ -1315,17 +1220,17 @@ function TestimonialsSection() {
                 ))}
               </div>
               <p className="text-base leading-relaxed text-slate-600">
-                &ldquo;{t.text}&rdquo;
+                &ldquo;{tm.text}&rdquo;
               </p>
               <div className="mt-6 flex items-center gap-3">
                 <div
-                  className={`flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br ${t.color} text-base font-bold text-white shadow-md`}
+                  className={`flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br ${tm.color} text-base font-bold text-white shadow-md`}
                 >
-                  {t.avatar}
+                  {tm.avatar}
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">{t.name}</p>
-                  <p className="text-sm text-slate-500">{t.role}</p>
+                  <p className="text-sm font-semibold text-slate-900">{tm.name}</p>
+                  <p className="text-sm text-slate-500">{tm.role}</p>
                 </div>
               </div>
             </motion.div>
@@ -1342,54 +1247,57 @@ function TestimonialsSection() {
 
 function PricingSection({ onNavigate }: { onNavigate: (path: string) => void }) {
   const { ref, inView } = useSectionInView();
+  const { t } = useTranslation();
 
   const plans = [
     {
-      name: 'Free',
-      price: '0 ₸',
-      period: 'навсегда',
-      description: 'Социальный + демо доступ для знакомства',
+      name: t('landing.pricing_free_name'),
+      price: t('landing.pricing_free_price'),
+      period: t('landing.pricing_free_period'),
+      description: t('landing.pricing_free_desc'),
       features: [
-        'Диагностика уровня знаний',
-        'Ограниченный банк тестов',
-        'Общий план подготовки',
-        'Базовый прогноз поступления',
+        t('landing.pricing_free_f1'),
+        t('landing.pricing_free_f2'),
+        t('landing.pricing_free_f3'),
+        t('landing.pricing_free_f4'),
+        t('landing.pricing_free_f5'),
       ],
-      cta: 'Начать бесплатно',
+      cta: t('landing.pricing_free_cta'),
       popular: false,
       hasSocialNote: true,
     },
     {
-      name: 'Growth',
-      price: '4 990 ₸',
-      period: '/мес',
-      description: 'Для серьёзной подготовки к ЕНТ',
+      name: t('landing.pricing_premium_name'),
+      price: t('landing.pricing_premium_price'),
+      period: t('landing.pricing_premium_period'),
+      description: t('landing.pricing_premium_desc'),
       features: [
-        'AI-план подготовки',
-        'Полный банк тестов',
-        'Детальная аналитика прогресса',
-        'Родительская панель',
-        'Портфолио достижений',
-        'AI-ментор 24/7',
+        t('landing.pricing_premium_f1'),
+        t('landing.pricing_premium_f2'),
+        t('landing.pricing_premium_f3'),
+        t('landing.pricing_premium_f4'),
+        t('landing.pricing_premium_f5'),
+        t('landing.pricing_premium_f6'),
+        t('landing.pricing_premium_f7'),
       ],
-      cta: 'Выбрать Growth',
+      cta: t('landing.pricing_premium_cta'),
       popular: true,
       hasSocialNote: false,
     },
     {
-      name: 'Pro / Career',
-      price: '9 990 ₸',
-      period: '/мес',
-      description: 'Полная экосистема: от ЕНТ до карьеры',
+      name: t('landing.pricing_annual_name'),
+      price: t('landing.pricing_annual_price'),
+      period: t('landing.pricing_annual_period'),
+      description: t('landing.pricing_annual_desc'),
       features: [
-        'Всё из тарифа Growth',
-        'Карьерный навигатор',
-        'Рекомендации по вузам',
-        'Подробный прогноз поступления',
-        'Индивидуальные рекомендации',
-        'Приоритетная поддержка',
+        t('landing.pricing_annual_f1'),
+        t('landing.pricing_annual_f2'),
+        t('landing.pricing_annual_f3'),
+        t('landing.pricing_annual_f4'),
+        t('landing.pricing_annual_f5'),
+        t('landing.pricing_annual_f6'),
       ],
-      cta: 'Выбрать Pro',
+      cta: t('landing.pricing_annual_cta'),
       popular: false,
       hasSocialNote: false,
     },
@@ -1405,14 +1313,14 @@ function PricingSection({ onNavigate }: { onNavigate: (path: string) => void }) 
           className="mx-auto max-w-2xl text-center"
         >
           <span className="mb-3 inline-block rounded-full bg-accent-50 px-4 py-1.5 text-sm font-semibold text-accent-600">
-            Цены
+            {t('landing.pricing_badge')}
           </span>
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
-            Простые и{' '}
-            <span className="text-gradient">прозрачные цены</span>
+            {t('landing.pricing_main_title')}{' '}
+            <span className="text-gradient">{t('landing.pricing_main_title_highlight')}</span>
           </h2>
           <p className="mt-4 text-lg text-slate-500">
-            Начни бесплатно, перейди на платный тариф когда будешь готов
+            {t('landing.pricing_main_subtitle')}
           </p>
         </motion.div>
 
@@ -1433,7 +1341,7 @@ function PricingSection({ onNavigate }: { onNavigate: (path: string) => void }) 
               {plan.popular && (
                 <div className="absolute top-0 right-0">
                   <div className="gradient-primary rounded-bl-2xl px-4 py-1.5 text-xs font-bold tracking-wide text-white uppercase">
-                    Популярный
+                    {t('landing.pricing_popular')}
                   </div>
                 </div>
               )}
@@ -1468,7 +1376,7 @@ function PricingSection({ onNavigate }: { onNavigate: (path: string) => void }) 
                 >
                   <Heart className="h-4 w-4 text-rose-400 mt-0.5 shrink-0" />
                   <p className="text-xs text-rose-600 leading-relaxed">
-                    Доступна <span className="font-semibold underline decoration-rose-300">программа бесплатного расширенного доступа</span> по заявке
+                    {t('landing.pricing_social_note_plain')}
                   </p>
                 </button>
               )}
@@ -1477,7 +1385,7 @@ function PricingSection({ onNavigate }: { onNavigate: (path: string) => void }) 
                 onClick={() =>
                   plan.price === '0 ₸'
                     ? onNavigate('/diagnostic')
-                    : openWhatsApp(buildPricingMessage(`${plan.name} — ${plan.price}${plan.period}`))
+                    : onNavigate('/pricing')
                 }
                 className={`mt-8 flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-4 text-base font-bold transition-all duration-200 hover:-translate-y-0.5 ${
                   plan.popular
@@ -1513,24 +1421,22 @@ function PricingSection({ onNavigate }: { onNavigate: (path: string) => void }) 
                 </div>
 
                 <h3 className="text-2xl font-extrabold text-slate-900 lg:text-3xl">
-                  Доступ к знаниям{' '}
+                  {t('landing.social_program_title')}{' '}
                   <span className="bg-gradient-to-r from-rose-500 to-amber-500 bg-clip-text text-transparent">
-                    для каждого
+                    {t('landing.social_program_title_highlight')}
                   </span>
                 </h3>
 
                 <p className="mt-3 max-w-2xl text-base leading-relaxed text-slate-600">
-                  Мы считаем, что качественное образование должно быть доступным.
-                  Подай заявку и расскажи, почему тебе это важно — мы рассмотрим
-                  каждую заявку индивидуально и конфиденциально.
+                  {t('landing.social_program_desc')}
                 </p>
 
-                {/* Impact stats */}
+                {/* Program highlights */}
                 <div className="mt-6 flex flex-wrap gap-6">
                   {[
-                    { value: '200+', label: 'учеников поддержано' },
-                    { value: '20%', label: 'через социальную программу' },
-                    { value: '0 ₸', label: 'полный доступ' },
+                    { value: t('landing.social_program_stat1_value'), label: t('landing.social_program_stat1_label') },
+                    { value: t('landing.social_program_stat2_value'), label: t('landing.social_program_stat2_label') },
+                    { value: t('landing.social_program_stat3_value'), label: t('landing.social_program_stat3_label') },
                   ].map((s) => (
                     <div key={s.label}>
                       <p className="text-xl font-extrabold text-slate-900">{s.value}</p>
@@ -1541,7 +1447,7 @@ function PricingSection({ onNavigate }: { onNavigate: (path: string) => void }) 
 
                 <div className="mt-5 flex items-center gap-2 text-sm text-slate-500">
                   <Shield className="h-4 w-4 text-slate-400" />
-                  <span>Без справок и документов. Просто расскажи о себе.</span>
+                  <span>{t('landing.social_program_note')}</span>
                 </div>
               </div>
 
@@ -1550,7 +1456,7 @@ function PricingSection({ onNavigate }: { onNavigate: (path: string) => void }) 
                   onClick={() => onNavigate('/support')}
                   className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 px-8 py-4 text-base font-bold text-white shadow-lg shadow-rose-500/20 transition-all hover:shadow-xl hover:shadow-rose-500/30 hover:-translate-y-0.5"
                 >
-                  Хочу бесплатный доступ
+                  {t('landing.social_program_cta')}
                   <ArrowRight className="h-5 w-5" />
                 </button>
               </div>
@@ -1568,6 +1474,7 @@ function PricingSection({ onNavigate }: { onNavigate: (path: string) => void }) 
 
 function FinalCtaSection({ onNavigate }: { onNavigate: (path: string) => void }) {
   const { ref, inView } = useSectionInView();
+  const { t } = useTranslation();
 
   return (
     <section ref={ref} className="relative py-20 lg:py-28">
@@ -1602,7 +1509,7 @@ function FinalCtaSection({ onNavigate }: { onNavigate: (path: string) => void })
               className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-sm font-medium text-white/90"
             >
               <Zap className="h-4 w-4" />
-              <span>Присоединяйся к 15,000+ ученикам</span>
+              <span>{t('landing.cta_badge')}</span>
             </motion.div>
 
             <motion.h2
@@ -1612,9 +1519,9 @@ function FinalCtaSection({ onNavigate }: { onNavigate: (path: string) => void })
               custom={1}
               className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl"
             >
-              Начни свой путь{' '}
+              {t('landing.cta_title')}{' '}
               <span className="bg-gradient-to-r from-primary-300 via-purple-300 to-pink-300 bg-clip-text text-transparent">
-                прямо сейчас
+                {t('landing.cta_title_highlight')}
               </span>
             </motion.h2>
 
@@ -1625,7 +1532,7 @@ function FinalCtaSection({ onNavigate }: { onNavigate: (path: string) => void })
               custom={2}
               className="mx-auto mt-4 max-w-xl text-lg text-slate-300"
             >
-              Бесплатная диагностика за 15 минут покажет твой уровень и создаст персональный план
+              {t('landing.cta_subtitle')}
             </motion.p>
 
             <motion.div
@@ -1639,7 +1546,7 @@ function FinalCtaSection({ onNavigate }: { onNavigate: (path: string) => void })
                 onClick={() => onNavigate('/diagnostic')}
                 className="group inline-flex items-center gap-2 rounded-2xl bg-white px-10 py-5 text-lg font-bold text-primary-700 shadow-xl transition-all hover:shadow-2xl hover:-translate-y-0.5"
               >
-                Начать бесплатно
+                {t('landing.cta_button')}
                 <ArrowRight className="h-6 w-6 transition-transform group-hover:translate-x-1" />
               </button>
             </motion.div>
@@ -1655,10 +1562,26 @@ function FinalCtaSection({ onNavigate }: { onNavigate: (path: string) => void })
 // ---------------------------------------------------------------------------
 
 function Footer() {
+  const { t } = useTranslation();
   const links = {
-    Платформа: ['Возможности', 'Тарифы', 'AI-ментор', 'Диагностика'],
-    Поддержка: ['Помощь', 'Контакты', 'FAQ', 'Блог'],
-    Компания: ['О нас', 'Карьера', 'Партнёрам', 'Пресса'],
+    [t('landing.footer_platform')]: [
+      t('landing.footer_platform_features'),
+      t('landing.footer_platform_pricing'),
+      t('landing.footer_platform_mentor'),
+      t('landing.footer_platform_diagnostic'),
+    ],
+    [t('landing.footer_support')]: [
+      t('landing.footer_support_help'),
+      t('landing.footer_support_contacts'),
+      t('landing.footer_support_faq'),
+      t('landing.footer_support_blog'),
+    ],
+    [t('landing.footer_company')]: [
+      t('landing.footer_company_about'),
+      t('landing.footer_company_careers'),
+      t('landing.footer_company_partners'),
+      t('landing.footer_company_press'),
+    ],
   };
 
   return (
@@ -1676,8 +1599,7 @@ function Footer() {
               </span>
             </a>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-slate-500">
-              AI-платформа, которая ведёт учеников от школы до карьеры мечты.
-              Подготовка к ЕНТ, выбор профессии, поступление в вуз.
+              {t('landing.footer_description')}
             </p>
 
             {/* Social links */}
@@ -1717,7 +1639,7 @@ function Footer() {
 
             {/* App badges */}
             <div className="mt-6">
-              <p className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-slate-400">Скоро в приложении</p>
+              <p className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-slate-400">{t('landing.footer_coming_soon')}</p>
               <div className="flex gap-2.5">
                 {/* App Store badge */}
                 <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
@@ -1725,7 +1647,7 @@ function Footer() {
                     <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
                   </svg>
                   <div>
-                    <p className="text-[9px] text-slate-400 leading-none">Скоро в</p>
+                    <p className="text-[9px] text-slate-400 leading-none">{t('landing.footer_coming_soon_prefix')}</p>
                     <p className="text-xs font-bold text-slate-700 leading-tight">App Store</p>
                   </div>
                 </div>
@@ -1735,7 +1657,7 @@ function Footer() {
                     <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 01-.61-.92V2.734a1 1 0 01.609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-3.199l2.807 1.626a1 1 0 010 1.732l-2.807 1.626L15.206 12l2.492-2.492zM5.864 2.658L16.8 8.99l-2.302 2.302-8.634-8.634z"/>
                   </svg>
                   <div>
-                    <p className="text-[9px] text-slate-400 leading-none">Скоро в</p>
+                    <p className="text-[9px] text-slate-400 leading-none">{t('landing.footer_coming_soon_prefix')}</p>
                     <p className="text-xs font-bold text-slate-700 leading-tight">Google Play</p>
                   </div>
                 </div>
@@ -1768,10 +1690,10 @@ function Footer() {
         {/* Bottom bar */}
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-slate-200 pt-8 md:flex-row">
           <p className="text-sm text-slate-400">
-            &copy; {new Date().getFullYear()} Study Hub. Все права защищены.
+            &copy; {new Date().getFullYear()} Study Hub. {t('landing.footer_copyright')}
           </p>
           <p className="text-sm text-slate-400">
-            Made with ❤️ in Kazakhstan
+            {t('landing.footer_made_with')}
           </p>
         </div>
       </div>
@@ -1785,6 +1707,7 @@ function Footer() {
 
 export default function Landing() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const handleNavigate = useCallback((path: string) => {
     navigate(path);
@@ -1793,15 +1716,14 @@ export default function Landing() {
   return (
     <>
     <PageMeta
-      title="StudyHub — Подготовка к ЕНТ, IELTS и поступление за рубеж"
-      description="AI-платформа для казахстанских школьников. Персональный план подготовки к ЕНТ и IELTS, диагностика слабых мест, практика — бесплатно."
+      title={t('landing.page_title')}
+      description={t('landing.page_description')}
       path="/"
     />
     <div className="min-h-screen overflow-x-hidden bg-white">
       <Header onNavigate={handleNavigate} />
       <main>
         <HeroSection onNavigate={handleNavigate} />
-        <LiveStatsBar />
         <ProblemSolutionSection />
         <ProductShowcaseSection />
         <LabsSection />

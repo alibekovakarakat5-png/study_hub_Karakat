@@ -48,3 +48,13 @@ export function buildDemoMessage(source: string): string {
     'Привет! Хочу получить бесплатный доступ к платформе Study Hub.',
   ].join('\n')
 }
+
+export function buildStudyAbroadMessage(countryName: string): string {
+  return [
+    '🌍 *Запрос — обучение за рубежом — Study Hub*',
+    '',
+    `🏳️ *Страна:* ${countryName}`,
+    '',
+    'Привет! Хочу узнать подробнее о возможностях обучения в этой стране. Расскажите про стипендии и условия поступления.',
+  ].join('\n')
+}

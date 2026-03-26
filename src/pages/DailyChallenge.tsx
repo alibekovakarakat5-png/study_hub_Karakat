@@ -10,6 +10,7 @@ import {
   ChevronRight,
   RotateCcw,
   Zap,
+  Share2,
 } from 'lucide-react'
 import { usePracticeEntStore } from '@/store/usePracticeEntStore'
 import { useStore } from '@/store/useStore'
@@ -17,6 +18,8 @@ import { api } from '@/lib/api'
 import { profileBanks, examVariants } from '@/data/practiceEnt'
 import type { EntQuestion } from '@/types/practiceEnt'
 import { SUBJECT_NAMES } from '@/types'
+import ShareResultCard from '@/components/share/ShareResultCard'
+import type { DailyChallengeShareData } from '@/components/share/ShareResultCard'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -117,6 +120,7 @@ export default function DailyChallenge() {
   const [answers, setAnswers] = useState<Record<string, number | null>>({})
   const [submitted, setSubmitted] = useState(false)
   const [currentIdx, setCurrentIdx] = useState(0)
+  const [showShare, setShowShare] = useState(false)
 
   const current = questions[currentIdx]
 
@@ -172,6 +176,14 @@ export default function DailyChallenge() {
   // ── Results screen
   if (submitted && currentIdx >= questions.length) {
     const pct = Math.round((correctCount / questions.length) * 100)
+    const dailyShareData: DailyChallengeShareData = {
+      type: 'daily',
+      date: new Date().toISOString(),
+      correctCount,
+      totalQuestions: questions.length,
+      percentage: pct,
+      streak: user?.streak ?? 0,
+    }
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
         <motion.div
@@ -198,6 +210,12 @@ export default function DailyChallenge() {
 
           <div className="mt-6 flex gap-3">
             <button
+              onClick={() => setShowShare(true)}
+              className="flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-600 hover:bg-blue-100"
+            >
+              <Share2 className="h-4 w-4" />
+            </button>
+            <button
               onClick={() => { setAnswers({}); setSubmitted(false); setCurrentIdx(0) }}
               className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
@@ -207,6 +225,8 @@ export default function DailyChallenge() {
               На главную
             </Link>
           </div>
+
+          {showShare && <ShareResultCard data={dailyShareData} onClose={() => setShowShare(false)} />}
         </motion.div>
       </div>
     )

@@ -13,6 +13,8 @@ import { contentApi } from '@/lib/api'
 import type { ContentType } from '@/lib/api'
 import type { AbroadUniversity } from '@/data/universityAdvisor'
 import type { Scholarship } from '@/data/scholarships'
+import type { AdmissionEntry } from '@/data/admissionsData'
+import type { Program, UniversityProfile } from '@/data/admissionPlanData'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -55,6 +57,9 @@ interface ContentState {
   vocabWords: CustomVocabWord[]
   universities: AbroadUniversity[]
   scholarships: Scholarship[]
+  admissionEntries: AdmissionEntry[]
+  programs: Program[]
+  universityProfiles: UniversityProfile[]
 
   /** Fetch all content from server and update local state */
   syncFromServer: () => Promise<void>
@@ -78,6 +83,18 @@ interface ContentState {
   // Scholarships
   addScholarship:    (s: Scholarship) => Promise<void>
   deleteScholarship: (id: string) => Promise<void>
+
+  // Admission entries
+  addAdmissionEntry:    (e: AdmissionEntry) => Promise<void>
+  deleteAdmissionEntry: (id: string) => Promise<void>
+
+  // Programs
+  addProgram:    (p: Program) => Promise<void>
+  deleteProgram: (id: string) => Promise<void>
+
+  // University profiles
+  addUniversityProfile:    (u: UniversityProfile) => Promise<void>
+  deleteUniversityProfile: (id: string) => Promise<void>
 }
 
 // ── Helper ────────────────────────────────────────────────────────────────────
@@ -100,17 +117,24 @@ export const useContentStore = create<ContentState>()(
       vocabWords: [],
       universities: [],
       scholarships: [],
+      admissionEntries: [],
+      programs: [],
+      universityProfiles: [],
 
       // ── Sync from server ────────────────────────────────────────────────────
 
       syncFromServer: async () => {
         try {
-          const [matRes, qaRes, vocabRes, uniRes, schRes] = await Promise.all([
-            contentApi.list('ielts_material'),
-            contentApi.list('mentor_qa'),
-            contentApi.list('vocab_word'),
-            contentApi.list('university_entry'),
-            contentApi.list('scholarship_entry'),
+          const all = { limit: 100 }
+          const [matRes, qaRes, vocabRes, uniRes, schRes, admRes, progRes, uniProfRes] = await Promise.all([
+            contentApi.list('ielts_material', all),
+            contentApi.list('mentor_qa', all),
+            contentApi.list('vocab_word', all),
+            contentApi.list('university_entry', all),
+            contentApi.list('scholarship_entry', all),
+            contentApi.list('admission_entry', all),
+            contentApi.list('program_entry', all),
+            contentApi.list('university_profile', all),
           ])
 
           const materials = matRes.items.map((item) => ({
@@ -141,7 +165,22 @@ export const useContentStore = create<ContentState>()(
             ...(item.data as Omit<Scholarship, 'id'>),
           })) as Scholarship[]
 
-          set({ materials, qas, vocabWords, universities, scholarships })
+          const admissionEntries = admRes.items.map((item) => ({
+            id: item.id,
+            ...(item.data as Omit<AdmissionEntry, 'id'>),
+          })) as AdmissionEntry[]
+
+          const programs = progRes.items.map((item) => ({
+            id: item.id,
+            ...(item.data as Omit<Program, 'id'>),
+          })) as Program[]
+
+          const universityProfiles = uniProfRes.items.map((item) => ({
+            id: item.id,
+            ...(item.data as Omit<UniversityProfile, 'id'>),
+          })) as UniversityProfile[]
+
+          set({ materials, qas, vocabWords, universities, scholarships, admissionEntries, programs, universityProfiles })
         } catch {
           // Server unavailable — keep existing localStorage data
         }
@@ -265,6 +304,75 @@ export const useContentStore = create<ContentState>()(
 
       deleteScholarship: async (id) => {
         set((s) => ({ scholarships: s.scholarships.filter((sch) => sch.id !== id) }))
+        try { await contentApi.remove(id) } catch {}
+      },
+
+      // ── Admission entries ───────────────────────────────────────────────────────
+
+      addAdmissionEntry: async (e) => {
+        set((s) => ({ admissionEntries: [...s.admissionEntries, e] }))
+        try {
+          const { id, ...data } = e
+          const res = await contentApi.create({
+            type: 'admission_entry' as ContentType,
+            data: data as unknown as Record<string, unknown>,
+          })
+          set((s) => ({
+            admissionEntries: s.admissionEntries.map((entry) =>
+              entry.id === e.id ? { ...entry, id: res.item.id } : entry
+            ),
+          }))
+        } catch { /* keep local */ }
+      },
+
+      deleteAdmissionEntry: async (id) => {
+        set((s) => ({ admissionEntries: s.admissionEntries.filter((e) => e.id !== id) }))
+        try { await contentApi.remove(id) } catch {}
+      },
+
+      // ── Programs ────────────────────────────────────────────────────────────────
+
+      addProgram: async (p) => {
+        set((s) => ({ programs: [...s.programs, p] }))
+        try {
+          const { id, ...data } = p
+          const res = await contentApi.create({
+            type: 'program_entry' as ContentType,
+            data: data as unknown as Record<string, unknown>,
+          })
+          set((s) => ({
+            programs: s.programs.map((prog) =>
+              prog.id === p.id ? { ...prog, id: res.item.id } : prog
+            ),
+          }))
+        } catch { /* keep local */ }
+      },
+
+      deleteProgram: async (id) => {
+        set((s) => ({ programs: s.programs.filter((p) => p.id !== id) }))
+        try { await contentApi.remove(id) } catch {}
+      },
+
+      // ── University profiles ─────────────────────────────────────────────────────
+
+      addUniversityProfile: async (u) => {
+        set((s) => ({ universityProfiles: [...s.universityProfiles, u] }))
+        try {
+          const { id, ...data } = u
+          const res = await contentApi.create({
+            type: 'university_profile' as ContentType,
+            data: data as unknown as Record<string, unknown>,
+          })
+          set((s) => ({
+            universityProfiles: s.universityProfiles.map((prof) =>
+              prof.id === u.id ? { ...prof, id: res.item.id } : prof
+            ),
+          }))
+        } catch { /* keep local */ }
+      },
+
+      deleteUniversityProfile: async (id) => {
+        set((s) => ({ universityProfiles: s.universityProfiles.filter((u) => u.id !== id) }))
         try { await contentApi.remove(id) } catch {}
       },
     }),

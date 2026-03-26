@@ -3,15 +3,34 @@ import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma'
 import { verifyToken, requireRole } from '../middleware/auth'
+import { sanitizeObject } from '../lib/sanitize'
 
 const router = Router()
 
 const VALID_TYPES = [
+  // ── Original types ──
   'ielts_material',
   'mentor_qa',
   'vocab_word',
   'ent_question',
   'curator_topic',
+  'university_entry',
+  'scholarship_entry',
+  'admission_entry',
+  'program_entry',
+  'university_profile',
+  // ── New content types (DB-driven) ──
+  'ielts_section',
+  'ielts_band_descriptor',
+  'ielts_cue_card',
+  'diagnostic_question',
+  'ent_exam_variant',
+  'ent_profile_bank',
+  'curator_content',
+  'ent_theory_topic',
+  'career_test_question',
+  'cambridge_passage',
+  'cambridge_question_bank',
 ] as const
 
 const ContentSchema = z.object({
@@ -21,33 +40,54 @@ const ContentSchema = z.object({
   order: z.number().int().optional().default(0),
 })
 
-// ── GET /api/content?type=... — public: list active content by type ────────────
+// ── Pagination helper ──────────────────────────────────────────────────────────
+
+function parsePagination(query: Record<string, unknown>) {
+  const page  = Math.max(1, Number(query.page) || 1)
+  const limit = Math.min(100, Math.max(1, Number(query.limit) || 50))
+  return { skip: (page - 1) * limit, take: limit, page, limit }
+}
+
+// ── GET /api/content?type=...&page=1&limit=50 — public: list active content ──
 
 router.get('/', async (req, res) => {
   const type = req.query.type as string | undefined
+  const { skip, take, page, limit } = parsePagination(req.query as Record<string, unknown>)
 
-  const items = await prisma.content.findMany({
-    where: {
-      active: true,
-      ...(type ? { type } : {}),
-    },
-    orderBy: [{ order: 'asc' }, { createdAt: 'desc' }],
-  })
+  const where = { active: true, ...(type ? { type } : {}) }
 
-  res.json({ items })
+  const [items, total] = await Promise.all([
+    prisma.content.findMany({
+      where,
+      orderBy: [{ order: 'asc' }, { createdAt: 'desc' }],
+      skip,
+      take,
+    }),
+    prisma.content.count({ where }),
+  ])
+
+  res.json({ items, total, page, limit, pages: Math.ceil(total / limit) })
 })
 
-// ── GET /api/content/all — admin: list all content (including inactive) ────────
+// ── GET /api/content/all?type=...&page=1&limit=50 — admin: all content ────────
 
 router.get('/all', verifyToken, requireRole('admin'), async (req, res) => {
   const type = req.query.type as string | undefined
+  const { skip, take, page, limit } = parsePagination(req.query as Record<string, unknown>)
 
-  const items = await prisma.content.findMany({
-    where: type ? { type } : {},
-    orderBy: [{ type: 'asc' }, { order: 'asc' }, { createdAt: 'desc' }],
-  })
+  const where = type ? { type } : {}
 
-  res.json({ items })
+  const [items, total] = await Promise.all([
+    prisma.content.findMany({
+      where,
+      orderBy: [{ type: 'asc' }, { order: 'asc' }, { createdAt: 'desc' }],
+      skip,
+      take,
+    }),
+    prisma.content.count({ where }),
+  ])
+
+  res.json({ items, total, page, limit, pages: Math.ceil(total / limit) })
 })
 
 // ── POST /api/content — admin: create new content item ────────────────────────
@@ -60,8 +100,9 @@ router.post('/', verifyToken, requireRole('admin'), async (req, res) => {
   }
 
   const { data: rawData, ...rest } = parsed.data
+  const sanitizedData = sanitizeObject(rawData as Record<string, unknown>)
   const item = await prisma.content.create({
-    data: { ...rest, data: rawData as Prisma.InputJsonValue },
+    data: { ...rest, data: sanitizedData as Prisma.InputJsonValue },
   })
   res.status(201).json({ item })
 })
@@ -81,9 +122,13 @@ router.put('/:id', verifyToken, requireRole('admin'), async (req, res) => {
   const existing = await prisma.content.findUnique({ where: { id } })
   if (!existing) { res.status(404).json({ error: 'Контент не найден' }); return }
 
+  const sanitizedUpdate = rawData !== undefined
+    ? { data: sanitizeObject(rawData as Record<string, unknown>) as Prisma.InputJsonValue }
+    : {}
+
   const item = await prisma.content.update({
     where: { id },
-    data: { ...rest, ...(rawData !== undefined ? { data: rawData as Prisma.InputJsonValue } : {}) },
+    data: { ...rest, ...sanitizedUpdate },
   })
   res.json({ item })
 })

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { motion, useInView } from 'framer-motion'
 import { openWhatsApp, buildSupportMessage } from '@/lib/whatsapp'
 import {
@@ -32,6 +33,7 @@ function useSectionInView(amount = 0.2) {
 
 export default function Support() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { ref: heroRef, inView: heroInView } = useSectionInView(0.3)
   const { ref: formRef, inView: formInView } = useSectionInView(0.2)
   const { ref: valuesRef, inView: valuesInView } = useSectionInView(0.2)
@@ -50,9 +52,9 @@ export default function Support() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const newErrors: Partial<typeof form> = {}
-    if (!form.name.trim()) newErrors.name = 'Введи имя'
-    if (!form.story.trim()) newErrors.story = 'Расскажи о себе'
-    if (!form.goals.trim()) newErrors.goals = 'Укажи свои цели'
+    if (!form.name.trim()) newErrors.name = t('support.error_name')
+    if (!form.story.trim()) newErrors.story = t('support.error_story')
+    if (!form.goals.trim()) newErrors.goals = t('support.error_goals')
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
       return
@@ -65,37 +67,37 @@ export default function Support() {
   const values = [
     {
       icon: Sparkles,
-      title: 'Мотивация важнее документов',
-      description: 'Мы не просим справки о доходах. Расскажи о себе и своих целях — этого достаточно.',
+      title: t('support.value1_title'),
+      description: t('support.value1_desc'),
       color: 'bg-amber-50 text-amber-600',
     },
     {
       icon: Shield,
-      title: 'Полная конфиденциальность',
-      description: 'Твоя заявка видна только нашей команде. Никто из других пользователей не узнает.',
+      title: t('support.value2_title'),
+      description: t('support.value2_desc'),
       color: 'bg-purple-50 text-purple-600',
     },
     {
       icon: Users,
-      title: 'Индивидуальный подход',
-      description: 'Каждая заявка рассматривается лично. Мы читаем каждую историю.',
+      title: t('support.value3_title'),
+      description: t('support.value3_desc'),
       color: 'bg-primary-50 text-primary-600',
     },
     {
       icon: BookOpen,
-      title: 'Полный доступ к платформе',
-      description: 'Участники программы получают расширенный доступ наравне с платными пользователями.',
+      title: t('support.value4_title'),
+      description: t('support.value4_desc'),
       color: 'bg-emerald-50 text-emerald-600',
     },
   ]
 
   const supportCategories = [
-    { icon: '🎯', text: 'Мотивированные ученики, стремящиеся к большему' },
-    { icon: '🏠', text: 'Семьи в сложных жизненных обстоятельствах' },
-    { icon: '🌍', text: 'Школьники из регионов и сельской местности' },
-    { icon: '💙', text: 'Дети с особыми образовательными потребностями' },
-    { icon: '👨‍👩‍👧‍👦', text: 'Многодетные семьи' },
-    { icon: '📚', text: 'Все, кому важен доступ к качественному образованию' },
+    { icon: '🎯', text: t('support.cat1') },
+    { icon: '🏠', text: t('support.cat2') },
+    { icon: '🌍', text: t('support.cat3') },
+    { icon: '💙', text: t('support.cat4') },
+    { icon: '👨‍👩‍👧‍👦', text: t('support.cat5') },
+    { icon: '📚', text: t('support.cat6') },
   ]
 
   return (
@@ -109,7 +111,7 @@ export default function Support() {
               className="flex items-center gap-2 text-slate-600 transition-colors hover:text-primary-600"
             >
               <ArrowLeft className="h-5 w-5" />
-              <span className="text-sm font-medium">На главную</span>
+              <span className="text-sm font-medium">{t('support.back_home')}</span>
             </button>
             <a href="/" className="flex items-center gap-2.5">
               <div className="gradient-primary flex h-9 w-9 items-center justify-center rounded-xl shadow-md shadow-primary-500/25">
@@ -149,9 +151,9 @@ export default function Support() {
             custom={1}
             className="text-4xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-5xl lg:text-6xl"
           >
-            Доступ к знаниям{' '}
+            {t('support.hero_title')}{' '}
             <span className="bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 bg-clip-text text-transparent">
-              для каждого
+              {t('support.hero_title_highlight')}
             </span>
           </motion.h1>
 
@@ -162,9 +164,7 @@ export default function Support() {
             custom={2}
             className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-500 sm:text-xl"
           >
-            Мы верим, что талант не зависит от обстоятельств.
-            Study Hub поддерживает тех, кто хочет учиться, но не может позволить себе
-            платный доступ. Подай заявку — мы рассмотрим её лично.
+            {t('support.hero_desc')}
           </motion.p>
 
           <motion.div
@@ -175,9 +175,9 @@ export default function Support() {
             className="mt-10 flex flex-wrap justify-center gap-6"
           >
             {[
-              { value: '200+', label: 'учеников поддержано' },
-              { value: '100%', label: 'конфиденциальность' },
-              { value: '0 ₸', label: 'полный доступ' },
+              { value: '200+', label: t('support.stat1_label') },
+              { value: '100%', label: t('support.stat2_label') },
+              { value: '0 ₸', label: t('support.stat3_label') },
             ].map((s) => (
               <div key={s.label} className="text-center">
                 <p className="text-2xl font-extrabold text-slate-900 sm:text-3xl">{s.value}</p>
@@ -193,10 +193,10 @@ export default function Support() {
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-2xl font-extrabold text-slate-900 sm:text-3xl">
-              Кого мы поддерживаем
+              {t('support.who_title')}
             </h2>
             <p className="mt-3 text-base text-slate-500">
-              Программа открыта для всех, кому нужна помощь с доступом к образованию
+              {t('support.who_subtitle')}
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -218,7 +218,7 @@ export default function Support() {
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-2xl font-extrabold text-slate-900 sm:text-3xl">
-              Как устроена программа
+              {t('support.how_it_works_title')}
             </h2>
           </div>
           <div className="grid gap-6 sm:grid-cols-2">
@@ -253,13 +253,13 @@ export default function Support() {
           >
             <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-rose-50 border border-rose-100 px-4 py-1.5 text-sm font-semibold text-rose-600">
               <Globe className="h-4 w-4" />
-              Форма заявки
+              {t('support.form_badge')}
             </div>
             <h2 className="text-2xl font-extrabold text-slate-900 sm:text-3xl">
-              Расскажи о себе
+              {t('support.form_title')}
             </h2>
             <p className="mt-3 text-base text-slate-500">
-              Без формальностей. Просто расскажи кто ты и почему тебе важен доступ к платформе.
+              {t('support.form_subtitle')}
             </p>
           </motion.div>
 
@@ -272,16 +272,15 @@ export default function Support() {
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500">
                 <Check className="h-8 w-8 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-slate-900">Заявка отправлена!</h3>
+              <h3 className="text-xl font-bold text-slate-900">{t('support.submitted_title')}</h3>
               <p className="mt-3 text-base text-slate-600 leading-relaxed">
-                Спасибо за доверие. Мы рассмотрим твою заявку в течение 3-5 дней
-                и свяжемся по указанной почте. Каждая заявка важна для нас.
+                {t('support.submitted_desc')}
               </p>
               <button
                 onClick={() => navigate('/')}
                 className="mt-8 inline-flex items-center gap-2 rounded-2xl gradient-primary px-8 py-3.5 text-base font-bold text-white shadow-lg shadow-primary-500/25 transition-all hover:shadow-xl hover:-translate-y-0.5"
               >
-                Вернуться на главную
+                {t('support.back_home')}
               </button>
             </motion.div>
           ) : (
@@ -295,18 +294,18 @@ export default function Support() {
             >
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-slate-700">Имя</label>
+                  <label className="mb-1.5 block text-sm font-semibold text-slate-700">{t('support.field_name')}</label>
                   <input
                     type="text"
                     value={form.name}
                     onChange={(e) => { setForm({ ...form, name: e.target.value }); setErrors(prev => ({ ...prev, name: '' })) }}
-                    placeholder="Как тебя зовут?"
+                    placeholder={t('support.placeholder_name')}
                     className={`w-full rounded-xl border bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-100 ${errors.name ? 'border-red-400 focus:border-red-400' : 'border-slate-200 focus:border-primary-400'}`}
                   />
                   {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-slate-700">Возраст</label>
+                  <label className="mb-1.5 block text-sm font-semibold text-slate-700">{t('support.field_age')}</label>
                   <input
                     type="number"
                     required
@@ -314,18 +313,18 @@ export default function Support() {
                     max={25}
                     value={form.age}
                     onChange={(e) => setForm({ ...form, age: e.target.value })}
-                    placeholder="Сколько тебе лет?"
+                    placeholder={t('support.placeholder_age')}
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:border-primary-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-100"
                   />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-slate-700">Город</label>
+                  <label className="mb-1.5 block text-sm font-semibold text-slate-700">{t('support.field_city')}</label>
                   <input
                     type="text"
                     required
                     value={form.city}
                     onChange={(e) => setForm({ ...form, city: e.target.value })}
-                    placeholder="Откуда ты?"
+                    placeholder={t('support.placeholder_city')}
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:border-primary-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-100"
                   />
                 </div>
@@ -336,7 +335,7 @@ export default function Support() {
                     required
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    placeholder="Для обратной связи"
+                    placeholder={t('support.placeholder_email')}
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:border-primary-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-100"
                   />
                 </div>
@@ -344,13 +343,13 @@ export default function Support() {
 
               <div className="mt-5">
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                  Расскажи о себе и своей ситуации
+                  {t('support.field_story')}
                 </label>
                 <textarea
                   rows={4}
                   value={form.story}
                   onChange={(e) => { setForm({ ...form, story: e.target.value }); setErrors(prev => ({ ...prev, story: '' })) }}
-                  placeholder="Почему тебе важен доступ к платформе? Расскажи свободно, в 3-5 предложениях..."
+                  placeholder={t('support.placeholder_story')}
                   className={`w-full rounded-xl border bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-100 resize-none ${errors.story ? 'border-red-400 focus:border-red-400' : 'border-slate-200 focus:border-primary-400'}`}
                 />
                 {errors.story && <p className="mt-1 text-xs text-red-500">{errors.story}</p>}
@@ -358,13 +357,13 @@ export default function Support() {
 
               <div className="mt-5">
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                  Твои цели и мечты
+                  {t('support.field_goals')}
                 </label>
                 <textarea
                   rows={3}
                   value={form.goals}
                   onChange={(e) => { setForm({ ...form, goals: e.target.value }); setErrors(prev => ({ ...prev, goals: '' })) }}
-                  placeholder="Кем хочешь стать? Куда хочешь поступить? Что хочешь изменить в своей жизни?"
+                  placeholder={t('support.placeholder_goals')}
                   className={`w-full rounded-xl border bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-100 resize-none ${errors.goals ? 'border-red-400 focus:border-red-400' : 'border-slate-200 focus:border-primary-400'}`}
                 />
                 {errors.goals && <p className="mt-1 text-xs text-red-500">{errors.goals}</p>}
@@ -373,8 +372,7 @@ export default function Support() {
               <div className="mt-6 flex items-start gap-2.5 rounded-xl bg-slate-50 border border-slate-100 p-4">
                 <Shield className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
                 <p className="text-xs leading-relaxed text-slate-500">
-                  Твоя заявка полностью конфиденциальна. Мы не передаём данные третьим лицам
-                  и не требуем подтверждающих документов.
+                  {t('support.privacy_note')}
                 </p>
               </div>
 
@@ -383,7 +381,7 @@ export default function Support() {
                 className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 px-8 py-4 text-base font-bold text-white shadow-lg shadow-rose-500/20 transition-all hover:shadow-xl hover:shadow-rose-500/30 hover:-translate-y-0.5"
               >
                 <Send className="h-5 w-5" />
-                Отправить заявку
+                {t('support.submit')}
               </button>
             </motion.form>
           )}
@@ -394,11 +392,10 @@ export default function Support() {
       <section className="border-t border-slate-100 bg-slate-50 py-10">
         <div className="mx-auto max-w-2xl px-4 text-center">
           <p className="text-sm leading-relaxed text-slate-500">
-            Study Hub Support Program — часть нашей миссии сделать качественное образование
-            доступным для каждого ученика в Казахстане, независимо от обстоятельств.
+            {t('support.footer_note')}
           </p>
           <p className="mt-4 text-sm text-slate-400">
-            &copy; {new Date().getFullYear()} Study Hub. Все права защищены.
+            &copy; {new Date().getFullYear()} Study Hub. {t('landing.footer_copyright')}
           </p>
         </div>
       </section>

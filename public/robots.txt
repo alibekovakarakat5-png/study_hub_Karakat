@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin-login
+Disallow: /api/
+Disallow: /settings
+Disallow: /dashboard
+
+Sitemap: https://studyhub.kz/sitemap.xml

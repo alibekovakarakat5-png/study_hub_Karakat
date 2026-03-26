@@ -4,6 +4,7 @@ import {
   BookOpen, Headphones, PenLine, Mic, Globe, Star, ChevronDown,
   ChevronRight, ExternalLink, Send, Bot, Lightbulb, Clock,
   CheckCircle2, BarChart3, BookMarked, Youtube, Smartphone,
+  Library, Download, Play,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
@@ -19,7 +20,7 @@ import { useContentStore } from '@/store/useContentStore'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Tab = 'overview' | IeltsSkill | 'vocabulary' | 'materials' | 'chat'
+type Tab = 'overview' | IeltsSkill | 'vocabulary' | 'materials' | 'cambridge' | 'chat'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -726,6 +727,191 @@ function MaterialsTab() {
   )
 }
 
+// ── Cambridge Practice Tab ────────────────────────────────────────────────────
+
+const CAMBRIDGE_BOOKS = [
+  { volume: 19, year: 2024, tests: 4, label: 'Cambridge IELTS 19 (2024)', color: 'from-red-600 to-red-800' },
+  { volume: 18, year: 2023, tests: 4, label: 'Cambridge IELTS 18 (2023)', color: 'from-orange-600 to-orange-800' },
+  { volume: 17, year: 2022, tests: 4, label: 'Cambridge IELTS 17 (2022)', color: 'from-amber-600 to-amber-800' },
+  { volume: 16, year: 2021, tests: 4, label: 'Cambridge IELTS 16 (2021)', color: 'from-yellow-600 to-yellow-800' },
+  { volume: 15, year: 2020, tests: 4, label: 'Cambridge IELTS 15 (2020)', color: 'from-lime-600 to-lime-800' },
+  { volume: 14, year: 2019, tests: 4, label: 'Cambridge IELTS 14 (2019)', color: 'from-green-600 to-green-800' },
+]
+
+function CambridgeTab() {
+  const [speakingMode, setSpeakingMode] = useState(false)
+  const [prepTimer, setPrepTimer] = useState(60)
+  const [speakTimer, setSpeakTimer] = useState(120)
+  const [phase, setPhase] = useState<'idle' | 'prep' | 'speak' | 'done'>('idle')
+  const timerRef = useRef<number | null>(null)
+
+  const randomCueCard = SPEAKING_CUE_CARDS[Math.floor(Math.random() * SPEAKING_CUE_CARDS.length)]
+
+  const startSpeakingPractice = () => {
+    setSpeakingMode(true)
+    setPhase('prep')
+    setPrepTimer(60)
+    const interval = window.setInterval(() => {
+      setPrepTimer(prev => {
+        if (prev <= 1) {
+          clearInterval(interval)
+          setPhase('speak')
+          setSpeakTimer(120)
+          const speakInterval = window.setInterval(() => {
+            setSpeakTimer(prev2 => {
+              if (prev2 <= 1) {
+                clearInterval(speakInterval)
+                setPhase('done')
+                return 0
+              }
+              return prev2 - 1
+            })
+          }, 1000)
+          timerRef.current = speakInterval
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    timerRef.current = interval
+  }
+
+  const resetSpeaking = () => {
+    if (timerRef.current) clearInterval(timerRef.current)
+    setSpeakingMode(false)
+    setPhase('idle')
+    setPrepTimer(60)
+    setSpeakTimer(120)
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Cambridge Books Grid */}
+      <div>
+        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <Library className="w-5 h-5 text-blue-400" />
+          Cambridge IELTS Practice Tests
+        </h3>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {CAMBRIDGE_BOOKS.map(book => (
+            <div key={book.volume} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-colors">
+              <div className={`h-24 bg-gradient-to-br ${book.color} flex items-center justify-center`}>
+                <div className="text-center">
+                  <p className="text-white/80 text-xs font-medium">CAMBRIDGE</p>
+                  <p className="text-white text-2xl font-bold">IELTS {book.volume}</p>
+                  <p className="text-white/60 text-xs">{book.year}</p>
+                </div>
+              </div>
+              <div className="p-4">
+                <p className="text-white/70 text-sm mb-3">{book.tests} полных теста (Listening + Reading + Writing)</p>
+                <div className="flex gap-2">
+                  <button className="flex-1 flex items-center justify-center gap-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 text-xs font-medium px-3 py-2 rounded-lg transition-colors">
+                    <Play className="w-3.5 h-3.5" /> Практика
+                  </button>
+                  <button className="flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white/70 text-xs px-3 py-2 rounded-lg transition-colors">
+                    <Download className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="text-white/30 text-xs mt-3">
+          * Книги Cambridge доступны для скачивания после загрузки в админ-панели. Контент будет расширяться.
+        </p>
+      </div>
+
+      {/* Speaking Practice with Robot */}
+      <div className="bg-gradient-to-br from-violet-900/50 to-blue-900/50 border border-violet-400/20 rounded-2xl p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-violet-600 flex items-center justify-center">
+            <Mic className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h3 className="text-white font-bold">Speaking Practice с AI</h3>
+            <p className="text-white/50 text-sm">Отработай Part 2 (Cue Card) с таймером</p>
+          </div>
+        </div>
+
+        {!speakingMode ? (
+          <div>
+            <div className="bg-white/5 rounded-xl p-4 mb-4">
+              <p className="text-violet-300 text-xs font-medium mb-2">Как это работает:</p>
+              <ol className="text-white/60 text-sm space-y-1">
+                <li>1. Получи тему (Cue Card) — как на экзамене</li>
+                <li>2. 1 минута на подготовку — записывай ключевые слова</li>
+                <li>3. 2 минуты на ответ — говори вслух</li>
+                <li>4. Робот даёт обратную связь</li>
+              </ol>
+            </div>
+            <button
+              onClick={startSpeakingPractice}
+              className="w-full bg-violet-600 hover:bg-violet-500 text-white font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+            >
+              <Play className="w-4 h-4" /> Начать Speaking Practice
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Cue Card */}
+            <div className="bg-white/10 rounded-xl p-5 border border-white/20">
+              <p className="text-violet-300 text-xs font-medium mb-2">Part 2 — Cue Card</p>
+              <p className="text-white font-semibold mb-3">{randomCueCard?.topic ?? 'Describe a place you love'}</p>
+              <p className="text-white/60 text-sm">You should say:</p>
+              <ul className="text-white/50 text-sm mt-1 space-y-0.5">
+                {(randomCueCard?.bulletPoints ?? ['what it is', 'where it is', 'when you visited', 'why you like it']).map((p: string, i: number) => (
+                  <li key={i}>• {p}</li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Timer */}
+            <div className="text-center">
+              {phase === 'prep' && (
+                <div>
+                  <p className="text-yellow-400 text-sm font-medium mb-1">Подготовка</p>
+                  <p className="text-white text-4xl font-bold font-mono">{prepTimer}с</p>
+                  <p className="text-white/40 text-xs mt-1">Записывай ключевые слова</p>
+                </div>
+              )}
+              {phase === 'speak' && (
+                <div>
+                  <p className="text-green-400 text-sm font-medium mb-1 flex items-center justify-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /> Говори!
+                  </p>
+                  <p className="text-white text-4xl font-bold font-mono">{speakTimer}с</p>
+                  <p className="text-white/40 text-xs mt-1">Говори вслух — как на экзамене</p>
+                </div>
+              )}
+              {phase === 'done' && (
+                <div>
+                  <p className="text-blue-400 text-sm font-medium mb-2">Отлично! Практика завершена</p>
+                  <div className="bg-white/5 rounded-xl p-4 text-left">
+                    <p className="text-white/70 text-sm mb-2">Советы по улучшению:</p>
+                    <ul className="text-white/50 text-xs space-y-1">
+                      <li>• Используй linking words: However, Moreover, Furthermore</li>
+                      <li>• Развивай каждый пункт 2-3 предложениями</li>
+                      <li>• Используй Past Simple/Present Perfect правильно</li>
+                      <li>• Не бойся пауз — лучше пауза, чем "um, ah"</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={resetSpeaking}
+              className="w-full bg-white/10 hover:bg-white/15 text-white/70 text-sm py-2.5 rounded-xl transition-colors"
+            >
+              {phase === 'done' ? 'Попробовать снова' : 'Отменить'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function Ielts() {
@@ -741,6 +927,7 @@ export default function Ielts() {
     { id: 'speaking',   label: 'Speaking',     icon: Mic },
     { id: 'vocabulary', label: 'Лексика',      icon: BookMarked },
     { id: 'materials',  label: 'Материалы',    icon: Globe },
+    { id: 'cambridge',  label: 'Cambridge',    icon: Library },
     { id: 'chat',       label: 'AI Ментор',    icon: Bot },
   ]
 
@@ -859,6 +1046,7 @@ export default function Ielts() {
             {activeTab === 'speaking'   && <SpeakingTab />}
             {activeTab === 'vocabulary' && <VocabularyTab />}
             {activeTab === 'materials'  && <MaterialsTab />}
+            {activeTab === 'cambridge'  && <CambridgeTab />}
             {activeTab === 'chat'       && (
               <div className="bg-white/5 border border-white/10 rounded-2xl p-5" style={{ height: 680 }}>
                 <div className="flex items-center gap-2 mb-4 pb-4 border-b border-white/10">

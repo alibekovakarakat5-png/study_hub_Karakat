@@ -35,6 +35,17 @@ model User {
   // Telegram bot
   telegramChatId    String?  @unique
 
+  // Password reset
+  resetToken        String?  @unique
+  resetTokenExp     DateTime?
+
+  // Referral system
+  referralCode      String?  @unique
+  referredBy        String?
+
+  @@index([createdAt])
+  @@index([role])
+
   // Parent-child relationship (optional)
   parentId          String?
   parent            User?    @relation("ParentChild", fields: [parentId], references: [id])
@@ -242,6 +253,7 @@ model Payment {
 
   @@index([userId])
   @@index([status])
+  @@index([createdAt])
 }
 
 // One-time token for linking Telegram account to StudyHub account
@@ -253,10 +265,74 @@ model TelegramLinkToken {
   createdAt DateTime @default(now())
 }
 
+// ── Growth Assistant ─────────────────────────────────────────────────────────
+
+model Lead {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   // 'center' | 'tutor' | 'school' | 'student' | 'other'
+  source      String   // 'telegram' | 'instagram' | 'manual' | 'google_maps'
+  contact     String?  // phone / username / link
+  description String?
+  status      String   @default("new") // 'new' | 'contacted' | 'warm' | 'converted' | 'rejected'
+  score       Int      @default(0) // 1–10 quality score
+  notes       String?
+  tags        Json?    // string[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([type])
+}
+
+model GrowthTask {
+  id          String    @id @default(cuid())
+  title       String
+  type        String    // 'grant' | 'hackathon' | 'contest' | 'feature' | 'bug' | 'other'
+  description String?
+  deadline    DateTime?
+  url         String?
+  status      String    @default("pending") // 'pending' | 'in_progress' | 'done'
+  priority    String    @default("medium")  // 'low' | 'medium' | 'high' | 'urgent'
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status])
+  @@index([deadline])
+}
+
+model ContentIdea {
+  id          String    @id @default(cuid())
+  type        String    // 'post' | 'reels' | 'story' | 'scenario' | 'carousel'
+  platform    String    // 'instagram' | 'tiktok' | 'telegram'
+  title       String
+  body        String
+  tags        Json?     // string[]
+  status      String    @default("draft") // 'draft' | 'approved' | 'published' | 'archived'
+  scheduledAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([status])
+  @@index([platform])
+}
+
+model Competitor {
+  id          String   @id @default(cuid())
+  name        String
+  url         String?
+  description String?
+  features    Json?    // string[]
+  pricing     Json?    // { plan: string, price: string }[]
+  notes       String?
+  lastChecked DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 // Content managed by admin — IELTS materials, mentor Q&As, vocab, ENT questions, curator topics
 model Content {
   id        String   @id @default(cuid())
-  type      String   // 'ielts_material' | 'mentor_qa' | 'vocab_word' | 'ent_question' | 'curator_topic'
+  type      String   // 'ielts_material' | 'mentor_qa' | 'vocab_word' | 'ent_question' | 'curator_topic' | ...
   data      Json     // flexible payload per type
   active    Boolean  @default(true)
   order     Int      @default(0)
@@ -264,4 +340,48 @@ model Content {
   updatedAt DateTime @updatedAt
 
   @@index([type, active])
+  @@index([createdAt])
+}
+
+// ── File Uploads ──────────────────────────────────────────────────────────────
+
+model UploadedFile {
+  id          String   @id @default(cuid())
+  filename    String                              // original filename
+  storagePath String                              // relative path in server/uploads/
+  mimeType    String
+  sizeBytes   Int
+  uploadedBy  String                              // userId
+  status      String   @default("pending")        // pending | processing | done | error
+  courseId     String?                             // linked course if generated
+  errorMsg    String?                              // error message if processing failed
+  metadata    Json?                                // extra info (page count, etc.)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([uploadedBy])
+  @@index([status])
+}
+
+// ── Study Abroad Guide ────────────────────────────────────────────────────────
+
+model StudyAbroadCountry {
+  id             String   @id @default(cuid())
+  countryCode    String   @unique                 // "TR", "CZ", "PL", "KR", "MY", "CN", "RU", "US", "GB", "DE", "CA", "AE"
+  nameRu         String
+  nameEn         String
+  nameKk         String   @default("")
+  flagEmoji      String
+  region         String                           // "Europe", "Asia", "Middle East", "North America"
+  requirements   Json                             // { visa, documents[], language, other }
+  universities   Json                             // [{ name, qs, city, tuitionUSD, programs[] }]
+  scholarships   Json                             // [{ name, coverage, deadline, url }]
+  timeline       Json                             // [{ month, action }]
+  costs          Json                             // { tuitionUSD, livingUSD, insuranceUSD }
+  languageReqs   Json                             // { primary, tests[], courses }
+  mentorWhatsApp String   @default("77075884651")
+  isActive       Boolean  @default(true)
+  order          Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }

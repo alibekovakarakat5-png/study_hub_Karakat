@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   Calendar, ExternalLink, Search, Bell, BellOff,
@@ -8,10 +8,11 @@ import {
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import {
-  ALL_ENTRIES, CATEGORY_META, FUNDING_META,
+  ALL_ENTRIES as HARDCODED_ENTRIES, CATEGORY_META, FUNDING_META,
   getDeadlineStatus, isDataStale, nearestDeadline,
   type AdmissionEntry, type Category,
 } from '@/data/admissionsData'
+import { useContentStore } from '@/store/useContentStore'
 
 // ── Days until deadline ───────────────────────────────────────────────────────
 
@@ -289,10 +290,22 @@ const CATEGORY_FILTERS: { id: Category | 'all'; label: string; icon: React.Eleme
 
 export default function Admissions() {
   const navigate = useNavigate()
+  const { admissionEntries, syncFromServer } = useContentStore()
   const [category, setCategory] = useState<Category | 'all'>('all')
   const [search, setSearch] = useState('')
   const [tracked, setTracked] = useState<Set<string>>(new Set())
   const [showTrackedOnly, setShowTrackedOnly] = useState(false)
+
+  useEffect(() => { syncFromServer() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Merge: DB entries override hardcoded by matching original id inside data
+  const allEntries = useMemo(() => {
+    if (admissionEntries.length === 0) return HARDCODED_ENTRIES
+    const dbIds = new Set(admissionEntries.map(e => e.id))
+    // Keep hardcoded entries that are NOT in DB (fallback), add all DB entries
+    const fallback = HARDCODED_ENTRIES.filter(e => !dbIds.has(e.id))
+    return [...admissionEntries, ...fallback]
+  }, [admissionEntries])
 
   const toggleTrack = (id: string) => {
     setTracked(prev => {
@@ -303,7 +316,7 @@ export default function Admissions() {
   }
 
   const filtered = useMemo(() => {
-    return ALL_ENTRIES.filter(e => {
+    return allEntries.filter(e => {
       if (category !== 'all' && e.category !== category) return false
       if (showTrackedOnly && !tracked.has(e.id)) return false
       if (search) {
@@ -426,7 +439,7 @@ export default function Admissions() {
 
           {/* Sidebar */}
           <div className="space-y-4">
-            <TrackedSidebar tracked={tracked} entries={ALL_ENTRIES} />
+            <TrackedSidebar tracked={tracked} entries={allEntries} />
 
             {/* Quick tips */}
             <div className="bg-white rounded-2xl border border-slate-100 p-4">

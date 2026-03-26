@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useStore } from '@/store/useStore'
+import { useContentStore } from '@/store/useContentStore'
 import {
-  PROGRAMS, UNIVERSITIES, FIELD_LABELS, SUBJECT_LABELS,
+  PROGRAMS as HARDCODED_PROGRAMS, UNIVERSITIES as HARDCODED_UNIVERSITIES,
+  FIELD_LABELS, SUBJECT_LABELS,
   calcChance, calcSubjectGaps, buildRecommendations, estimateWeeks,
-  getProgramsByField, getUniversitiesByProgram,
   type StudyField, type Program, type UniversityProfile,
   type UniversityChance, type ChanceLevel,
 } from '@/data/admissionPlanData'
@@ -318,6 +319,26 @@ function RoadmapTimeline({ chances }: { chances: UniversityChance[] }) {
 
 export default function AdmissionPlan() {
   const { diagnosticResult } = useStore()
+  const { programs: dbPrograms, universityProfiles: dbUniversities, syncFromServer } = useContentStore()
+
+  useEffect(() => { syncFromServer() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Merge: DB entries override hardcoded by id
+  const PROGRAMS = useMemo(() => {
+    if (dbPrograms.length === 0) return HARDCODED_PROGRAMS
+    const dbIds = new Set(dbPrograms.map(p => p.id))
+    return [...dbPrograms, ...HARDCODED_PROGRAMS.filter(p => !dbIds.has(p.id))]
+  }, [dbPrograms])
+
+  const UNIVERSITIES = useMemo(() => {
+    if (dbUniversities.length === 0) return HARDCODED_UNIVERSITIES
+    const dbIds = new Set(dbUniversities.map(u => u.id))
+    return [...dbUniversities, ...HARDCODED_UNIVERSITIES.filter(u => !dbIds.has(u.id))]
+  }, [dbUniversities])
+
+  // Local versions of lookup functions using merged data
+  const getProgramsByField = (field: StudyField) => PROGRAMS.filter(p => p.field === field)
+  const getUniversitiesByProgram = (programId: string) => UNIVERSITIES.filter(u => u.requirements.some(r => r.programId === programId))
 
   const [step, setStep] = useState<'field' | 'program' | 'results'>('field')
   const [selectedField, setSelectedField] = useState<StudyField | null>(null)

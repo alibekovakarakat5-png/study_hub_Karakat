@@ -10,10 +10,11 @@
 // Webhook: POST /api/telegram/webhook
 
 import { prisma } from './prisma'
+import { handleGrowthCommand, handleGrowthCallback, isAdmin } from './growthBot'
 
 const BOT_TOKEN  = process.env.TELEGRAM_BOT_TOKEN
 const ADMIN_CHAT = process.env.TELEGRAM_ADMIN_CHAT ?? process.env.TELEGRAM_CHAT_ID
-const APP_URL    = process.env.APP_URL ?? 'https://skylla.netlify.app'
+const APP_URL    = process.env.APP_URL ?? 'https://studyhub.kz'
 
 // ── Low-level helpers ─────────────────────────────────────────────────────────
 
@@ -55,6 +56,9 @@ const MAIN_MENU_KB = {
       { text: '🚀 Стартап',        callback_data: 'flow:startup' },
       { text: '📊 Мой прогресс',   callback_data: 'flow:progress' },
     ],
+    [
+      { text: '📱 Открыть StudyHub', web_app: { url: `${APP_URL}/dashboard` } },
+    ],
   ],
 }
 
@@ -70,60 +74,14 @@ function optKb(flow: string, opts: string[]) {
   return { inline_keyboard: rows }
 }
 
-// ── ENT question bank ─────────────────────────────────────────────────────────
+// ── ENT question bank (shared module) ────────────────────────────────────────
 
-interface Question {
-  id: string; subject: string; q: string
-  options: string[]; correct: number; explanation: string
-}
-
-const FALLBACK_QUESTIONS: Question[] = [
-  { id: 'f1',  subject: 'Математика',  q: 'Вычислите: 2³ × 2⁴',                                     options: ['2⁶','2⁷','4⁷','2¹²'],                         correct: 1, explanation: '2³ × 2⁴ = 2^(3+4) = 2⁷ = 128' },
-  { id: 'f2',  subject: 'История КЗ', q: 'В каком году провозглашена независимость Казахстана?',     options: ['1990','1991','1992','1993'],                    correct: 1, explanation: '16 декабря 1991 года' },
-  { id: 'f3',  subject: 'Математика',  q: 'Дискриминант уравнения x² − 5x + 6 = 0 равен:',          options: ['1','4','25','49'],                              correct: 0, explanation: 'D = b² − 4ac = 25 − 24 = 1' },
-  { id: 'f4',  subject: 'История КЗ', q: 'Кто основал Казахское ханство?',                           options: ['Аблай хан','Касым хан','Жанибек и Керей','Тауке хан'], correct: 2, explanation: 'Основано в 1465 году' },
-  { id: 'f5',  subject: 'Математика',  q: 'Найдите 35% от числа 240.',                              options: ['72','84','96','120'],                           correct: 1, explanation: '240 × 0.35 = 84' },
-  { id: 'f6',  subject: 'Физика',      q: 'Скорость света в вакууме:',                              options: ['3×10⁶ м/с','3×10⁸ м/с','3×10¹⁰ м/с','3×10⁵ м/с'], correct: 1, explanation: 'c ≈ 3×10⁸ м/с' },
-  { id: 'f7',  subject: 'История КЗ', q: 'Столица перенесена в Астану в:',                          options: ['1995','1997','1999','2001'],                    correct: 1, explanation: '10 декабря 1997 года' },
-  { id: 'f8',  subject: 'Математика',  q: 'log₂ 32 = ?',                                            options: ['4','5','6','3'],                                correct: 1, explanation: '2⁵ = 32' },
-  { id: 'f9',  subject: 'Биология',    q: '«Энергетическая станция» клетки — это:',                 options: ['Рибосома','Митохондрия','Лизосома','Ядро'],     correct: 1, explanation: 'Митохондрии синтезируют АТФ' },
-  { id: 'f10', subject: 'Химия',       q: 'Формула серной кислоты:',                                options: ['HCl','HNO₃','H₂SO₄','H₃PO₄'],                 correct: 2, explanation: 'H₂SO₄ — серная кислота' },
-  { id: 'f11', subject: 'Математика',  q: 'Сумма углов треугольника:',                              options: ['90°','180°','270°','360°'],                    correct: 1, explanation: 'Всегда 180°' },
-  { id: 'f12', subject: 'Физика',      q: 'Единица сопротивления:',                                 options: ['Ампер','Вольт','Ом','Ватт'],                   correct: 2, explanation: 'Ом (Ω)' },
-  { id: 'f13', subject: 'История КЗ', q: 'Первый президент Казахстана:',                             options: ['Токаев','Назарбаев','Кунаев','Масимов'],       correct: 1, explanation: 'Нурсултан Назарбаев' },
-  { id: 'f14', subject: 'Математика',  q: 'Площадь круга радиусом 5:',                              options: ['10π','25π','50π','100π'],                      correct: 1, explanation: 'S = πr² = 25π' },
-  { id: 'f15', subject: 'Биология',    q: 'Сколько хромосом в клетках человека?',                   options: ['23','44','46','48'],                            correct: 2, explanation: '46 = 23 пары' },
-]
-
-const LABELS = ['A', 'B', 'C', 'D']
-
-async function getRandomQuestion(): Promise<Question> {
-  try {
-    const rows = await prisma.content.findMany({ where: { type: 'ent_question', active: true }, take: 30 })
-    if (rows.length > 0) {
-      const r = rows[Math.floor(Math.random() * rows.length)]!
-      const d = r.data as Record<string, unknown>
-      return { id: r.id, subject: String(d.subject ?? 'ЕНТ'), q: String(d.question ?? d.q ?? ''),
-               options: (d.options as string[]) ?? [], correct: Number(d.correct ?? 0), explanation: String(d.explanation ?? '') }
-    }
-  } catch { /* fallback */ }
-  const idx = Math.floor(Math.random() * FALLBACK_QUESTIONS.length)
-  return FALLBACK_QUESTIONS[idx]!
-}
-
-async function get5Questions(): Promise<Question[]> {
-  try {
-    const rows = await prisma.content.findMany({ where: { type: 'ent_question', active: true }, take: 50 })
-    if (rows.length >= 5) {
-      return rows.sort(() => Math.random() - 0.5).slice(0, 5).map(r => {
-        const d = r.data as Record<string, unknown>
-        return { id: r.id, subject: String(d.subject ?? 'ЕНТ'), q: String(d.question ?? d.q ?? ''),
-                 options: (d.options as string[]) ?? [], correct: Number(d.correct ?? 0), explanation: String(d.explanation ?? '') }
-      })
-    }
-  } catch { /* fallback */ }
-  return [...FALLBACK_QUESTIONS].sort(() => Math.random() - 0.5).slice(0, 5)
-}
+import {
+  type Question,
+  LABELS, FALLBACK_QUESTIONS,
+  getRandomQuestion, getQuestions,
+  buildQuestionText, buildQuestionKeyboard,
+} from './questions'
 
 // ── State machine ─────────────────────────────────────────────────────────────
 
@@ -181,12 +139,42 @@ async function showMainMenu(chatId: number) {
   )
 }
 
-// ── Flow: /question (one random ENT question) ─────────────────────────────────
+// ── Helpers: персонализация по слабому предмету ───────────────────────────────
+
+async function getWeakSubject(chatId: number): Promise<string | null> {
+  try {
+    const user = await prisma.user.findUnique({ where: { telegramChatId: String(chatId) } })
+    if (!user) return null
+    const results = await prisma.diagnosticResult.findMany({
+      where: { userId: user.id }, orderBy: { takenAt: 'desc' }, take: 20,
+    })
+    if (!results.length) return null
+    const bySubject: Record<string, number[]> = {}
+    for (const r of results) {
+      const subj = r.subject ?? 'ЕНТ'
+      const d = r.scores as Record<string, unknown>
+      const pct = Number(d.percentage ?? d.score ?? 0) / 100
+      if (!bySubject[subj]) bySubject[subj] = []
+      bySubject[subj].push(pct)
+    }
+    let weakSubj: string | null = null
+    let weakScore = Infinity
+    for (const [subj, scores] of Object.entries(bySubject)) {
+      const avg = scores.reduce((a, b) => a + b, 0) / scores.length
+      if (avg < weakScore) { weakScore = avg; weakSubj = subj }
+    }
+    return weakSubj
+  } catch { return null }
+}
+
+// ── Flow: /question — персонализированный по слабому предмету ─────────────────
 
 async function handleQuestion(chatId: number) {
-  const q = await getRandomQuestion()
+  const weakSubject = await getWeakSubject(chatId)
+  const q = await getRandomQuestion(weakSubject ?? undefined)
   const lines = q.options.map((o, i) => `${LABELS[i]}. ${o}`).join('\n')
-  const text = `📚 <b>${q.subject}</b>\n\n${q.q}\n\n${lines}`
+  const prefix = weakSubject ? `🎯 <i>Тренируем слабую тему: ${weakSubject}</i>\n\n` : ''
+  const text = `${prefix}📚 <b>${q.subject}</b>\n\n${q.q}\n\n${lines}`
   const kb = { inline_keyboard: [LABELS.slice(0, q.options.length).map((l, i) => ({ text: l, callback_data: `ans:${q.id}:${i}` }))] }
   await sendMsg(chatId, text, { reply_markup: kb })
 }
@@ -227,7 +215,7 @@ async function handleQuestionAnswer(chatId: number, messageId: number, questionI
 // ── Flow: ENT диагностика (5 вопросов) ───────────────────────────────────────
 
 async function startEntDiag(chatId: number) {
-  const questions = await get5Questions()
+  const questions = await getQuestions(5)
   setState(chatId, { flow: 'ent_diag', step: 0, score: 0, answers: [], questions })
   await showEntQ(chatId, 0, questions)
 }
@@ -550,6 +538,74 @@ async function handleProgress(chatId: number) {
   })
 }
 
+// ── /stats — баллы по предметам из диагностики ───────────────────────────────
+
+async function handleStats(chatId: number) {
+  const user = await prisma.user.findUnique({
+    where: { telegramChatId: String(chatId) },
+  })
+
+  if (!user) {
+    await sendMsg(chatId,
+      `❌ <b>Аккаунт не привязан</b>\n\nОтправь /link КОД чтобы привязать аккаунт и видеть свою статистику.`,
+      { reply_markup: { inline_keyboard: [[{ text: '⚙️ Настройки', url: `${APP_URL}/settings` }], BACK_TO_MENU[0]!] } },
+    )
+    return
+  }
+
+  const results = await prisma.diagnosticResult.findMany({
+    where: { userId: user.id },
+    orderBy: { takenAt: 'desc' },
+    take: 30,
+  })
+
+  const streakEmoji = (user.streak ?? 0) >= 7 ? '🔥' : (user.streak ?? 0) >= 3 ? '⚡' : '📅'
+  let text = `📊 <b>Статистика ${user.name}</b>\n\n`
+  text += `${streakEmoji} Стрик: <b>${user.streak ?? 0} дней</b>\n`
+  text += `⏱ Время занятий: <b>${user.totalStudyMinutes ?? 0} мин</b>\n`
+
+  if (results.length > 0) {
+    const bySubject: Record<string, number[]> = {}
+    for (const r of results) {
+      const s = r.subject ?? 'ЕНТ'
+      const d = r.scores as Record<string, unknown>
+      const pct = Number(d.percentage ?? d.score ?? 0)
+      if (!bySubject[s]) bySubject[s] = []
+      bySubject[s].push(pct)
+    }
+
+    text += `\n📚 <b>Баллы по предметам:</b>\n`
+    const sorted = Object.entries(bySubject).sort((a, b) => {
+      const pa = a[1].reduce((x, y) => x + y, 0) / a[1].length
+      const pb = b[1].reduce((x, y) => x + y, 0) / b[1].length
+      return pa - pb // worst first
+    })
+
+    for (const [subj, scores] of sorted) {
+      const pct = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+      const filled = Math.round(pct / 10)
+      const bar = '█'.repeat(filled) + '░'.repeat(10 - filled)
+      const emoji = pct >= 70 ? '🟢' : pct >= 50 ? '🟡' : '🔴'
+      text += `${emoji} ${subj}: ${pct}% ${bar}\n`
+    }
+
+    const weakest = sorted[0]
+    if (weakest) text += `\n💡 <b>Фокус:</b> ${weakest[0]} — именно там будут твои вопросы дня`
+  } else {
+    text += `\n⚡ Пройди диагностику чтобы увидеть баллы по предметам`
+  }
+
+  await sendMsg(chatId, text, {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '📱 Открыть дашборд', web_app: { url: `${APP_URL}/dashboard` } }],
+        [{ text: '🎯 Вопрос по слабой теме', callback_data: 'flow:question' }],
+        BACK_TO_MENU[0]!,
+      ],
+    },
+  })
+}
+
 // ── /link ─────────────────────────────────────────────────────────────────────
 
 async function handleLink(chatId: number, token: string) {
@@ -723,6 +779,18 @@ export async function handleUpdate(update: TelegramUpdate): Promise<void> {
       const chatId = update.message.chat.id
       const text   = update.message.text.trim()
 
+      // ── Growth Assistant commands (admin-only, /g_ prefix) ────────────
+      if (isAdmin(chatId) && (text.startsWith('/g') || text === '/g')) {
+        const handled = await handleGrowthCommand(chatId, text)
+        if (handled) return
+      }
+
+      // ── Growth Assistant: multi-step flow input (admin typing responses) ─
+      if (isAdmin(chatId)) {
+        const handled = await handleGrowthCommand(chatId, text)
+        if (handled) return
+      }
+
       if (text.startsWith('/start')) {
         const payload = text.slice(6).trim()
         if (payload) { await handleLink(chatId, payload); return }
@@ -731,6 +799,7 @@ export async function handleUpdate(update: TelegramUpdate): Promise<void> {
       if (text === '/help')          { await showMainMenu(chatId); return }
       if (text === '/question')      { await handleQuestion(chatId); return }
       if (text === '/progress')      { await handleProgress(chatId); return }
+      if (text === '/stats')         { await handleStats(chatId); return }
       if (text.startsWith('/link'))  { await handleLink(chatId, text.slice(5).trim()); return }
 
       // Free text → DB lookup + keyword matching
@@ -743,6 +812,12 @@ export async function handleUpdate(update: TelegramUpdate): Promise<void> {
       const chatId    = cq.message?.chat.id
       const messageId = cq.message?.message_id
       if (chatId && messageId && cq.data) {
+        // ── Growth Assistant callbacks (admin-only, g: prefix) ──────────
+        if (isAdmin(chatId) && cq.data.startsWith('g:')) {
+          const handled = await handleGrowthCallback(chatId, cq.data)
+          if (handled) { await answerCallback(cq.id); return }
+        }
+
         await handleCallback(cq.id, chatId, messageId, cq.data)
       }
     }

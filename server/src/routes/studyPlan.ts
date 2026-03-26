@@ -72,4 +72,34 @@ router.put('/:id/progress', verifyToken, async (req, res) => {
   res.json({ plan: updated })
 })
 
+// ── PUT /api/study-plans/:id/weeks — sync full weeks array (task completion) ──
+
+router.put('/:id/weeks', verifyToken, async (req, res) => {
+  const parsed = z.object({
+    weeks:            z.array(z.unknown()),
+    completedModules: z.number().int().min(0),
+  }).safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0].message })
+    return
+  }
+
+  const planId = String(req.params['id'])
+  const plan = await prisma.studyPlan.findUnique({ where: { id: planId } })
+  if (!plan || plan.userId !== req.user!.userId) {
+    res.status(404).json({ error: 'План не найден' })
+    return
+  }
+
+  const updated = await prisma.studyPlan.update({
+    where: { id: planId },
+    data: {
+      weeks:            parsed.data.weeks as Prisma.InputJsonArray,
+      completedModules: parsed.data.completedModules,
+    },
+  })
+
+  res.json({ plan: updated })
+})
+
 export default router

@@ -1,9 +1,12 @@
 import { Router } from 'express'
+import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma'
 import { signToken, verifyToken } from '../middleware/auth'
 import { tg } from '../lib/telegram'
+import { sanitizeString } from '../lib/sanitize'
+import { sendPasswordResetEmail } from '../lib/email'
 import type { Role } from '@prisma/client'
 
 const router = Router()
@@ -40,7 +43,13 @@ router.post('/register', async (req, res) => {
     return
   }
 
-  const { name, email, password, role, grade, city } = parsed.data
+  const data = parsed.data
+  const name  = sanitizeString(data.name)
+  const email = data.email
+  const password = data.password
+  const role  = data.role
+  const grade = data.grade
+  const city  = data.city ? sanitizeString(data.city) : data.city
 
   // Check if email already taken
   const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase() } })
@@ -63,12 +72,19 @@ router.post('/register', async (req, res) => {
     },
   })
 
+  // Generate referral code
+  const referralCode = crypto.randomBytes(3).toString('hex').toUpperCase()
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { referralCode },
+  })
+
   const token = signToken({ userId: user.id, role: user.role, email: user.email })
 
   // Notify developer
   tg.newUser(user.name, user.email, user.role, user.city)
 
-  res.status(201).json({ user: safeUser(user), token })
+  res.status(201).json({ user: safeUser({ ...user, referralCode }), token })
 })
 
 // ── POST /api/auth/login ──────────────────────────────────────────────────────
@@ -114,6 +130,78 @@ router.get('/me', verifyToken, async (req, res) => {
     return
   }
   res.json({ user: safeUser(user) })
+})
+
+// ── POST /api/auth/forgot-password ──────────────────────────────────────────
+const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+})
+
+router.post('/forgot-password', async (req, res) => {
+  const parsed = forgotPasswordSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Некорректный email' })
+    return
+  }
+
+  const { email } = parsed.data
+  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } })
+
+  if (user) {
+    const resetToken = crypto.randomBytes(32).toString('hex')
+    const resetTokenExp = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { resetToken, resetTokenExp },
+    })
+
+    await sendPasswordResetEmail(email, resetToken, user.name)
+  }
+
+  // Always return ok (don't reveal if email exists)
+  res.json({ ok: true })
+})
+
+// ── POST /api/auth/reset-password ───────────────────────────────────────────
+const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  password: z.string().min(6).max(100),
+})
+
+router.post('/reset-password', async (req, res) => {
+  const parsed = resetPasswordSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Некорректные данные' })
+    return
+  }
+
+  const { token, password } = parsed.data
+
+  const user = await prisma.user.findFirst({
+    where: {
+      resetToken: token,
+      resetTokenExp: { gt: new Date() },
+    },
+  })
+
+  if (!user) {
+    res.status(400).json({ error: 'Ссылка недействительна или истекла' })
+    return
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10)
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      passwordHash,
+      resetToken: null,
+      resetTokenExp: null,
+    },
+  })
+
+  res.json({ ok: true })
 })
 
 export default router

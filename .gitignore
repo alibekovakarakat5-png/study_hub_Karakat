@@ -22,3 +22,21 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment variables — never commit real secrets
+.env
+.env.*
+!.env.example
+
+# Uploads (user files on server)
+server/uploads/*
+!server/uploads/.gitkeep
+
+# Claude internal
+.claude/launch.json
+
+# Generated Word docs
+*.docx
+
+# Node scripts
+scripts/*.cjs

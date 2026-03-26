@@ -9,15 +9,15 @@
     <!-- Primary SEO -->
     <title>StudyHub — Подготовка к ЕНТ, IELTS и поступление за рубеж</title>
     <meta name="description" content="AI-платформа для казахстанских школьников: подготовка к ЕНТ, IELTS, поступление в зарубежные вузы. Персональный план, диагностика и практика — бесплатно." />
-    <meta name="keywords" content="ЕНТ подготовка, IELTS Казахстан, поступление за рубеж, StudyHub, ент 2025, онлайн репетитор" />
+    <meta name="keywords" content="ЕНТ подготовка, IELTS Казахстан, поступление за рубеж, StudyHub, ент 2026, онлайн репетитор" />
 
     <!-- Open Graph (Telegram, WhatsApp, VK) -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="StudyHub" />
-    <meta property="og:url" content="https://skylla.netlify.app" />
+    <meta property="og:url" content="https://studyhub.kz" />
     <meta property="og:title" content="StudyHub — Подготовка к ЕНТ, IELTS и поступление за рубеж" />
     <meta property="og:description" content="AI-платформа для казахстанских школьников. Персональный план подготовки к ЕНТ и IELTS, диагностика слабых мест, практика — бесплатно." />
-    <meta property="og:image" content="https://skylla.netlify.app/og-image.png" />
+    <meta property="og:image" content="https://studyhub.kz/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:locale" content="ru_RU" />
@@ -26,11 +26,44 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="StudyHub — Подготовка к ЕНТ, IELTS и поступление за рубеж" />
     <meta name="twitter:description" content="AI-платформа для казахстанских школьников. Персональный план подготовки к ЕНТ и IELTS." />
-    <meta name="twitter:image" content="https://skylla.netlify.app/og-image.png" />
+    <meta name="twitter:image" content="https://studyhub.kz/og-image.png" />
 
+    <link rel="manifest" href="/manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+    <!-- Yandex.Metrika -->
+    <script>
+      (function() {
+        var ym_id = '%VITE_YM_ID%';
+        if (!ym_id || ym_id.indexOf('%') === 0) return;
+        (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+        (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+        ym(parseInt(ym_id), "init", { clickmap:true, trackLinks:true, accurateTrackBounce:true, webvisor:true });
+      })();
+    </script>
+    <!-- /Yandex.Metrika -->
+
+    <!-- Google Analytics -->
+    <script>
+      (function() {
+        var ga_id = '%VITE_GA_ID%';
+        if (!ga_id || ga_id.indexOf('%') === 0) return;
+        var s = document.createElement('script');
+        s.src = 'https://www.googletagmanager.com/gtag/js?id=' + ga_id;
+        s.async = true;
+        document.head.appendChild(s);
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', ga_id);
+      })();
+    </script>
+    <!-- /Google Analytics -->
   </head>
   <body>
     <div id="root"></div>

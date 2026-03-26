@@ -1,10 +1,13 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { User, UserRole, DiagnosticResult, StudyPlan, ChatMessage, StudyWeek, StudyTask, Achievement, Notification, OnboardingProfile } from '@/types'
+import type { User, UserRole, DiagnosticResult, StudyPlan, ChatMessage, StudyWeek, StudyTask, Achievement, Notification, OnboardingProfile, Subject } from '@/types'
 import { generateId } from '@/lib/utils'
 import { universities } from '@/data/universities'
+import { getContentBySubject } from '@/data/curatorContent'
+import { findWeakTopicContent } from '@/lib/topicLookup'
 import { api, setToken, clearToken } from '@/lib/api'
 import i18n from '@/i18n/index'
+import type { TopicContent } from '@/types/curator'
 
 // ── Mock platform stats for admin ───────────────────────────────────────────
 
@@ -297,63 +300,217 @@ export const useStore = create<AppState>()(
         const spec = uni?.specialties.find(s => s.id === targetSpecId)
         if (!uni || !spec) return
 
-        const weeks: StudyWeek[] = []
-        const subjects = spec.subjects
-        const now = new Date()
+        // ── Build subject bundles with real TopicContent ──────────────────
+        type SubjBundle = {
+          subject: Subject
+          percentage: number
+          level: 'low' | 'medium' | 'high'
+          weakContent: TopicContent[]
+          allContent: TopicContent[] // weak first, then remaining
+        }
 
-        for (let w = 0; w < 16; w++) {
+        const bundles: SubjBundle[] = spec.subjects.map(subject => {
+          const diag = diagnosticResult?.subjects.find(s => s.subject === subject)
+          const allTopics = getContentBySubject(subject)
+
+          // Match diagnostic weak topics to real TopicContent
+          const weakNames = diag?.weakTopics ?? []
+          const weakContent = findWeakTopicContent(subject, weakNames)
+          const weakSet = new Set(weakContent.map(t => t.topic))
+          const remaining = allTopics.filter(t => !weakSet.has(t.topic))
+
+          return {
+            subject,
+            percentage: diag?.percentage ?? 50,
+            level: diag?.level ?? 'medium',
+            weakContent,
+            allContent: [...weakContent, ...remaining], // weak first
+          }
+        })
+
+        // Sort: weakest subjects first (they get more focus)
+        bundles.sort((a, b) => a.percentage - b.percentage)
+
+        // ── Helper: create task from real TopicContent ─────────────────────
+        const typeLabels: Record<string, string> = {
+          lesson: 'Теория', practice: 'Практика',
+          test: 'Тест', review: 'Повторение',
+        }
+        function makeTask(
+          content: TopicContent,
+          type: StudyTask['type'],
+          duration: number,
+          suffix?: string,
+        ): StudyTask {
+          return {
+            id: generateId(),
+            title: `${content.topic} — ${suffix || typeLabels[type]}`,
+            subject: content.subject,
+            topic: content.topic, // exact match for findTopicContentFuzzy
+            type, duration, completed: false,
+          }
+        }
+
+        // ── Content queues — cycles through topics per subject ────────────
+        const queues = new Map<Subject, TopicContent[]>()
+        for (const b of bundles) {
+          queues.set(b.subject, [...b.allContent])
+        }
+
+        function nextContent(subject: Subject): TopicContent | null {
+          const q = queues.get(subject)
+          if (!q || q.length === 0) {
+            // Refill — cycle through all content again
+            const b = bundles.find(x => x.subject === subject)
+            if (!b || b.allContent.length === 0) return null
+            queues.set(subject, [...b.allContent])
+            return queues.get(subject)!.shift()!
+          }
+          return q.shift()!
+        }
+
+        // ── 4-phase plan: Foundation → Intensive → Mock Exams → Final ─────
+        const TOTAL_WEEKS = 16
+        const now = new Date()
+        const weeks: StudyWeek[] = []
+
+        for (let w = 0; w < TOTAL_WEEKS; w++) {
           const weekStart = new Date(now)
           weekStart.setDate(weekStart.getDate() + w * 7)
           const weekEnd = new Date(weekStart)
           weekEnd.setDate(weekEnd.getDate() + 6)
 
           const tasks: StudyTask[] = []
+          const weekNum = w + 1
 
-          for (const subject of subjects) {
-            const subjectResult = diagnosticResult?.subjects.find(s => s.subject === subject)
-            const weakTopics = subjectResult?.weakTopics || ['Общие темы']
-            const topic = weakTopics[w % weakTopics.length] || 'Повторение'
+          if (weekNum <= 3) {
+            // ── Phase 1: Foundation — theory + practice, weak topics first ─
+            for (const b of bundles) {
+              const content = nextContent(b.subject)
+              if (!content) continue
+              tasks.push(makeTask(content, 'lesson', 30))
+              tasks.push(makeTask(content, 'practice', 30))
+            }
+            // Diagnostic checkpoint on week 3
+            if (weekNum === 3) {
+              const first = bundles[0]?.allContent[0]
+              if (first) {
+                tasks.push({
+                  id: generateId(),
+                  title: 'Промежуточная диагностика — все предметы',
+                  subject: bundles[0].subject,
+                  topic: first.topic,
+                  type: 'test', duration: 60, completed: false,
+                })
+              }
+            }
+          } else if (weekNum <= 10) {
+            // ── Phase 2: Intensive — weighted by weakness level ────────────
+            const intensiveWeek = weekNum - 3
 
-            tasks.push({
-              id: generateId(),
-              title: `${topic} — Теория`,
-              subject,
-              topic,
-              type: 'lesson',
-              duration: 30,
-              completed: w < 1 && Math.random() > 0.5,
-            })
-            tasks.push({
-              id: generateId(),
-              title: `${topic} — Практика`,
-              subject,
-              topic,
-              type: 'practice',
-              duration: 45,
-              completed: false,
-            })
+            for (const b of bundles) {
+              const content = nextContent(b.subject)
+              if (!content) continue
 
-            if (w % 2 === 1) {
+              tasks.push(makeTask(content, 'lesson', 35))
+              tasks.push(makeTask(content, 'practice', 45))
+
+              // Weak subjects: extra practice on next topic
+              if (b.level === 'low') {
+                const extra = nextContent(b.subject)
+                if (extra) tasks.push(makeTask(extra, 'practice', 40, 'Доп. практика'))
+              }
+
+              // Medium subjects: extra practice every other week
+              if (b.level === 'medium' && intensiveWeek % 2 === 0) {
+                tasks.push(makeTask(content, 'practice', 30, 'Закрепление'))
+              }
+
+              // Tests every 2 weeks
+              if (intensiveWeek % 2 === 0) {
+                tasks.push(makeTask(content, 'test', 25))
+              }
+            }
+
+            // Spaced repetition — revisit weak content
+            if (intensiveWeek >= 3 && intensiveWeek % 2 === 1) {
+              const weakest = bundles[0]
+              const review = weakest?.weakContent[0] || weakest?.allContent[0]
+              if (review) tasks.push(makeTask(review, 'review', 25))
+            }
+          } else if (weekNum <= 14) {
+            // ── Phase 3: Mock Exams & Gap Filling ─────────────────────────
+            const mockWeek = weekNum - 10
+
+            // Full mock ENT
+            const mockTopic = bundles[0]?.allContent[0]
+            if (mockTopic) {
               tasks.push({
                 id: generateId(),
-                title: `Промежуточный тест: ${topic}`,
-                subject,
-                topic,
-                type: 'test',
-                duration: 30,
-                completed: false,
+                title: `Пробный ЕНТ #${mockWeek}`,
+                subject: bundles[0].subject,
+                topic: mockTopic.topic,
+                type: 'test', duration: 90, completed: false,
               })
+            }
+
+            // Review + targeted practice for each subject
+            for (const b of bundles) {
+              const idx = (mockWeek - 1) % Math.max(b.weakContent.length, b.allContent.length, 1)
+              const review = b.weakContent[idx] || b.allContent[idx] || b.allContent[0]
+              if (!review) continue
+
+              tasks.push(makeTask(review, 'review', 30, 'Разбор ошибок'))
+              if (b.level !== 'high') {
+                tasks.push(makeTask(review, 'practice', 35, 'Целевая практика'))
+              }
+            }
+          } else {
+            // ── Phase 4: Final Polish (weeks 15-16) ───────────────────────
+            for (const b of bundles) {
+              const content = b.allContent[0]
+              if (content) tasks.push(makeTask(content, 'review', 20, 'Быстрый обзор'))
+            }
+
+            if (weekNum === 15) {
+              const first = bundles[0]?.allContent[0]
+              if (first) {
+                tasks.push({
+                  id: generateId(),
+                  title: 'Финальный пробный ЕНТ',
+                  subject: bundles[0].subject,
+                  topic: first.topic,
+                  type: 'test', duration: 90, completed: false,
+                })
+              }
+            }
+
+            if (weekNum === 16) {
+              const first = bundles[0]?.allContent[0]
+              if (first) {
+                tasks.push(makeTask(first, 'review', 30, 'Повторение формул'))
+                tasks.push({
+                  id: generateId(),
+                  title: 'Стратегия экзамена — тайм-менеджмент',
+                  subject: bundles[0].subject,
+                  topic: first.topic,
+                  type: 'lesson', duration: 20, completed: false,
+                })
+              }
             }
           }
 
           weeks.push({
-            weekNumber: w + 1,
+            weekNumber: weekNum,
             startDate: weekStart.toISOString(),
             endDate: weekEnd.toISOString(),
             tasks,
             completed: false,
           })
         }
+
+        // ── Calculate total tasks ─────────────────────────────────────────
+        const totalTasks = weeks.flatMap(w => w.tasks).length
 
         const plan: StudyPlan = {
           id: generateId(),
@@ -367,6 +524,16 @@ export const useStore = create<AppState>()(
         }
 
         set({ studyPlan: plan })
+
+        // ── Persist to backend ────────────────────────────────────────────
+        import('@/lib/api').then(({ studyPlanApi }) => {
+          studyPlanApi.create({
+            goalType: `${uni.name} — ${spec.name}`,
+            totalModules: totalTasks,
+            weeks: weeks as unknown[],
+          }).catch(() => { /* offline — plan stays in localStorage */ })
+        })
+
         get().unlockAchievement('plan-created')
         get().updateUser({ targetUniversity: uni.name, targetSpecialty: spec.name })
       },
@@ -397,6 +564,15 @@ export const useStore = create<AppState>()(
             weeks: updatedWeeks,
             overallProgress,
           },
+        })
+
+        // Sync to backend (debounced via fire-and-forget)
+        import('@/lib/api').then(({ studyPlanApi }) => {
+          studyPlanApi.updateWeeks(
+            studyPlan.id,
+            updatedWeeks as unknown[],
+            completedTasks,
+          ).catch(() => { /* offline — localStorage has it */ })
         })
 
         if (completedTasks >= 10) get().unlockAchievement('tasks-10')

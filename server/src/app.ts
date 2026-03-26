@@ -1,8 +1,12 @@
 import 'express-async-errors'
 import express from 'express'
 import cors from 'cors'
+import helmet from 'helmet'
+import rateLimit from 'express-rate-limit'
+import * as Sentry from '@sentry/node'
 import type { Request, Response, NextFunction } from 'express'
 
+import path from 'path'
 import authRoutes          from './routes/auth'
 import adminRoutes         from './routes/admin'
 import usersRoutes         from './routes/users'
@@ -16,9 +20,47 @@ import coursesRoutes       from './routes/courses'
 import plansRoutes         from './routes/plans'
 import billingRoutes       from './routes/billing'
 import telegramRoutes      from './routes/telegram'
+import uploadRoutes        from './routes/uploads'
+import studyAbroadRoutes   from './routes/studyAbroad'
+import courseGenerateRoutes from './routes/courseGenerate'
+import referralRoutes      from './routes/referral'
 import { tg }              from './lib/telegram'
+import { setupSwagger }    from './lib/swagger'
+
+// ── Sentry error tracking ────────────────────────────────────────────────────
+
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV ?? 'development',
+    tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.2 : 1.0,
+  })
+}
 
 const app = express()
+
+// ── Security headers ────────────────────────────────────────────────────────
+app.use(helmet())
+
+// ── Rate limiting ───────────────────────────────────────────────────────────
+
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,    // 15 minutes
+  max: 200,                     // 200 requests per window per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Слишком много запросов, попробуйте позже' },
+})
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,    // 15 minutes
+  max: 15,                      // 15 auth attempts per window per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Слишком много попыток входа, попробуйте через 15 минут' },
+})
+
+app.use(globalLimiter)
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 
@@ -31,7 +73,7 @@ app.use(express.json({ limit: '2mb' }))
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 
-app.use('/api/auth',            authRoutes)
+app.use('/api/auth',            authLimiter, authRoutes)
 app.use('/api/admin',           adminRoutes)
 app.use('/api/users',           usersRoutes)
 app.use('/api/diagnostic',      diagnosticRoutes)
@@ -44,6 +86,17 @@ app.use('/api/courses',         coursesRoutes)
 app.use('/api/plans',           plansRoutes)
 app.use('/api/billing',         billingRoutes)
 app.use('/api/telegram',        telegramRoutes)
+app.use('/api/uploads',         uploadRoutes)
+app.use('/api/study-abroad',    studyAbroadRoutes)
+app.use('/api/courses',         courseGenerateRoutes) // adds /api/courses/generate
+app.use('/api/referral',        referralRoutes)
+
+// ── Static file serving for uploads ──────────────────────────────────────────
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
+
+// ── Swagger API docs ─────────────────────────────────────────────────────────
+
+setupSwagger(app)
 
 // ── Health check ──────────────────────────────────────────────────────────────
 
@@ -62,8 +115,14 @@ app.use((_req, res) => {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error('[Error]', err.message)
+  Sentry.captureException(err)
   tg.error(err.message, err.stack)
-  res.status(500).json({ error: 'Внутренняя ошибка сервера' })
+
+  const isDev = process.env.NODE_ENV !== 'production'
+  res.status(500).json({
+    error: 'Внутренняя ошибка сервера',
+    ...(isDev ? { details: err.message } : {}),
+  })
 })
 
 export default app

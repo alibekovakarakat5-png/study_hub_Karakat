@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   GraduationCap,
@@ -14,9 +14,10 @@ import {
   ArrowRight,
   Sparkles,
   Shield,
-  Briefcase,
+  Gift,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
+import { getToken } from '@/lib/api'
 import type { UserRole } from '@/types'
 import { useTranslation } from 'react-i18next'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
@@ -74,6 +75,7 @@ export default function Auth() {
   const [grade, setGrade] = useState(11)
   const [city, setCity] = useState('Алматы')
   const [childEmail, setChildEmail] = useState('')
+  const [referralCode, setReferralCode] = useState(searchParams.get('ref') ?? '')
 
   // Context onboarding: redirect based on landing entry point
   const SOURCE_REDIRECT: Record<string, string> = {
@@ -92,8 +94,6 @@ export default function Auth() {
         navigate('/parent', { replace: true })
       } else if (user.role === 'teacher') {
         navigate('/teacher', { replace: true })
-      } else if (user.role === 'employer') {
-        navigate('/employer', { replace: true })
       } else if (justRegistered && user.role === 'student') {
         // New student → welcome flow, then destination
         const dest = fromSource && SOURCE_REDIRECT[fromSource]
@@ -113,7 +113,7 @@ export default function Auth() {
     setError('')
 
     if (!email.trim() || !password.trim()) {
-      setError('Заполните все поля')
+      setError(t('auth.error_fill_all'))
       return
     }
 
@@ -121,7 +121,7 @@ export default function Auth() {
     try {
       await login(email, password, role)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Неверный email или пароль')
+      setError(err instanceof Error ? err.message : t('auth.error_invalid_credentials'))
     } finally {
       setIsLoading(false)
     }
@@ -132,27 +132,22 @@ export default function Auth() {
     setError('')
 
     if (!name.trim() || !regEmail.trim() || !regPassword.trim()) {
-      setError('Заполните все обязательные поля')
+      setError(t('auth.error_fill_required'))
       return
     }
 
     if (regPassword.length < 6) {
-      setError('Пароль должен содержать минимум 6 символов')
+      setError(t('auth.error_password_min'))
       return
     }
 
     if (role === 'parent' && !childEmail.trim()) {
-      setError('Введите email ребёнка')
+      setError(t('auth.error_child_email'))
       return
     }
 
     if (role === 'admin') {
-      setError('Регистрация админов недоступна')
-      return
-    }
-
-    if (role === 'employer') {
-      setError('Для работодателей доступен только вход по приглашению')
+      setError(t('auth.error_admin_register'))
       return
     }
 
@@ -167,9 +162,25 @@ export default function Auth() {
         city: role === 'student' ? city : undefined,
         childEmail: role === 'parent' ? childEmail : undefined,
       })
+
+      // Apply referral code if provided
+      if (referralCode) {
+        try {
+          const token = getToken()
+          await fetch('/api/referral/apply', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({ code: referralCode }),
+          })
+        } catch { /* ignore referral errors */ }
+      }
+
       setJustRegistered(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка при регистрации. Попробуйте ещё раз.')
+      setError(err instanceof Error ? err.message : t('auth.error_register_generic'))
     } finally {
       setIsLoading(false)
     }
@@ -247,12 +258,11 @@ export default function Auth() {
                 { key: 'student' as Role, labelKey: 'auth.role_student', icon: GraduationCap },
                 { key: 'parent' as Role, labelKey: 'auth.role_parent', icon: Users },
                 { key: 'teacher' as Role, labelKey: 'auth.role_teacher', icon: BookOpen },
-                { key: 'employer' as Role, labelKey: 'auth.role_employer', icon: Briefcase },
               ]).map(({ key, labelKey, icon: Icon }) => (
                 <button
                   key={key}
                   type="button"
-                  onClick={() => { setRole(key); setError(''); if (key === 'employer') setMode('login') }}
+                  onClick={() => { setRole(key); setError('') }}
                   className={`relative flex min-w-[30%] flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-all duration-200 ${
                     role === key
                       ? 'text-primary-700'
@@ -275,8 +285,8 @@ export default function Auth() {
             </div>
           </div>
 
-          {/* Auth mode toggle (hide for employer — login only) */}
-          {role !== 'employer' && (
+          {/* Auth mode toggle */}
+          {(
             <div className="mb-6">
               <div className="flex rounded-xl bg-gray-100/80 p-1">
                 {([
@@ -364,6 +374,13 @@ export default function Auth() {
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
+                </div>
+
+                {/* Forgot password */}
+                <div className="flex justify-end -mt-1">
+                  <Link to="/forgot-password" className="text-xs text-primary-500 hover:text-primary-700 transition-colors">
+                    {t('auth.forgot_password')}
+                  </Link>
                 </div>
 
                 {/* Submit */}
@@ -534,6 +551,19 @@ export default function Auth() {
                   )}
                 </AnimatePresence>
 
+                {/* Referral code (optional) */}
+                <div className="relative">
+                  <Gift className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={referralCode}
+                    onChange={e => setReferralCode(e.target.value.toUpperCase())}
+                    placeholder={t('auth.referral_placeholder')}
+                    maxLength={10}
+                    className={`${inputClasses} text-sm`}
+                  />
+                </div>
+
                 {/* Submit */}
                 <motion.button
                   type="submit"
@@ -579,7 +609,7 @@ export default function Auth() {
           transition={{ delay: 0.5 }}
           className="mt-6 text-center text-xs text-gray-400"
         >
-          Продолжая, вы соглашаетесь с условиями использования
+          {t('auth.terms_notice')}
         </motion.p>
       </motion.div>
     </div>

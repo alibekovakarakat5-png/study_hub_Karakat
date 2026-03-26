@@ -196,4 +196,25 @@ router.get('/:id/children', verifyToken, requireRole('parent', 'admin'), async (
   res.json({ children })
 })
 
+// ── POST /api/users/:id/reset-password — admin reset ─────────────────────
+router.post('/:id/reset-password', verifyToken, requireRole('admin'), async (req, res) => {
+  const userId = req.params['id'] as string
+  const user = await prisma.user.findUnique({ where: { id: userId } })
+
+  if (!user) {
+    res.status(404).json({ error: 'Пользователь не найден' })
+    return
+  }
+
+  const tempPassword = crypto.randomBytes(6).toString('base64url')
+  const passwordHash = await bcrypt.hash(tempPassword, 10)
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash, resetToken: null, resetTokenExp: null },
+  })
+
+  res.json({ temporaryPassword: tempPassword })
+})
+
 export default router

@@ -8,7 +8,7 @@ interface PageMetaProps {
   image?: string
 }
 
-const BASE_URL = 'https://skylla.netlify.app'
+const BASE_URL = import.meta.env.VITE_BASE_URL ?? 'https://studyhub.kz'
 const DEFAULT_IMAGE = `${BASE_URL}/og-image.png`
 
 export function PageMeta({ title, description, path = '', image = DEFAULT_IMAGE }: PageMetaProps) {

@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo } from 'react'
+import { useEffect, useCallback, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -16,6 +16,7 @@ import {
   Eye,
   X,
   XCircle,
+  Share2,
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useStore } from '@/store/useStore'
@@ -32,6 +33,8 @@ import {
   ENT_TOTAL_QUESTIONS,
 } from '@/types/practiceEnt'
 import type { EntBlock, EntBlockResult } from '@/types/practiceEnt'
+import ShareResultCard from '@/components/share/ShareResultCard'
+import type { EntShareData } from '@/components/share/ShareResultCard'
 
 // ── Animation variants ──────────────────────────────────────────────────────
 
@@ -383,6 +386,7 @@ function ExamPhase() {
 function ResultsPhase() {
   const { currentResult, resetSession, reviewQuestion, reviewErrors, profileSubject1, profileSubject2 } = usePracticeEntStore()
   const { user, updateUser } = useStore()
+  const [showShare, setShowShare] = useState(false)
 
   // Save result to DB + update streak once per result
   useEffect(() => {
@@ -418,6 +422,19 @@ function ResultsPhase() {
   const r = currentResult
   const passed = r.percentage >= 50
 
+  const shareData: EntShareData = {
+    type: 'ent',
+    variantTitle: r.variantTitle,
+    date: r.date,
+    totalCorrect: r.totalCorrect,
+    totalQuestions: r.totalQuestions,
+    percentage: r.percentage,
+    timeSpentMinutes: r.timeSpentMinutes,
+    blocks: r.blocks,
+    profileSubject1,
+    profileSubject2,
+  }
+
   return (
     <motion.div variants={stagger} initial="hidden" animate="visible" className="mx-auto max-w-3xl space-y-6">
       {/* Header */}
@@ -450,7 +467,10 @@ function ResultsPhase() {
       <WeakTopicsRecommendations blocks={r.blocks} s1={profileSubject1} s2={profileSubject2} />
 
       {/* Actions */}
-      <motion.div variants={fadeUp} className="grid gap-3 sm:grid-cols-3">
+      <motion.div variants={fadeUp} className="grid gap-3 sm:grid-cols-4">
+        <button onClick={() => setShowShare(true)} className="flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 py-3 font-medium text-blue-600 transition-colors hover:bg-blue-100">
+          <Share2 className="h-4 w-4" /> Поделиться
+        </button>
         <button onClick={resetSession} className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-3 font-medium text-gray-700 transition-colors hover:bg-gray-50">
           <RotateCcw className="h-4 w-4" /> Новая попытка
         </button>
@@ -458,12 +478,15 @@ function ResultsPhase() {
           onClick={reviewErrors}
           className="flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 py-3 font-medium text-red-600 transition-colors hover:bg-red-100"
         >
-          <XCircle className="h-4 w-4" /> Работа над ошибками
+          <XCircle className="h-4 w-4" /> Ошибки
         </button>
         <Link to="/dashboard" className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 font-medium text-white transition-colors hover:bg-blue-700">
           На главную <ArrowRight className="h-4 w-4" />
         </Link>
       </motion.div>
+
+      {/* Share modal */}
+      {showShare && <ShareResultCard data={shareData} onClose={() => setShowShare(false)} />}
     </motion.div>
   )
 }

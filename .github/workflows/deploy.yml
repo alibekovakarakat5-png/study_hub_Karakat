@@ -1,0 +1,39 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: []   # run after CI passes (add: needs: [lint-and-build] once CI is green)
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            set -e
+            cd /opt/studyhub
+
+            echo "→ Pulling latest code..."
+            git pull origin main
+
+            echo "→ Building and restarting containers..."
+            docker compose pull db 2>/dev/null || true
+            docker compose up -d --build --remove-orphans
+
+            echo "→ Running DB migrations..."
+            docker compose exec -T backend npx prisma migrate deploy 2>/dev/null || \
+            docker compose exec -T backend npx prisma db push
+
+            echo "→ Cleaning up old images..."
+            docker image prune -f
+
+            echo "✓ Deployed successfully!"

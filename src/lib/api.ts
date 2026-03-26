@@ -57,6 +57,21 @@ export type ContentType =
   | 'curator_topic'
   | 'university_entry'
   | 'scholarship_entry'
+  | 'admission_entry'
+  | 'program_entry'
+  | 'university_profile'
+  // ── New DB-driven content types ──
+  | 'ielts_section'
+  | 'ielts_band_descriptor'
+  | 'ielts_cue_card'
+  | 'diagnostic_question'
+  | 'ent_exam_variant'
+  | 'ent_profile_bank'
+  | 'curator_content'
+  | 'ent_theory_topic'
+  | 'career_test_question'
+  | 'cambridge_passage'
+  | 'cambridge_question_bank'
 
 export interface ContentItem {
   id: string
@@ -236,16 +251,59 @@ export const billingApi = {
 
   getStats:       () => api.get<BillingStats>('/billing/stats'),
   mySubscription: () => api.get<{ subscription: DBSubscription | null }>('/billing/my'),
+
+  // KaspiPay
+  kaspiCreate: (planId: string) =>
+    api.post<KaspiPaymentResponse>('/billing/kaspi/create', { planId }),
+  kaspiStatus: (orderId: string) =>
+    api.get<KaspiPaymentStatus>(`/billing/kaspi/status/${orderId}`),
+  kaspiSimulate: (orderId: string) =>
+    api.post<{ ok: boolean }>('/billing/kaspi/simulate', { orderId }),
+}
+
+export interface KaspiPaymentResponse {
+  orderId: string
+  payLink: string
+  qrData: string
+  amount: number
+  planName: string
+  subscriptionId: string
+}
+
+export interface KaspiPaymentStatus {
+  status: 'pending' | 'success' | 'failed' | 'refunded'
+  amount: number
+  planName: string | null
+  createdAt: string
+}
+
+export interface PaginatedResponse<T> {
+  items: T[]
+  total: number
+  page: number
+  limit: number
+  pages: number
 }
 
 export const contentApi = {
   /** Public: list active items (optionally filtered by type) */
-  list: (type?: ContentType) =>
-    api.get<{ items: ContentItem[] }>(`/content${type ? `?type=${type}` : ''}`),
+  list: (type?: ContentType, opts?: { page?: number; limit?: number }) => {
+    const params = new URLSearchParams()
+    if (type) params.set('type', type)
+    if (opts?.page) params.set('page', String(opts.page))
+    if (opts?.limit) params.set('limit', String(opts.limit))
+    const q = params.toString()
+    return api.get<PaginatedResponse<ContentItem>>(`/content${q ? `?${q}` : ''}`)
+  },
 
-  /** Admin: list all items including inactive */
-  listAll: (type?: ContentType) =>
-    api.get<{ items: ContentItem[] }>(`/content/all${type ? `?type=${type}` : ''}`),
+  /** Public: list ALL active items (auto-paginates) */
+  listAll: (type?: ContentType) => {
+    const params = new URLSearchParams()
+    if (type) params.set('type', type)
+    params.set('limit', '100')
+    const q = params.toString()
+    return api.get<PaginatedResponse<ContentItem>>(`/content/all${q ? `?${q}` : ''}`)
+  },
 
   /** Admin: create new content item */
   create: (body: { type: ContentType; data: Record<string, unknown>; active?: boolean; order?: number }) =>
@@ -258,4 +316,138 @@ export const contentApi = {
   /** Admin: delete content item */
   remove: (id: string) =>
     api.del<{ ok: boolean }>(`/content/${id}`),
+}
+
+// ── Study Plans API ──────────────────────────────────────────────────────────
+
+export interface DBStudyPlan {
+  id: string
+  userId: string
+  goalType: string
+  totalModules: number
+  completedModules: number
+  weeks: unknown[]
+  isActive: boolean
+  createdAt: string
+}
+
+export const studyPlanApi = {
+  create: (body: { goalType: string; totalModules: number; weeks: unknown[] }) =>
+    api.post<{ plan: DBStudyPlan }>('/study-plans', body),
+  getActive: () =>
+    api.get<{ plan: DBStudyPlan | null }>('/study-plans/active'),
+  updateProgress: (id: string, completedModules: number) =>
+    api.put<{ plan: DBStudyPlan }>(`/study-plans/${id}/progress`, { completedModules }),
+  updateWeeks: (id: string, weeks: unknown[], completedModules: number) =>
+    api.put<{ plan: DBStudyPlan }>(`/study-plans/${id}/weeks`, { weeks, completedModules }),
+}
+
+// ── Upload API ────────────────────────────────────────────────────────────────
+
+export interface UploadedFile {
+  id: string
+  filename: string
+  storagePath: string
+  mimeType: string
+  sizeBytes: number
+  uploadedBy: string
+  status: 'pending' | 'processing' | 'done' | 'error'
+  courseId: string | null
+  errorMsg: string | null
+  metadata: { pageCount?: number; wordCount?: number; textPreview?: string } | null
+  createdAt: string
+  updatedAt: string
+}
+
+export const uploadApi = {
+  /** Upload a file (multipart/form-data) */
+  upload: async (file: File): Promise<{ file: UploadedFile }> => {
+    const form = new FormData()
+    form.append('file', file)
+    const token = getToken()
+    const res = await fetch('/api/uploads', {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`)
+    return data
+  },
+
+  /** List uploads */
+  list: () => api.get<{ files: UploadedFile[] }>('/uploads'),
+
+  /** Get upload status */
+  status: (id: string) => api.get<{ file: UploadedFile }>(`/uploads/${id}`),
+
+  /** Get extracted text */
+  text: (id: string) => api.get<{ text: string; wordCount: number; pageCount?: number }>(`/uploads/${id}/text`),
+
+  /** Delete upload */
+  remove: (id: string) => api.del<{ ok: boolean }>(`/uploads/${id}`),
+
+  /** Generate course from upload */
+  generate: (uploadId: string, opts?: { subject?: string; level?: string; title?: string }) =>
+    api.post<{ courseId: string; title: string; modulesCount: number; lessonsCount: number }>(
+      '/courses/generate',
+      { uploadId, ...opts }
+    ),
+
+  /** Generate course from raw text */
+  generateFromText: (text: string, opts?: { subject?: string; level?: string; title?: string }) =>
+    api.post<{ courseId: string; title: string; modulesCount: number; lessonsCount: number }>(
+      '/courses/generate',
+      { text, ...opts }
+    ),
+}
+
+// ── Study Abroad API ──────────────────────────────────────────────────────────
+
+export interface StudyAbroadCountry {
+  id: string
+  countryCode: string
+  nameRu: string
+  nameEn: string
+  nameKk: string
+  flagEmoji: string
+  region: string
+  requirements: {
+    visa: string
+    documents: string[]
+    language: string
+    other?: string
+  }
+  universities: {
+    name: string
+    qs?: number
+    city: string
+    tuitionUSD: number | string
+    programs: string[]
+  }[]
+  scholarships: {
+    name: string
+    coverage: string
+    deadline: string
+    url?: string
+  }[]
+  timeline: { month: string; action: string }[]
+  costs: {
+    tuitionUSD: string
+    livingUSD: string
+    insuranceUSD: string
+  }
+  languageReqs: {
+    primary: string
+    tests: string[]
+    courses?: string
+  }
+  mentorWhatsApp: string
+  isActive: boolean
+  order: number
+}
+
+export const studyAbroadApi = {
+  list: () => api.get<{ countries: StudyAbroadCountry[] }>('/study-abroad'),
+  get: (code: string) => api.get<{ country: StudyAbroadCountry }>(`/study-abroad/${code}`),
 }
