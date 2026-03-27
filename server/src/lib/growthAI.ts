@@ -196,38 +196,47 @@ const WEEKDAY_TOPICS: Record<number, string> = {
   0: 'Воскресенье — итоги недели. Мотивационный пост + совет на следующую неделю',
 }
 
-export async function generateChannelPost(): Promise<string> {
-  const now = new Date()
-  const weekday = now.getDay()
-  const topic = WEEKDAY_TOPICS[weekday] ?? WEEKDAY_TOPICS[1]!
-  const dateStr = now.toLocaleDateString('ru-KZ', { day: 'numeric', month: 'long', timeZone: 'Asia/Almaty' })
-
-  const response = await client.messages.create({
-    model: MODEL,
-    max_tokens: 500,
-    system: `Ты — контент-менеджер канала @skyllaAI — Telegram-канала образовательной платформы StudyHub (Казахстан).
+const CHANNEL_POST_SYSTEM = `Ты — контент-менеджер канала @skyllaAI (EdTech, Казахстан).
 Аудитория: школьники 9-11 класс и их родители.
 
-Напиши ОДИН готовый пост для Telegram-канала.
-Формат:
+Напиши ОДИН готовый пост для Telegram-канала:
 - Начало: эмодзи + цепляющий заголовок
-- Тело: 3-4 предложения с полезной информацией
-- Конец: призыв к действию со ссылкой на платформу
-- Хештеги: 3-4 релевантных
+- Тело: 3-4 предложения с полезной и конкретной информацией
+- Конец: CTA + ссылка https://skylla.netlify.app
+- Хештеги: 3-4 штуки
 
 Требования:
-- НЕ используй markdown, только HTML (<b>, <i>)
+- НЕ используй markdown (#, **, _) — только HTML (<b>, <i>)
 - Тон: дружелюбный, молодёжный, по-казахстански близкий
-- Длина: 150-250 слов
-- Ссылка на платформу: https://skylla.netlify.app`,
-    messages: [{
-      role: 'user',
-      content: `Сегодня ${dateStr}. Тема: ${topic}. Напиши один пост для канала.`,
-    }],
+- Длина: 120-200 слов`
+
+export async function generateChannelPost(): Promise<string> {
+  if (!GROQ_API_KEY) throw new Error('GROQ_API_KEY not set')
+
+  const now     = new Date()
+  const weekday = now.getDay()
+  const topic   = WEEKDAY_TOPICS[weekday] ?? WEEKDAY_TOPICS[1]!
+  const dateStr = now.toLocaleDateString('ru-KZ', { day: 'numeric', month: 'long', timeZone: 'Asia/Almaty' })
+
+  const res = await fetch(GROQ_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${GROQ_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model:      GROQ_MODEL,
+      max_tokens: 500,
+      messages: [
+        { role: 'system', content: CHANNEL_POST_SYSTEM },
+        { role: 'user',   content: `Сегодня ${dateStr}. Тема: ${topic}. Напиши пост.` },
+      ],
+    }),
   })
 
-  const block = response.content.find(b => b.type === 'text')
-  return block?.type === 'text' ? block.text : ''
+  if (!res.ok) throw new Error(`Groq error: ${res.status}`)
+  const json = await res.json() as { choices: Array<{ message: { content: string } }> }
+  return json.choices[0]?.message?.content ?? ''
 }
 
 // ── Feedback Analysis (парсинг отзывов) ──────────────────────────────────────
