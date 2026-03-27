@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import {
   LayoutGrid, Brain, BarChart3, Users, BookOpen, TrendingUp,
-  CheckCircle, MessageCircle, Shield,
+  CheckCircle, MessageCircle, Shield, School,
   Building2, ArrowRight, Menu, X
 } from 'lucide-react'
 import { openWhatsApp } from '@/lib/whatsapp'
