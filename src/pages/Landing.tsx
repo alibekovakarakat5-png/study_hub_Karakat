@@ -478,18 +478,10 @@ function ProblemSolutionSection() {
   const { t } = useTranslation();
 
   const pairs = [
-    {
-      problem: t('landing.problem_1'),
-      solution: t('landing.solution_1'),
-    },
-    {
-      problem: t('landing.problem_2'),
-      solution: t('landing.solution_2'),
-    },
-    {
-      problem: t('landing.problem_3'),
-      solution: t('landing.solution_3'),
-    },
+    { problem: t('landing.problem_1'), solution: t('landing.solution_1') },
+    { problem: t('landing.problem_2'), solution: t('landing.solution_2') },
+    { problem: t('landing.problem_3'), solution: t('landing.solution_3') },
+    { problem: t('landing.problem_4'), solution: t('landing.solution_4') },
   ];
 
   return (
@@ -1952,11 +1944,11 @@ export default function Landing() {
         <HeroSection onNavigate={handleNavigate} />
         <ProblemSolutionSection />
         <ProductShowcaseSection />
-        <LabsSection />
         <HowItWorksSection />
-        <PricingSection onNavigate={handleNavigate} />
         <PortfolioSection onNavigate={handleNavigate} />
+        <LabsSection />
         <SkyllaRobotSection onNavigate={handleNavigate} />
+        <PricingSection onNavigate={handleNavigate} />
         <FinalCtaSection onNavigate={handleNavigate} />
       </main>
       <Footer />
