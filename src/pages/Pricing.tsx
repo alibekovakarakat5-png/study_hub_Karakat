@@ -297,7 +297,7 @@ export default function Pricing() {
       setPaymentData(data)
     } catch {
       // KaspiPay not configured — fallback to WhatsApp
-      const { price, period } = formatPrice(plan)
+      const { price, period } = formatPrice(plan, t)
       openWhatsApp(buildPricingMessage(`${plan.name} — ${price}${period}`))
     } finally {
       setPaymentLoading(null)
