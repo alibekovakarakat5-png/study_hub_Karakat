@@ -451,3 +451,127 @@ export const studyAbroadApi = {
   list: () => api.get<{ countries: StudyAbroadCountry[] }>('/study-abroad'),
   get: (code: string) => api.get<{ country: StudyAbroadCountry }>(`/study-abroad/${code}`),
 }
+
+// ── Classroom Types ────────────────────────────────────────────────────────────
+
+export interface AITestQuestion {
+  id: string
+  text: string
+  options: string[]      // exactly 4
+  correctAnswer: number  // 0-indexed
+  explanation: string
+}
+
+export interface AITestVariant {
+  variantIndex: number
+  questions: AITestQuestion[]
+}
+
+export interface DBClassMember {
+  id: string
+  joinedAt: string
+  student: { id: string; name: string; email: string; grade: number | null }
+}
+
+export interface DBAssignmentSummary {
+  id: string
+  title: string
+  type: 'test' | 'homework' | 'reading'
+  dueDate: string | null
+  createdAt: string
+  _count?: { submissions: number }
+  submissions?: DBSubmission[]  // student's own submission(s) when fetched from student context
+}
+
+export interface DBClass {
+  id: string
+  name: string
+  subject: string
+  description: string | null
+  inviteCode: string
+  teacherId: string
+  teacher?: { id: string; name: string; email?: string }
+  members?: DBClassMember[]
+  assignments?: DBAssignmentSummary[]
+  _count?: { members: number; assignments: number }
+  createdAt: string
+}
+
+export interface DBAssignment {
+  id: string
+  title: string
+  description: string | null
+  classId: string
+  teacherId: string
+  type: 'test' | 'homework' | 'reading'
+  content: Record<string, unknown>
+  dueDate: string | null
+  createdAt: string
+  class?: { id: string; name: string; members?: { studentId: string }[] }
+}
+
+export interface DBSubmission {
+  id: string
+  assignmentId: string
+  studentId: string
+  answers: Record<string, unknown>
+  score: number | null
+  feedback: string | null
+  submittedAt: string
+  student?: { id: string; name: string; email: string }
+}
+
+export interface AssignmentStats {
+  totalMembers: number
+  submitted: number
+  avgScore: number | null
+}
+
+// ── Classes API ────────────────────────────────────────────────────────────────
+
+export const classesApi = {
+  list:         ()                          => api.get<{ classes: DBClass[] }>('/classes'),
+  get:          (id: string)               => api.get<{ class: DBClass }>(`/classes/${id}`),
+  create:       (body: { name: string; subject: string; description?: string }) =>
+                  api.post<{ class: DBClass }>('/classes', body),
+  join:         (inviteCode: string)       => api.post<{ ok: true; class: DBClass }>('/classes/join', { inviteCode }),
+  delete:       (id: string)               => api.del<{ ok: boolean }>(`/classes/${id}`),
+  removeMember: (classId: string, studentId: string) =>
+                  api.del<{ ok: boolean }>(`/classes/${classId}/members/${studentId}`),
+}
+
+// ── Assignments API ────────────────────────────────────────────────────────────
+
+export const assignmentsApi = {
+  create: (body: {
+    classId: string; title: string; type: string;
+    content: unknown; description?: string; dueDate?: string;
+  }) => api.post<{ assignment: DBAssignment }>('/assignments', body),
+
+  get:          (id: string)  => api.get<{ assignment: DBAssignment }>(`/assignments/${id}`),
+  delete:       (id: string)  => api.del<{ ok: boolean }>(`/assignments/${id}`),
+  submit:       (id: string, answers: unknown) =>
+                  api.post<{ submission: DBSubmission }>(`/assignments/${id}/submit`, { answers }),
+  mySubmission: (id: string)  => api.get<{ submission: DBSubmission | null }>(`/assignments/${id}/my-submission`),
+  results:      (id: string)  => api.get<{
+                  assignment: DBAssignment
+                  submissions: DBSubmission[]
+                  stats: AssignmentStats
+                }>(`/assignments/${id}/results`),
+  grade: (assignmentId: string, submissionId: string, score: number, feedback?: string) =>
+    api.put<{ submission: DBSubmission }>(
+      `/assignments/${assignmentId}/grade/${submissionId}`,
+      { score, feedback }
+    ),
+}
+
+// ── AI Test API ────────────────────────────────────────────────────────────────
+
+export const aiTestApi = {
+  generate: (body: {
+    topic: string
+    subject: string
+    difficulty: 'easy' | 'medium' | 'hard'
+    questionCount: number
+  }) => api.post<{ variants: AITestVariant[] }>('/ai/generate-test', body),
+}

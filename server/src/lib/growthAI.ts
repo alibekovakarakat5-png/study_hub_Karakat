@@ -239,6 +239,114 @@ export async function generateChannelPost(): Promise<string> {
   return json.choices[0]?.message?.content ?? ''
 }
 
+// ── Teacher Test Generator — 3 варианта через Groq ───────────────────────────
+
+export interface AITestQuestion {
+  id: string
+  text: string
+  options: string[]        // exactly 4
+  correctAnswer: number    // 0-indexed
+  explanation: string
+}
+
+export interface AITestVariant {
+  variantIndex: number
+  questions: AITestQuestion[]
+}
+
+const SUBJECT_LABELS: Record<string, string> = {
+  math:        'Математика',
+  physics:     'Физика',
+  chemistry:   'Химия',
+  history:     'История Казахстана',
+  english:     'Английский язык',
+  biology:     'Биология',
+  geography:   'География',
+  informatics: 'Информатика',
+  kazakh:      'Казахский язык',
+  russian:     'Русский язык',
+}
+
+const DIFFICULTY_LABELS: Record<string, string> = {
+  easy:   'лёгкий (уровень 9 класс, базовые знания)',
+  medium: 'средний (уровень ЕНТ, стандартная сложность)',
+  hard:   'сложный (уровень олимпиады, нестандартные задачи)',
+}
+
+export async function generateTest(params: {
+  topic: string
+  subject: string
+  difficulty: 'easy' | 'medium' | 'hard'
+  questionCount: number
+}): Promise<{ variants: AITestVariant[] }> {
+  if (!GROQ_API_KEY) throw new Error('GROQ_API_KEY not set')
+
+  const subjectLabel = SUBJECT_LABELS[params.subject] ?? params.subject
+  const diffLabel    = DIFFICULTY_LABELS[params.difficulty] ?? DIFFICULTY_LABELS.medium
+  const n            = Math.max(5, Math.min(20, params.questionCount))
+
+  const systemPrompt = `Ты — опытный казахстанский учитель и составитель тестов ЕНТ.
+Твоя задача: сгенерировать 3 разных варианта теста по одной теме.
+
+СТРОГИЕ ПРАВИЛА:
+1. Ответ ТОЛЬКО в формате JSON — никакого текста до или после JSON
+2. Каждый вариант содержит ровно ${n} вопросов
+3. Каждый вопрос имеет ровно 4 варианта ответа (options: string[4])
+4. correctAnswer — индекс правильного ответа (0, 1, 2 или 3)
+5. Варианты между собой НЕ повторяются (разные формулировки, разный порядок)
+6. Дистракторы (неправильные ответы) должны быть правдоподобными
+7. explanation — краткое объяснение правильного ответа (1-2 предложения)
+8. Нумерация id: "v1_q1", "v1_q2" для варианта 1; "v2_q1" для варианта 2 и т.д.
+
+ФОРМАТ ОТВЕТА (только JSON, ничего больше):
+{"variants":[{"variantIndex":1,"questions":[{"id":"v1_q1","text":"...","options":["A) ...","B) ...","C) ...","D) ..."],"correctAnswer":0,"explanation":"..."}]},{"variantIndex":2,"questions":[...]},{"variantIndex":3,"questions":[...]}]}`
+
+  const userPrompt = `Предмет: ${subjectLabel}
+Тема: ${params.topic}
+Уровень сложности: ${diffLabel}
+Количество вопросов в каждом варианте: ${n}
+
+Сгенерируй 3 варианта теста. Только JSON.`
+
+  const res = await fetch(GROQ_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${GROQ_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model:       GROQ_MODEL,
+      max_tokens:  4000,
+      temperature: 0.7,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user',   content: userPrompt   },
+      ],
+    }),
+  })
+
+  if (!res.ok) throw new Error(`Groq error: ${res.status}`)
+
+  const json = await res.json() as { choices: Array<{ message: { content: string } }> }
+  const raw  = json.choices[0]?.message?.content ?? ''
+
+  // Strip accidental markdown fences
+  const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
+
+  let parsed: { variants: AITestVariant[] }
+  try {
+    parsed = JSON.parse(cleaned) as { variants: AITestVariant[] }
+  } catch {
+    throw new Error('AI вернул некорректный JSON — попробуйте ещё раз')
+  }
+
+  if (!Array.isArray(parsed.variants) || parsed.variants.length !== 3) {
+    throw new Error('AI вернул неполный ответ — попробуйте ещё раз')
+  }
+
+  return parsed
+}
+
 // ── Feedback Analysis (парсинг отзывов) ──────────────────────────────────────
 
 export async function analyzeFeedback(messages: string[]): Promise<string> {

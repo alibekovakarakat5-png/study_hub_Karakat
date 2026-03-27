@@ -60,6 +60,12 @@ model User {
   lessonCompletions LessonCompletion[]
   subscriptions     Subscription[]
   payments          Payment[]
+
+  // Teacher classroom
+  taughtClasses     Class[]               @relation("TeacherClasses")
+  classMemberships  ClassMembership[]
+  givenAssignments  Assignment[]          @relation("TeacherAssignments")
+  submissions       AssignmentSubmission[]
 }
 
 model DiagnosticResult {
@@ -361,6 +367,70 @@ model UploadedFile {
 
   @@index([uploadedBy])
   @@index([status])
+}
+
+// ── Teacher Classroom System ──────────────────────────────────────────────────
+
+model Class {
+  id          String   @id @default(cuid())
+  name        String
+  subject     String
+  description String?
+  teacherId   String
+  teacher     User     @relation("TeacherClasses", fields: [teacherId], references: [id], onDelete: Cascade)
+  inviteCode  String   @unique
+  members     ClassMembership[]
+  assignments Assignment[]
+  createdAt   DateTime @default(now())
+
+  @@index([teacherId])
+  @@index([inviteCode])
+}
+
+model ClassMembership {
+  id        String   @id @default(cuid())
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  joinedAt  DateTime @default(now())
+
+  @@unique([classId, studentId])
+  @@index([studentId])
+}
+
+model Assignment {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  classId     String
+  class       Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacherId   String
+  teacher     User      @relation("TeacherAssignments", fields: [teacherId], references: [id], onDelete: Cascade)
+  type        String    // 'test' | 'homework' | 'reading'
+  content     Json      // { questions: [] } for test; { text: '' } for others
+  dueDate     DateTime?
+  submissions AssignmentSubmission[]
+  createdAt   DateTime  @default(now())
+
+  @@index([classId])
+  @@index([teacherId])
+}
+
+model AssignmentSubmission {
+  id           String     @id @default(cuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  answers      Json
+  score        Int?
+  feedback     String?
+  submittedAt  DateTime   @default(now())
+
+  @@unique([assignmentId, studentId])
+  @@index([studentId])
+  @@index([assignmentId])
 }
 
 // ── Study Abroad Guide ────────────────────────────────────────────────────────

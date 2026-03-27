@@ -22,6 +22,13 @@ import {
   BarChart3,
   MessageCircle,
   Timer,
+  LayoutGrid,
+  UserPlus,
+  ClipboardList,
+  X,
+  Loader2,
+  AlertCircle,
+  Brain,
 } from 'lucide-react'
 import {
   BarChart,
@@ -47,7 +54,10 @@ import NotificationDropdown from '@/components/NotificationDropdown'
 import RecommendationsWidget from '@/components/RecommendationsWidget'
 import Sidebar from '@/components/dashboard/Sidebar'
 import { useTranslation } from 'react-i18next'
-import { coursesApi, type DBCourse } from '@/lib/api'
+import {
+  coursesApi, classesApi, assignmentsApi,
+  type DBCourse, type DBClass, type DBAssignment, type DBSubmission,
+} from '@/lib/api'
 
 // ---------------------------------------------------------------------------
 // Animation variants
@@ -711,6 +721,327 @@ function MyCourses() {
 }
 
 // ---------------------------------------------------------------------------
+// Classroom Assignments Section (for students)
+// ---------------------------------------------------------------------------
+
+interface AssignmentWithSubmission extends DBAssignment {
+  mySubmission?: DBSubmission | null
+}
+
+function AssignmentTakingModal({ assignment, onClose, onSubmitted }: {
+  assignment: DBAssignment
+  onClose: () => void
+  onSubmitted: () => void
+}) {
+  const content = assignment.content as { questions?: Array<{ id: string; text: string; options: string[] }>, text?: string }
+  const isTest  = assignment.type === 'test'
+
+  const [answers, setAnswers]   = useState<number[]>(Array(content.questions?.length ?? 0).fill(-1))
+  const [textAns, setTextAns]   = useState('')
+  const [current, setCurrent]   = useState(0)
+  const [submitting, setSubmit] = useState(false)
+  const [done, setDone]         = useState(false)
+  const [score, setScore]       = useState<number | null>(null)
+
+  async function handleSubmit() {
+    setSubmit(true)
+    try {
+      const payload = isTest ? answers : { text: textAns }
+      const res = await assignmentsApi.submit(assignment.id, payload)
+      setScore(res.submission.score ?? null)
+      setDone(true)
+      setTimeout(() => { onSubmitted(); onClose() }, 2500)
+    } catch { /* ignore */ }
+    setSubmit(false)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-5 border-b border-gray-100">
+          <div>
+            <h3 className="font-bold text-gray-900">{assignment.title}</h3>
+            <p className="text-xs text-gray-400 mt-0.5">{isTest ? `Вопрос ${current + 1} из ${content.questions?.length}` : 'Письменная работа'}</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center"><X className="w-4 h-4 text-gray-500" /></button>
+        </div>
+
+        <div className="p-5">
+          {done ? (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 className="w-8 h-8 text-green-600" />
+              </div>
+              <p className="text-lg font-bold text-gray-900">
+                {isTest && score !== null ? `Результат: ${score}%` : 'Работа сдана!'}
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                {isTest && score !== null
+                  ? score >= 80 ? '🎉 Отлично!' : score >= 60 ? '👍 Хорошо!' : '📚 Нужно повторить'
+                  : 'Учитель проверит и выставит оценку'}
+              </p>
+            </div>
+          ) : isTest && content.questions ? (
+            <>
+              {/* Progress bar */}
+              <div className="w-full bg-gray-100 rounded-full h-1.5 mb-5">
+                <div className="bg-blue-500 h-1.5 rounded-full transition-all" style={{ width: `${((current + 1) / content.questions.length) * 100}%` }} />
+              </div>
+
+              <p className="font-medium text-gray-900 mb-4 leading-snug">{content.questions[current]?.text}</p>
+              <div className="space-y-2">
+                {content.questions[current]?.options.map((opt, i) => (
+                  <button key={i} onClick={() => setAnswers(prev => { const a = [...prev]; a[current] = i; return a })}
+                    className={cn(
+                      'w-full text-left px-4 py-2.5 rounded-xl border text-sm transition-colors',
+                      answers[current] === i
+                        ? 'bg-blue-600 border-blue-600 text-white font-medium'
+                        : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300'
+                    )}
+                  >{opt}</button>
+                ))}
+              </div>
+
+              <div className="flex gap-3 mt-5">
+                <button onClick={() => setCurrent(p => Math.max(0, p - 1))} disabled={current === 0}
+                  className="px-4 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm disabled:opacity-40 hover:bg-gray-50 transition-colors"
+                >← Назад</button>
+                {current < content.questions.length - 1 ? (
+                  <button onClick={() => setCurrent(p => p + 1)} disabled={answers[current] === -1}
+                    className="flex-1 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium disabled:opacity-50 hover:bg-blue-700 transition-colors"
+                  >Далее →</button>
+                ) : (
+                  <button onClick={() => void handleSubmit()} disabled={answers.some(a => a === -1) || submitting}
+                    className="flex-1 py-2 bg-green-600 text-white rounded-xl text-sm font-medium disabled:opacity-50 hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                  >
+                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                    Сдать тест
+                  </button>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              {content.text && <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-700 mb-4 leading-relaxed">{content.text}</div>}
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Ваш ответ</label>
+              <textarea value={textAns} onChange={e => setTextAns(e.target.value)} rows={5}
+                placeholder="Напишите свой ответ здесь..."
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-none"
+              />
+              <button onClick={() => void handleSubmit()} disabled={!textAns.trim() || submitting}
+                className="w-full mt-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                {submitting ? 'Сдаю...' : 'Сдать работу'}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ClassAssignmentsSection() {
+  const [classes, setClasses]       = useState<DBClass[]>([])
+  const [showJoin, setShowJoin]     = useState(false)
+  const [joinCode, setJoinCode]     = useState('')
+  const [joining, setJoining]       = useState(false)
+  const [joinError, setJoinError]   = useState('')
+  const [joinDone, setJoinDone]     = useState(false)
+  const [takenAssignment, setTaken] = useState<DBAssignment | null>(null)
+
+  const load = () => { classesApi.list().then(r => setClasses(r.classes)).catch(() => {}) }
+  useEffect(() => { load() }, [])
+
+  async function handleJoin() {
+    if (joinCode.trim().length < 6) { setJoinError('Введите 6-значный код'); return }
+    setJoining(true); setJoinError('')
+    try {
+      await classesApi.join(joinCode.toUpperCase().trim())
+      setJoinDone(true)
+      load()
+      setTimeout(() => { setShowJoin(false); setJoinDone(false); setJoinCode('') }, 1500)
+    } catch (e) {
+      setJoinError(e instanceof Error ? e.message : 'Ошибка')
+    }
+    setJoining(false)
+  }
+
+  // Gather all pending assignments (not yet submitted)
+  const pending: AssignmentWithSubmission[] = []
+  classes.forEach(cls => {
+    cls.assignments?.forEach(a => {
+      const submitted = (a.submissions?.length ?? 0) > 0
+      if (!submitted) pending.push(a as unknown as AssignmentWithSubmission)
+    })
+  })
+
+  if (classes.length === 0 && pending.length === 0) return (
+    <div className="rounded-2xl border border-dashed border-blue-200 bg-blue-50/40 p-5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+            <LayoutGrid className="w-5 h-5 text-blue-600" />
+          </div>
+          <div>
+            <p className="font-semibold text-gray-800 text-sm">Классы учителя</p>
+            <p className="text-xs text-gray-500">Введите код от учителя и получайте задания</p>
+          </div>
+        </div>
+        <button onClick={() => setShowJoin(true)}
+          className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-xl text-xs font-medium hover:bg-blue-700 transition-colors"
+        >
+          <UserPlus className="w-3.5 h-3.5" /> Войти в класс
+        </button>
+      </div>
+
+      {/* Join modal */}
+      {showJoin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => { setShowJoin(false); setJoinError('') }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-900">Войти в класс</h3>
+              <button onClick={() => { setShowJoin(false); setJoinError('') }} className="w-7 h-7 rounded-full hover:bg-gray-100 flex items-center justify-center"><X className="w-4 h-4 text-gray-500" /></button>
+            </div>
+            {joinDone ? (
+              <div className="text-center py-4">
+                <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto mb-2" />
+                <p className="font-semibold text-gray-900">Вы в классе!</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-gray-500 mb-3">Введите 6-значный код от вашего учителя</p>
+                <input
+                  value={joinCode}
+                  onChange={e => setJoinCode(e.target.value.toUpperCase())}
+                  placeholder="ABC123"
+                  maxLength={6}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl font-mono text-center text-2xl font-bold tracking-[0.3em] focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 uppercase"
+                />
+                {joinError && <p className="text-red-500 text-xs mt-2 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{joinError}</p>}
+                <button onClick={() => void handleJoin()} disabled={joining || joinCode.length < 6}
+                  className="w-full mt-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  {joining ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                  {joining ? 'Подключаюсь...' : 'Войти в класс'}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="flex items-center gap-2 font-bold text-gray-900">
+          <LayoutGrid className="w-5 h-5 text-blue-500" />
+          Задания от учителя
+          {pending.length > 0 && (
+            <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">{pending.length}</span>
+          )}
+        </h2>
+        <button onClick={() => setShowJoin(true)}
+          className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 transition-colors"
+        >
+          <UserPlus className="w-3.5 h-3.5" /> Добавить класс
+        </button>
+      </div>
+
+      {pending.length === 0 ? (
+        <div className="text-center py-8 bg-white rounded-2xl border border-gray-100">
+          <Brain className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+          <p className="text-sm text-gray-400">Нет новых заданий — отдыхай!</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {pending.map(a => {
+            const cls = classes.find(c => c.assignments?.some(x => x.id === a.id))
+            const isDue = a.dueDate && new Date(a.dueDate).getTime() - Date.now() < 24 * 60 * 60 * 1000
+            return (
+              <div key={a.id} className="flex items-center justify-between bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 hover:border-blue-200 transition-colors">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0',
+                    a.type === 'test' ? 'bg-orange-100' : 'bg-blue-100'
+                  )}>
+                    {a.type === 'test' ? <Brain className="w-4 h-4 text-orange-600" /> : <ClipboardList className="w-4 h-4 text-blue-600" />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-800 text-sm truncate">{a.title}</p>
+                    <p className="text-xs text-gray-400">
+                      {cls?.name ?? '—'}
+                      {a.dueDate && <span className={cn('ml-2', isDue ? 'text-red-500 font-medium' : 'text-gray-400')}>
+                        · до {new Date(a.dueDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+                      </span>}
+                    </p>
+                  </div>
+                </div>
+                <button onClick={() => setTaken(a as unknown as DBAssignment)}
+                  className="ml-3 flex-shrink-0 px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
+                  Начать
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Join modal */}
+      {showJoin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => { setShowJoin(false); setJoinError('') }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-900">Войти в класс</h3>
+              <button onClick={() => { setShowJoin(false); setJoinError('') }} className="w-7 h-7 rounded-full hover:bg-gray-100 flex items-center justify-center"><X className="w-4 h-4 text-gray-500" /></button>
+            </div>
+            {joinDone ? (
+              <div className="text-center py-4">
+                <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto mb-2" />
+                <p className="font-semibold text-gray-900">Вы в классе!</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-gray-500 mb-3">Введите 6-значный код от вашего учителя</p>
+                <input
+                  value={joinCode}
+                  onChange={e => setJoinCode(e.target.value.toUpperCase())}
+                  placeholder="ABC123"
+                  maxLength={6}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl font-mono text-center text-2xl font-bold tracking-[0.3em] focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 uppercase"
+                />
+                {joinError && <p className="text-red-500 text-xs mt-2 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{joinError}</p>}
+                <button onClick={() => void handleJoin()} disabled={joining || joinCode.length < 6}
+                  className="w-full mt-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  {joining ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                  {joining ? 'Подключаюсь...' : 'Войти в класс'}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Assignment taking modal */}
+      {takenAssignment && (
+        <AssignmentTakingModal
+          assignment={takenAssignment}
+          onClose={() => setTaken(null)}
+          onSubmitted={load}
+        />
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Main Dashboard Page
 // ---------------------------------------------------------------------------
 
@@ -966,6 +1297,11 @@ export default function Dashboard() {
                   </div>
                 </div>
               </Link>
+            </motion.div>
+
+            {/* Class Assignments (from teacher) */}
+            <motion.div variants={cardVariants} className="sm:col-span-2 xl:col-span-12">
+              <ClassAssignmentsSection />
             </motion.div>
 
             {/* Smart Recommendations */}

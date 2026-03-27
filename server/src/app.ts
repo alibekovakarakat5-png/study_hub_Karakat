@@ -24,6 +24,9 @@ import uploadRoutes        from './routes/uploads'
 import studyAbroadRoutes   from './routes/studyAbroad'
 import courseGenerateRoutes from './routes/courseGenerate'
 import referralRoutes      from './routes/referral'
+import classesRoutes       from './routes/classes'
+import assignmentsRoutes   from './routes/assignments'
+import aiTestRoutes        from './routes/aiTest'
 import { tg }              from './lib/telegram'
 import { setupSwagger }    from './lib/swagger'
 
@@ -90,6 +93,9 @@ app.use('/api/uploads',         uploadRoutes)
 app.use('/api/study-abroad',    studyAbroadRoutes)
 app.use('/api/courses',         courseGenerateRoutes) // adds /api/courses/generate
 app.use('/api/referral',        referralRoutes)
+app.use('/api/classes',        classesRoutes)
+app.use('/api/assignments',    assignmentsRoutes)
+app.use('/api/ai',             aiTestRoutes)
 
 // ── Static file serving for uploads ──────────────────────────────────────────
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
