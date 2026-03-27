@@ -226,16 +226,12 @@ function Header({ onNavigate }: { onNavigate: (path: string) => void }) {
           {/* Desktop CTA */}
           <div className="hidden items-center gap-3 lg:flex">
             <LanguageSwitcher dark={!scrolled} />
-            <a
-              href="/for-schools"
-              className={`rounded-xl border px-4 py-2 text-sm font-medium transition-all ${
-                scrolled
-                  ? 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
-                  : 'border-white/20 bg-white/10 text-white hover:bg-white/20'
-              }`}
+            <button
+              onClick={() => onNavigate('/for-schools')}
+              className="gradient-primary rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-primary-500/25 transition-all hover:shadow-xl hover:shadow-primary-500/30 hover:-translate-y-0.5 active:translate-y-0"
             >
               🏫 Для учебных центров
-            </a>
+            </button>
             <button
               onClick={() => onNavigate('/auth')}
               className={`rounded-xl px-5 py-2.5 text-sm font-semibold transition-colors ${
@@ -287,13 +283,12 @@ function Header({ onNavigate }: { onNavigate: (path: string) => void }) {
               </a>
             ))}
             <div className="flex flex-col gap-2 pt-3">
-              <a
-                href="/for-schools"
-                onClick={() => setMobileOpen(false)}
-                className="rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-3 text-sm font-semibold text-indigo-700 text-center"
+              <button
+                onClick={() => { setMobileOpen(false); onNavigate('/for-schools'); }}
+                className="gradient-primary rounded-xl px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-500/25 text-center"
               >
                 🏫 Для учебных центров
-              </a>
+              </button>
               <button
                 onClick={() => { setMobileOpen(false); onNavigate('/auth'); }}
                 className="rounded-xl px-5 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
@@ -1798,6 +1793,7 @@ function FinalCtaSection({ onNavigate }: { onNavigate: (path: string) => void })
 
 function Footer() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const links = {
     [t('landing.footer_platform')]: [
       t('landing.footer_platform_features'),
@@ -1928,12 +1924,12 @@ function Footer() {
             &copy; {new Date().getFullYear()} Study Hub. {t('landing.footer_copyright')}
           </p>
           <div className="flex items-center gap-6">
-            <a
-              href="/for-schools"
+            <button
+              onClick={() => navigate('/for-schools')}
               className="text-sm text-slate-400 transition-colors hover:text-primary-600"
             >
               Для учебных центров
-            </a>
+            </button>
             <p className="text-sm text-slate-400">
               {t('landing.footer_made_with')}
             </p>
