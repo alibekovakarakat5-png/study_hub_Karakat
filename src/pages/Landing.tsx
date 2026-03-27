@@ -1469,7 +1469,233 @@ function PricingSection({ onNavigate }: { onNavigate: (path: string) => void }) 
 }
 
 // ---------------------------------------------------------------------------
-// 9. FINAL CTA
+// 9. PORTFOLIO OF WINS
+// ---------------------------------------------------------------------------
+
+function PortfolioSection({ onNavigate }: { onNavigate: (path: string) => void }) {
+  const { ref, inView } = useSectionInView();
+  const { t } = useTranslation();
+
+  const features = [
+    { icon: Trophy, title: t('landing.portfolio_feat1_title'), desc: t('landing.portfolio_feat1_desc'), color: 'from-amber-400 to-orange-500', bg: 'bg-amber-50' },
+    { icon: Briefcase, title: t('landing.portfolio_feat2_title'), desc: t('landing.portfolio_feat2_desc'), color: 'from-primary-500 to-indigo-500', bg: 'bg-primary-50' },
+    { icon: BookOpen, title: t('landing.portfolio_feat3_title'), desc: t('landing.portfolio_feat3_desc'), color: 'from-emerald-400 to-teal-500', bg: 'bg-emerald-50' },
+    { icon: GraduationCap, title: t('landing.portfolio_feat4_title'), desc: t('landing.portfolio_feat4_desc'), color: 'from-purple-500 to-pink-500', bg: 'bg-purple-50' },
+  ];
+
+  return (
+    <section ref={ref} className="relative overflow-hidden py-20 lg:py-28 bg-slate-50">
+      {/* Decorative blobs */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-amber-400/10 blur-3xl" />
+        <div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-primary-500/10 blur-3xl" />
+      </div>
+
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <motion.div
+          variants={fadeUp}
+          initial="hidden"
+          animate={inView ? 'visible' : 'hidden'}
+          className="mx-auto max-w-2xl text-center"
+        >
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-amber-100 px-4 py-1.5 text-sm font-semibold text-amber-700">
+            <Trophy className="h-4 w-4" />
+            {t('landing.portfolio_badge')}
+          </div>
+          <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
+            {t('landing.portfolio_title')}{' '}
+            <span className="bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
+              {t('landing.portfolio_title_highlight')}
+            </span>
+          </h2>
+          <p className="mt-4 text-lg text-slate-600">
+            {t('landing.portfolio_subtitle')}
+          </p>
+        </motion.div>
+
+        {/* Feature cards */}
+        <div className="mt-14 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {features.map(({ icon: Icon, title, desc, color, bg }, i) => (
+            <motion.div
+              key={title}
+              variants={fadeUp}
+              initial="hidden"
+              animate={inView ? 'visible' : 'hidden'}
+              custom={i + 1}
+              className="group flex flex-col rounded-2xl bg-white p-6 shadow-md ring-1 ring-slate-200/60 transition-all hover:-translate-y-1 hover:shadow-xl"
+            >
+              <div className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl ${bg}`}>
+                <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br ${color}`}>
+                  <Icon className="h-4 w-4 text-white" />
+                </div>
+              </div>
+              <h3 className="text-base font-bold text-slate-900">{title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-500">{desc}</p>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* CTA */}
+        <motion.div
+          variants={fadeUp}
+          initial="hidden"
+          animate={inView ? 'visible' : 'hidden'}
+          custom={5}
+          className="mt-12 text-center"
+        >
+          <button
+            onClick={() => onNavigate('/auth')}
+            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 px-8 py-4 text-base font-bold text-white shadow-lg shadow-amber-500/20 transition-all hover:shadow-xl hover:shadow-amber-500/30 hover:-translate-y-0.5"
+          >
+            <Trophy className="h-5 w-5" />
+            {t('landing.portfolio_cta')}
+            <ArrowRight className="h-5 w-5" />
+          </button>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 10. SKYLLA ROBOT TEASER
+// ---------------------------------------------------------------------------
+
+function SkyllaRobotSection({ onNavigate }: { onNavigate: (path: string) => void }) {
+  const { ref, inView } = useSectionInView();
+  const { t } = useTranslation();
+
+  const features = [
+    { icon: MessageCircle, text: t('landing.skylla_robot_feat1') },
+    { icon: Brain, text: t('landing.skylla_robot_feat2') },
+    { icon: Zap, text: t('landing.skylla_robot_feat3') },
+  ];
+
+  return (
+    <section ref={ref} className="relative overflow-hidden py-20 lg:py-28 bg-slate-900">
+      {/* Decorative */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-40 -left-40 h-[32rem] w-[32rem] rounded-full bg-primary-600/20 blur-3xl" />
+        <div className="absolute -bottom-40 -right-40 h-[32rem] w-[32rem] rounded-full bg-purple-600/20 blur-3xl" />
+        {/* Animated orbit rings */}
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[30rem] w-[30rem] rounded-full border border-white/5"
+        />
+        <motion.div
+          animate={{ rotate: -360 }}
+          transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[22rem] w-[22rem] rounded-full border border-primary-500/10"
+        />
+      </div>
+
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col items-center gap-12 lg:flex-row lg:gap-20">
+
+          {/* Robot illustration */}
+          <motion.div
+            variants={slideFromLeft}
+            initial="hidden"
+            animate={inView ? 'visible' : 'hidden'}
+            className="flex-shrink-0 flex items-center justify-center"
+          >
+            <div className="relative h-64 w-64">
+              {/* Glow */}
+              <div className="absolute inset-0 rounded-full bg-primary-500/20 blur-2xl" />
+              {/* Main circle */}
+              <div className="relative flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-primary-600/30 to-purple-600/30 ring-2 ring-white/10">
+                <Bot className="h-32 w-32 text-primary-300" />
+              </div>
+              {/* "In development" badge */}
+              <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold text-white/80 ring-1 ring-white/20 backdrop-blur-sm">
+                🔧 {t('landing.skylla_robot_badge')}
+              </div>
+              {/* Orbiting dot */}
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+                className="absolute inset-0"
+              >
+                <div className="absolute -top-3 left-1/2 h-6 w-6 -translate-x-1/2 rounded-full bg-primary-400 shadow-lg shadow-primary-500/50" />
+              </motion.div>
+            </div>
+          </motion.div>
+
+          {/* Text content */}
+          <div className="flex-1 text-center lg:text-left">
+            <motion.h2
+              variants={fadeUp}
+              initial="hidden"
+              animate={inView ? 'visible' : 'hidden'}
+              className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl"
+            >
+              {t('landing.skylla_robot_title')}
+            </motion.h2>
+
+            <motion.p
+              variants={fadeUp}
+              initial="hidden"
+              animate={inView ? 'visible' : 'hidden'}
+              custom={1}
+              className="mt-3 text-lg font-semibold text-primary-300"
+            >
+              {t('landing.skylla_robot_subtitle')}
+            </motion.p>
+
+            <motion.p
+              variants={fadeUp}
+              initial="hidden"
+              animate={inView ? 'visible' : 'hidden'}
+              custom={2}
+              className="mt-4 max-w-xl text-base leading-relaxed text-slate-400"
+            >
+              {t('landing.skylla_robot_desc')}
+            </motion.p>
+
+            <motion.ul
+              variants={fadeUp}
+              initial="hidden"
+              animate={inView ? 'visible' : 'hidden'}
+              custom={3}
+              className="mt-8 space-y-3"
+            >
+              {features.map(({ icon: Icon, text }) => (
+                <li key={text} className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-primary-500/20">
+                    <Icon className="h-4 w-4 text-primary-300" />
+                  </div>
+                  <span className="text-sm text-slate-300">{text}</span>
+                </li>
+              ))}
+            </motion.ul>
+
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              animate={inView ? 'visible' : 'hidden'}
+              custom={4}
+              className="mt-10 flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start"
+            >
+              <button
+                onClick={() => onNavigate('/auth')}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-primary-500 to-purple-600 px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary-500/25 transition-all hover:shadow-xl hover:shadow-primary-500/35 hover:-translate-y-0.5"
+              >
+                <Bot className="h-5 w-5" />
+                {t('landing.skylla_robot_cta')}
+              </button>
+            </motion.div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 11. FINAL CTA
 // ---------------------------------------------------------------------------
 
 function FinalCtaSection({ onNavigate }: { onNavigate: (path: string) => void }) {
@@ -1728,8 +1954,9 @@ export default function Landing() {
         <ProductShowcaseSection />
         <LabsSection />
         <HowItWorksSection />
-        <TestimonialsSection />
         <PricingSection onNavigate={handleNavigate} />
+        <PortfolioSection onNavigate={handleNavigate} />
+        <SkyllaRobotSection onNavigate={handleNavigate} />
         <FinalCtaSection onNavigate={handleNavigate} />
       </main>
       <Footer />
