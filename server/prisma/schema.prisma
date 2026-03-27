@@ -66,6 +66,10 @@ model User {
   classMemberships  ClassMembership[]
   givenAssignments  Assignment[]          @relation("TeacherAssignments")
   submissions       AssignmentSubmission[]
+
+  // Organization (B2B)
+  ownedOrgs         Organization[]        @relation("OrgOwner")
+  orgMemberships    OrgMembership[]
 }
 
 model DiagnosticResult {
@@ -454,4 +458,34 @@ model StudyAbroadCountry {
   order          Int      @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+// ── B2B Organization System ───────────────────────────────────────────────────
+
+model Organization {
+  id         String          @id @default(cuid())
+  name       String
+  type       String          // 'tutoring_center' | 'school' | 'corporate'
+  city       String?
+  inviteCode String          @unique
+  ownerId    String
+  owner      User            @relation("OrgOwner", fields: [ownerId], references: [id])
+  members    OrgMembership[]
+  createdAt  DateTime        @default(now())
+
+  @@index([ownerId])
+  @@index([inviteCode])
+}
+
+model OrgMembership {
+  id       String       @id @default(cuid())
+  orgId    String
+  org      Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     String       // 'owner' | 'teacher'
+  joinedAt DateTime     @default(now())
+
+  @@unique([orgId, userId])
+  @@index([userId])
 }

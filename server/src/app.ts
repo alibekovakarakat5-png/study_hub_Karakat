@@ -27,6 +27,7 @@ import referralRoutes      from './routes/referral'
 import classesRoutes       from './routes/classes'
 import assignmentsRoutes   from './routes/assignments'
 import aiTestRoutes        from './routes/aiTest'
+import orgsRoutes          from './routes/organizations'
 import { tg }              from './lib/telegram'
 import { setupSwagger }    from './lib/swagger'
 
@@ -96,6 +97,7 @@ app.use('/api/referral',        referralRoutes)
 app.use('/api/classes',        classesRoutes)
 app.use('/api/assignments',    assignmentsRoutes)
 app.use('/api/ai',             aiTestRoutes)
+app.use('/api/orgs',           orgsRoutes)
 
 // ── Static file serving for uploads ──────────────────────────────────────────
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')))

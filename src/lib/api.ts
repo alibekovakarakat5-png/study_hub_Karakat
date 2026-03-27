@@ -575,3 +575,69 @@ export const aiTestApi = {
     questionCount: number
   }) => api.post<{ variants: AITestVariant[] }>('/ai/generate-test', body),
 }
+
+// ── Organization / B2B Types ───────────────────────────────────────────────────
+
+export interface DBOrganization {
+  id: string
+  name: string
+  type: string           // 'tutoring_center' | 'school' | 'corporate'
+  city?: string | null
+  inviteCode: string
+  ownerId: string
+  myRole?: string        // set when fetched via /mine
+  _count?: { members: number }
+  createdAt: string
+}
+
+export interface OrgTeacherStats {
+  id: string
+  name: string
+  email: string
+  orgRole: string
+  classCount: number
+  studentCount: number
+  assignmentCount: number
+  avgScore: number | null
+  lastActivityDays: number  // days since last class/assignment created
+}
+
+export interface OrgStudentStats {
+  id: string
+  name: string
+  email: string
+  teacherName: string
+  className: string
+  submissionCount: number
+  totalAssignments: number
+  avgScore: number | null
+}
+
+export interface OrgDashboard {
+  org: DBOrganization
+  stats: {
+    totalTeachers: number
+    totalStudents: number
+    totalAssignments: number
+    avgScore: number | null
+  }
+  teachers: OrgTeacherStats[]
+  students: OrgStudentStats[]
+}
+
+// ── Organizations API ──────────────────────────────────────────────────────────
+
+export const orgsApi = {
+  create: (body: { name: string; type: string; city?: string }) =>
+    api.post<{ org: DBOrganization }>('/orgs', body),
+
+  mine: () => api.get<{ orgs: (DBOrganization & { myRole: string })[] }>('/orgs/mine'),
+
+  join: (code: string) =>
+    api.post<{ ok: true; org: DBOrganization }>('/orgs/join', { inviteCode: code }),
+
+  dashboard: (id: string) => api.get<OrgDashboard>(`/orgs/${id}/dashboard`),
+
+  removeMember: (orgId: string, userId: string) =>
+    api.del<{ ok: boolean }>(`/orgs/${orgId}/members/${userId}`),
+}

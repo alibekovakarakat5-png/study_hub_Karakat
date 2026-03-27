@@ -51,7 +51,9 @@ const WelcomeFlow = lazy(() => import('@/pages/WelcomeFlow'))
 const StudyAbroad = lazy(() => import('@/pages/StudyAbroad'))
 const ForgotPassword = lazy(() => import('@/pages/ForgotPassword'))
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'))
-const NotFound = lazy(() => import('@/pages/NotFound'))
+const NotFound        = lazy(() => import('@/pages/NotFound'))
+const ForSchools      = lazy(() => import('@/pages/ForSchools'))
+const CenterDashboard = lazy(() => import('@/pages/CenterDashboard'))
 
 // ── Loading fallback ─────────────────────────────────────────────────────────
 function LoadingFallback() {
@@ -153,6 +155,8 @@ export default function App() {
           <Route path="/profile/:id" element={<PublicProfile />} />
           <Route path="/support" element={<Support />} />
           <Route path="/pricing" element={<Pricing />} />
+          <Route path="/for-schools" element={<ForSchools />} />
+          <Route path="/center" element={<ProtectedRoute><CenterDashboard /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
