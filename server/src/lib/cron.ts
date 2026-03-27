@@ -10,12 +10,14 @@ import cron from 'node-cron'
 import { prisma } from './prisma'
 import { tg } from './telegram'
 import { cronDailyContent, cronDeadlineReminder, checkWarmLeads } from './growthBot'
+import { generateChannelPost } from './growthAI'
 import {
   FALLBACK_QUESTIONS, getQuestions, getRandomQuestion,
   buildQuestionText, buildQuestionKeyboard,
 } from './questions'
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
+const BOT_TOKEN    = process.env.TELEGRAM_BOT_TOKEN
+const CHANNEL_ID   = process.env.TELEGRAM_CHANNEL_ID
 
 // ── Low-level send (separate from telegram.ts to avoid circular import) ──────
 
@@ -31,6 +33,36 @@ async function sendMsg(chat_id: string | number, text: string, extra?: Record<st
     console.error('[Cron] sendMsg failed:', err)
   }
 }
+
+// ── Channel post broadcast (@skyllaAI) ────────────────────────────────────────
+
+async function sendChannelPost() {
+  if (!BOT_TOKEN || !CHANNEL_ID) {
+    console.log('[Cron] Channel post skipped: no BOT_TOKEN or CHANNEL_ID')
+    return
+  }
+  try {
+    console.log('[Cron] Generating channel post...')
+    const text = await generateChannelPost()
+    if (!text) { console.log('[Cron] Empty channel post, skipping'); return }
+
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        chat_id:                  CHANNEL_ID,
+        text,
+        parse_mode:               'HTML',
+        disable_web_page_preview: true,
+      }),
+    })
+    console.log('[Cron] Channel post sent ✓')
+  } catch (err) {
+    console.error('[Cron] Channel post failed:', err)
+  }
+}
+
+export const sendChannelPostNow = sendChannelPost
 
 // ── Daily question broadcast (персонализированный) ───────────────────────────
 
@@ -212,5 +244,17 @@ export function startCronJobs() {
     sendWeeklyReports().catch(err => console.error('[Cron] sendWeeklyReports error:', err))
   }, { timezone: 'UTC' })
 
-  console.log('[Cron] Jobs registered: daily question @ 09:00, stats @ 08:00, content @ 07:00, deadlines @ 10:00, warm leads @ 12:00, weekly report Sun @ 19:00 (Almaty)')
+  // ── @skyllaAI channel auto-posting ──────────────────────────────────────
+
+  // Morning post — 10:00 Almaty (UTC+5) = 05:00 UTC
+  cron.schedule('0 5 * * *', () => {
+    sendChannelPost().catch(err => console.error('[Cron] channel morning post error:', err))
+  }, { timezone: 'UTC' })
+
+  // Evening post — 18:00 Almaty (UTC+5) = 13:00 UTC
+  cron.schedule('0 13 * * *', () => {
+    sendChannelPost().catch(err => console.error('[Cron] channel evening post error:', err))
+  }, { timezone: 'UTC' })
+
+  console.log('[Cron] Jobs registered: question @ 09:00, stats @ 08:00, content @ 07:00, deadlines @ 10:00, leads @ 12:00, weekly Sun @ 19:00, channel @ 10:00 + 18:00 (Almaty)')
 }

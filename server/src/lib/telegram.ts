@@ -11,6 +11,7 @@
 
 import { prisma } from './prisma'
 import { handleGrowthCommand, handleGrowthCallback, isAdmin } from './growthBot'
+import { askSkylla } from './growthAI'
 
 const BOT_TOKEN  = process.env.TELEGRAM_BOT_TOKEN
 const ADMIN_CHAT = process.env.TELEGRAM_ADMIN_CHAT ?? process.env.TELEGRAM_CHAT_ID
@@ -655,8 +656,8 @@ const KEYWORD_MAP = [
   { re: /стартап|startup|бизнес|идея|инвест|питч|mvp/i,         flow: 'startup' as const },
 ]
 
-async function handleFreeText(chatId: number, text: string) {
-  // Try DB mentor_qa first
+async function handleFreeText(chatId: number, text: string, userName?: string) {
+  // 1. Try DB mentor_qa first (мгновенно, без AI)
   try {
     const entries = await prisma.content.findMany({ where: { type: 'mentor_qa', active: true }, take: 100 })
     const lower = text.toLowerCase()
@@ -666,19 +667,17 @@ async function handleFreeText(chatId: number, text: string) {
       if (keywords.some(kw => lower.includes(kw.toLowerCase()))) {
         const answer = String(d.answer ?? '')
         await sendMsg(chatId, answer, {
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: '📱 Подробнее на StudyHub', url: APP_URL }],
-              BACK_TO_MENU[0]!,
-            ],
-          },
+          reply_markup: { inline_keyboard: [
+            [{ text: '📱 Подробнее на StudyHub', url: APP_URL }],
+            BACK_TO_MENU[0]!,
+          ]},
         })
         return
       }
     }
   } catch { /* fallback */ }
 
-  // Keyword → route to matching flow
+  // 2. Keyword → запустить тематический флоу (быстро)
   for (const { re, flow } of KEYWORD_MAP) {
     if (re.test(text)) {
       await sendMsg(chatId, `Отличный вопрос! Давай разберёмся подробнее 👇`)
@@ -690,11 +689,23 @@ async function handleFreeText(chatId: number, text: string) {
     }
   }
 
-  // No match → show main menu
-  await sendMsg(chatId,
-    `Не совсем понял вопрос 🤔\n\nВыбери направление — и я помогу:`,
-    { reply_markup: MAIN_MENU_KB },
-  )
+  // 3. Skylla AI — умный ответ через Claude Haiku
+  try {
+    await sendMsg(chatId, '🤔 Думаю...')
+    const answer = await askSkylla(text, userName ?? 'друг')
+    await sendMsg(chatId, answer, {
+      reply_markup: { inline_keyboard: [
+        [{ text: '📱 Учиться на StudyHub', url: APP_URL }],
+        BACK_TO_MENU[0]!,
+      ]},
+    })
+  } catch {
+    // Финальный fallback — меню
+    await sendMsg(chatId,
+      `Не совсем понял вопрос 🤔\n\nВыбери направление — и я помогу:`,
+      { reply_markup: MAIN_MENU_KB },
+    )
+  }
 }
 
 // ── Callback query router ─────────────────────────────────────────────────────
@@ -802,8 +813,9 @@ export async function handleUpdate(update: TelegramUpdate): Promise<void> {
       if (text === '/stats')         { await handleStats(chatId); return }
       if (text.startsWith('/link'))  { await handleLink(chatId, text.slice(5).trim()); return }
 
-      // Free text → DB lookup + keyword matching
-      await handleFreeText(chatId, text)
+      // Free text → DB lookup + keyword matching + Skylla AI
+      const userName = update.message?.from?.first_name ?? undefined
+      await handleFreeText(chatId, text, userName)
       return
     }
 

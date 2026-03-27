@@ -139,6 +139,97 @@ export async function analyzeCompetitor(name: string, description: string): Prom
   return block?.type === 'text' ? block.text : ''
 }
 
+// ── Skylla AI — умный ответ через Groq (бесплатно, Llama 3.3) ────────────────
+//
+// Groq free tier: 30 req/min, без кредитки. Получи ключ на console.groq.com
+// Добавь в .env: GROQ_API_KEY=gsk_...
+
+const GROQ_API_KEY = process.env.GROQ_API_KEY
+const GROQ_URL     = 'https://api.groq.com/openai/v1/chat/completions'
+const GROQ_MODEL   = 'llama-3.3-70b-versatile'
+
+const SKYLLA_SYSTEM = `Ты — Skylla, AI-репетитор образовательной платформы StudyHub (Казахстан).
+Помогаешь школьникам 9-11 класса готовиться к ЕНТ, IELTS и поступлению в вуз.
+
+Правила:
+- Отвечай по-русски, дружелюбно, как умный старший друг (не как робот)
+- Вопрос про учёбу/ЕНТ/IELTS/профессию — дай конкретный полезный ответ
+- Вопрос не по теме — мягко направь к учёбе
+- Ответ: 3-5 предложений, по делу, без воды
+- Заканчивай мотивирующей фразой
+- НЕ используй markdown (#, **, _), только HTML (<b>, <i>)
+- В конце: 💡 Подробнее — на StudyHub: https://skylla.netlify.app`
+
+export async function askSkylla(question: string, userName = 'друг'): Promise<string> {
+  if (!GROQ_API_KEY) throw new Error('GROQ_API_KEY not set')
+
+  const res = await fetch(GROQ_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${GROQ_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model:      GROQ_MODEL,
+      max_tokens: 450,
+      messages: [
+        { role: 'system', content: SKYLLA_SYSTEM },
+        { role: 'user',   content: `${userName} спрашивает: ${question}` },
+      ],
+    }),
+  })
+
+  if (!res.ok) throw new Error(`Groq error: ${res.status}`)
+  const json = await res.json() as { choices: Array<{ message: { content: string } }> }
+  return json.choices[0]?.message?.content ?? 'Хороший вопрос! Давай разберём его на платформе 👇'
+}
+
+// ── Channel Post — один готовый пост для канала @skyllaAI ────────────────────
+
+const WEEKDAY_TOPICS: Record<number, string> = {
+  1: 'Понедельник — математика. Разбери одну формулу или метод решения задач ЕНТ',
+  2: 'Вторник — история Казахстана. Интересный факт или важная дата для ЕНТ',
+  3: 'Среда — лайфхак учёбы. Конкретный совет как эффективно готовиться',
+  4: 'Четверг — IELTS/английский. Слово дня, полезная фраза или grammar tip',
+  5: 'Пятница — мотивация и прогресс. Вдохновляющий пост про цели и поступление',
+  6: 'Суббота — карьера и профессии. Разбор востребованной профессии в Казахстане',
+  0: 'Воскресенье — итоги недели. Мотивационный пост + совет на следующую неделю',
+}
+
+export async function generateChannelPost(): Promise<string> {
+  const now = new Date()
+  const weekday = now.getDay()
+  const topic = WEEKDAY_TOPICS[weekday] ?? WEEKDAY_TOPICS[1]!
+  const dateStr = now.toLocaleDateString('ru-KZ', { day: 'numeric', month: 'long', timeZone: 'Asia/Almaty' })
+
+  const response = await client.messages.create({
+    model: MODEL,
+    max_tokens: 500,
+    system: `Ты — контент-менеджер канала @skyllaAI — Telegram-канала образовательной платформы StudyHub (Казахстан).
+Аудитория: школьники 9-11 класс и их родители.
+
+Напиши ОДИН готовый пост для Telegram-канала.
+Формат:
+- Начало: эмодзи + цепляющий заголовок
+- Тело: 3-4 предложения с полезной информацией
+- Конец: призыв к действию со ссылкой на платформу
+- Хештеги: 3-4 релевантных
+
+Требования:
+- НЕ используй markdown, только HTML (<b>, <i>)
+- Тон: дружелюбный, молодёжный, по-казахстански близкий
+- Длина: 150-250 слов
+- Ссылка на платформу: https://skylla.netlify.app`,
+    messages: [{
+      role: 'user',
+      content: `Сегодня ${dateStr}. Тема: ${topic}. Напиши один пост для канала.`,
+    }],
+  })
+
+  const block = response.content.find(b => b.type === 'text')
+  return block?.type === 'text' ? block.text : ''
+}
+
 // ── Feedback Analysis (парсинг отзывов) ──────────────────────────────────────
 
 export async function analyzeFeedback(messages: string[]): Promise<string> {
