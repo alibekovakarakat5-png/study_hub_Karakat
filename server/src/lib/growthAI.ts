@@ -147,7 +147,7 @@ export async function analyzeCompetitor(name: string, description: string): Prom
 const GROQ_API_KEY = process.env.GROQ_API_KEY
 const GROQ_URL     = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL   = 'llama-3.3-70b-versatile'
-const APP_URL      = process.env.APP_URL || 'https://studyhub.kz'
+const APP_URL      = process.env.APP_URL || 'https://skylla.netlify.app'
 
 const SKYLLA_SYSTEM = `Ты — Skylla, AI-репетитор образовательной платформы StudyHub (Казахстан).
 Помогаешь школьникам 9-11 класса готовиться к ЕНТ, IELTS и поступлению в вуз.

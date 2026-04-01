@@ -15,7 +15,7 @@ import { askSkylla } from './growthAI'
 
 const BOT_TOKEN  = process.env.TELEGRAM_BOT_TOKEN
 const ADMIN_CHAT = process.env.TELEGRAM_ADMIN_CHAT ?? process.env.TELEGRAM_CHAT_ID
-const APP_URL    = process.env.APP_URL ?? 'https://studyhub.kz'
+const APP_URL    = process.env.APP_URL ?? 'https://skylla.netlify.app'
 
 // ── Low-level helpers ─────────────────────────────────────────────────────────
 
@@ -871,4 +871,31 @@ export const tg = {
 
   dailyStats: (users: number, premium: number, revenueToday: number) =>
     adminSend(`📊 <b>Статистика</b>\n👥 ${users.toLocaleString('ru-RU')} пользователей\n👑 Премиум: ${premium.toLocaleString('ru-RU')}\n💰 Доход: ${revenueToday.toLocaleString('ru-RU')} ₸\n🕐 ${now()}`),
+}
+
+// ── Polling mode (dev — no webhook needed) ───────────────────────────────────
+
+let pollingOffset = 0
+
+async function pollUpdates(): Promise<void> {
+  if (!BOT_TOKEN) return
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?offset=${pollingOffset}&timeout=30`)
+    const json = await res.json() as { ok: boolean; result?: TelegramUpdate[] }
+    if (json.ok && json.result) {
+      for (const update of json.result) {
+        pollingOffset = (update as TelegramUpdate & { update_id: number }).update_id + 1
+        await handleUpdate(update)
+      }
+    }
+  } catch (err) {
+    console.error('[Bot polling] error:', err)
+  }
+  setTimeout(pollUpdates, 1000)
+}
+
+export function startPolling(): void {
+  if (!BOT_TOKEN) { console.log('[Bot] No TELEGRAM_BOT_TOKEN — polling disabled'); return }
+  console.log('[Bot] Polling mode started')
+  pollUpdates()
 }

@@ -135,7 +135,7 @@ async function sendDailyQuestions() {
 
 // ── Weekly progress report (воскресенье) ─────────────────────────────────────
 
-const APP_URL = process.env.APP_URL ?? 'https://studyhub.kz'
+const APP_URL = process.env.APP_URL ?? 'https://skylla.netlify.app'
 
 async function sendWeeklyReports() {
   console.log('[Cron] Starting weekly progress reports...')
