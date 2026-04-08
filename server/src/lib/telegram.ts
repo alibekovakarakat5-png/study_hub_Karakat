@@ -345,28 +345,157 @@ async function handleAbroadAns(chatId: number, idx: number) {
 
 // ── Flow: Выбор профессии (4 вопроса) ────────────────────────────────────────
 
-const CAREER_QS = [
-  { text: '🧭 <b>Выбор профессии</b>\n\nЧто тебе нравится делать?',
-    opts: ['📊 Решать задачи/анализ', '🗣️ Общаться/убеждать', '🎨 Создавать/творить', '⚙️ Организовывать'] },
-  { text: '📚 Какой предмет в школе нравится больше?',
-    opts: ['➗ Математика/Физика', '📖 История/Литература', '🎭 Творческие предметы', '🔬 Биология/Химия'] },
-  { text: '💼 Что важнее в карьере?',
-    opts: ['💰 Высокий доход', '🌍 Польза обществу', '🎨 Творческая свобода', '🏠 Стабильность'] },
-  { text: '🌐 Как предпочитаешь работать?',
-    opts: ['💻 Один / удалённо', '👥 В команде', '🚀 Свой бизнес', '🏢 Чёткая структура'] },
+// 6 personality axes matching frontend careerTestData.ts
+type Axis = 'tech' | 'creative' | 'analyst' | 'leader' | 'helper' | 'maker'
+interface CareerQ { text: string; opts: { label: string; scores: Partial<Record<Axis, number>> }[] }
+
+const CAREER_QS: CareerQ[] = [
+  { text: '🧭 <b>Тест профессий</b>\n\nПятница вечером — ты свободен. Что выберешь?',
+    opts: [
+      { label: '💻 Код или новая технология', scores: { tech: 3, analyst: 1 } },
+      { label: '🎨 Рисую / снимаю видео', scores: { creative: 3, maker: 1 } },
+      { label: '📚 Читаю книгу / документалку', scores: { analyst: 3, helper: 1 } },
+      { label: '🎉 Встречаюсь с друзьями', scores: { leader: 3, helper: 1 } },
+    ] },
+  { text: '👥 В команде ты обычно...',
+    opts: [
+      { label: '⚙️ Решаю технические задачи', scores: { tech: 3, maker: 1 } },
+      { label: '💡 Придумываю идеи', scores: { creative: 3, leader: 1 } },
+      { label: '📊 Анализирую данные', scores: { analyst: 3, tech: 1 } },
+      { label: '🚀 Веду команду', scores: { leader: 3, helper: 1 } },
+    ] },
+  { text: '📚 Какой предмет в школе нравился?',
+    opts: [
+      { label: '🔢 Математика / Информатика', scores: { tech: 2, analyst: 2 } },
+      { label: '🎭 Рисование / Литература', scores: { creative: 3, helper: 1 } },
+      { label: '🌍 История / Экономика', scores: { analyst: 2, leader: 2 } },
+      { label: '🔬 Биология / Химия / Физика', scores: { maker: 2, analyst: 2 } },
+    ] },
+  { text: '🔧 Ты видишь сломанный механизм. Реакция?',
+    opts: [
+      { label: '🛠️ Разбираю и чиню', scores: { maker: 3, tech: 1 } },
+      { label: '✨ Думаю как сделать красивее', scores: { creative: 3, maker: 1 } },
+      { label: '🔍 Ищу инфу — почему сломался', scores: { analyst: 3, tech: 1 } },
+      { label: '📞 Нахожу того кто умеет', scores: { leader: 2, helper: 2 } },
+    ] },
+  { text: '💼 Что важнее в работе?',
+    opts: [
+      { label: '⚡ Сложные технические задачи', scores: { tech: 3, analyst: 1 } },
+      { label: '🎨 Создавать уникальное', scores: { creative: 3 } },
+      { label: '❤️ Помогать людям', scores: { helper: 3, leader: 1 } },
+      { label: '💰 Строить бизнес', scores: { leader: 3, analyst: 1 } },
+    ] },
+  { text: '☀️ Идеальный рабочий день:',
+    opts: [
+      { label: '🎧 Код в тишине, наушники', scores: { tech: 3 } },
+      { label: '🖼️ Дизайн, визуал, контент', scores: { creative: 3, maker: 1 } },
+      { label: '🤝 Встречи, переговоры', scores: { leader: 3, helper: 1 } },
+      { label: '📈 Исследования и данные', scores: { analyst: 3, tech: 1 } },
+    ] },
+  { text: '💵 У тебя $100,000. Что делаешь?',
+    opts: [
+      { label: '🚀 Запускаю стартап', scores: { leader: 3, tech: 1 } },
+      { label: '📊 Инвестирую', scores: { analyst: 3, leader: 1 } },
+      { label: '🎬 Творческий проект / студия', scores: { creative: 3, maker: 1 } },
+      { label: '🫶 Помогаю семье / соц. проект', scores: { helper: 3, leader: 1 } },
+    ] },
+  { text: '🌟 Что тебя восхищает?',
+    opts: [
+      { label: '🤖 Как работает ChatGPT / Tesla', scores: { tech: 3, analyst: 1 } },
+      { label: '🎮 Как создают фильмы / игры', scores: { creative: 3, maker: 1 } },
+      { label: '📈 Как стартапы стают миллиардными', scores: { leader: 3, analyst: 1 } },
+      { label: '🏥 Как врачи спасают жизни', scores: { helper: 3, maker: 1 } },
+    ] },
 ]
 
-const CAREER_PROFILES = [
-  { name: 'Аналитик / Инженер',     jobs: ['Data Scientist', 'Software Engineer', 'Financial Analyst', 'Product Manager'] },
-  { name: 'Коммуникатор / Лидер',   jobs: ['Marketing Manager', 'PR-специалист', 'Юрист', 'HR-директор'] },
-  { name: 'Творческая личность',    jobs: ['UX/UI Designer', 'Контент-криэйтор', 'Архитектор', 'Журналист'] },
-  { name: 'Организатор / Менеджер', jobs: ['Project Manager', 'Операционный директор', 'Врач', 'Логист'] },
-]
+interface CareerProfile {
+  name: string
+  emoji: string
+  desc: string
+  jobs: { title: string; salary: string }[]
+  entSubjects: string
+}
+
+const CAREER_PROFILES: Record<Axis, CareerProfile> = {
+  tech: {
+    name: 'Tech Builder 🤖',
+    emoji: '💻',
+    desc: 'Ты мыслишь системно и любишь разбираться как всё устроено. Технологии — твой язык.',
+    jobs: [
+      { title: 'Software Developer', salary: '400–800K ₸/мес' },
+      { title: 'Data Scientist / AI', salary: '500K–1M ₸/мес' },
+      { title: 'DevOps / Cloud Engineer', salary: '450–900K ₸/мес' },
+    ],
+    entSubjects: 'Математика + Информатика',
+  },
+  creative: {
+    name: 'Creative Maker 🎨',
+    emoji: '🎨',
+    desc: 'Ты видишь красоту там где другие видят обычные вещи. Твоя сила — превращать идеи в образы.',
+    jobs: [
+      { title: 'UI/UX Designer', salary: '300–600K ₸/мес' },
+      { title: 'Motion Designer / 3D', salary: '250–500K ₸/мес' },
+      { title: 'Brand Strategist', salary: '350–700K ₸/мес' },
+    ],
+    entSubjects: 'Творческие экзамены + Английский',
+  },
+  analyst: {
+    name: 'Strategic Analyst 📊',
+    emoji: '📊',
+    desc: 'Ты видишь паттерны в хаосе. Цифры для тебя — история, которую ты читаешь лучше других.',
+    jobs: [
+      { title: 'Product / Business Analyst', salary: '350–700K ₸/мес' },
+      { title: 'Financial Analyst', salary: '400–800K ₸/мес' },
+      { title: 'Data Analyst', salary: '400–750K ₸/мес' },
+    ],
+    entSubjects: 'Математика + География / История',
+  },
+  leader: {
+    name: 'Visionary Leader 🚀',
+    emoji: '🚀',
+    desc: 'Ты задаёшь направление. Видишь возможности там где другие видят препятствия.',
+    jobs: [
+      { title: 'Product Manager', salary: '500K–1.2M ₸/мес' },
+      { title: 'Entrepreneur / Founder', salary: 'Без потолка' },
+      { title: 'Business Development', salary: '400–900K ₸/мес' },
+    ],
+    entSubjects: 'Математика + История / Английский',
+  },
+  helper: {
+    name: 'Impact Creator ❤️',
+    emoji: '❤️',
+    desc: 'Смысл твоей работы — люди. Ты чувствуешь чужие эмоции и знаешь как помочь.',
+    jobs: [
+      { title: 'Психолог / Коуч', salary: '250–600K ₸/мес' },
+      { title: 'HR / Talent Manager', salary: '300–600K ₸/мес' },
+      { title: 'Врач / Педагог', salary: '200–500K ₸/мес' },
+    ],
+    entSubjects: 'Биология + Химия / История',
+  },
+  maker: {
+    name: 'Engineering Mind ⚙️',
+    emoji: '⚙️',
+    desc: 'Ты превращаешь идеи в реальные объекты. Мир нуждается в людях которые умеют строить.',
+    jobs: [
+      { title: 'Инженер / Конструктор', salary: '300–600K ₸/мес' },
+      { title: 'Robotics / Hardware', salary: '400–800K ₸/мес' },
+      { title: 'Архитектор', salary: '300–700K ₸/мес' },
+    ],
+    entSubjects: 'Физика + Математика',
+  },
+}
+
+function careerOptKb(step: number): { inline_keyboard: { text: string; callback_data: string }[][] } {
+  const q = CAREER_QS[step]!
+  return {
+    inline_keyboard: q.opts.map((opt, i) => [{ text: opt.label, callback_data: `career:ans:${i}` }]),
+  }
+}
 
 async function startCareerFlow(chatId: number) {
   setState(chatId, { flow: 'career', step: 0, score: 0, answers: [], questions: [] })
   const q = CAREER_QS[0]!
-  await sendMsg(chatId, q.text, { reply_markup: optKb('career', q.opts) })
+  await sendMsg(chatId, `${q.text}\n\n<i>Вопрос 1 из ${CAREER_QS.length}</i>`, { reply_markup: careerOptKb(0) })
 }
 
 async function handleCareerAns(chatId: number, idx: number) {
@@ -378,27 +507,57 @@ async function handleCareerAns(chatId: number, idx: number) {
   if (nextStep < CAREER_QS.length) {
     setState(chatId, { step: nextStep, answers: newAnswers })
     const q = CAREER_QS[nextStep]!
-    await sendMsg(chatId, q.text, { reply_markup: optKb('career', q.opts) })
+    await sendMsg(chatId, `${q.text}\n\n<i>Вопрос ${nextStep + 1} из ${CAREER_QS.length}</i>`, { reply_markup: careerOptKb(nextStep) })
     return
   }
 
   resetState(chatId)
-  const counts = [0, 0, 0, 0]
-  newAnswers.forEach(a => { if (a < 4) counts[a]++ })
-  const profileIdx = counts.indexOf(Math.max(...counts))
-  const profile = CAREER_PROFILES[profileIdx] ?? CAREER_PROFILES[0]!
+
+  // Score across 6 axes
+  const scores: Record<Axis, number> = { tech: 0, creative: 0, analyst: 0, leader: 0, helper: 0, maker: 0 }
+  newAnswers.forEach((ansIdx, qIdx) => {
+    const q = CAREER_QS[qIdx]
+    if (!q) return
+    const opt = q.opts[ansIdx]
+    if (!opt) return
+    for (const [axis, pts] of Object.entries(opt.scores) as [Axis, number][]) {
+      scores[axis] += pts
+    }
+  })
+
+  // Find top 2 axes
+  const sorted = (Object.entries(scores) as [Axis, number][]).sort((a, b) => b[1] - a[1])
+  const primaryAxis = sorted[0]![0]
+  const secondaryAxis = sorted[1]![0]
+  const primary = CAREER_PROFILES[primaryAxis]
+  const secondary = CAREER_PROFILES[secondaryAxis]
+  const total = Object.values(scores).reduce((s, v) => s + v, 0)
+  const topPct = total > 0 ? Math.round((sorted[0]![1] / total) * 100) : 0
+
+  // Build score bar
+  const bar = sorted.slice(0, 4).map(([axis, pts]) => {
+    const p = CAREER_PROFILES[axis]
+    const pct = total > 0 ? Math.round((pts / total) * 100) : 0
+    const filled = Math.round(pct / 10)
+    return `${p.emoji} ${p.name.split(' ')[0]}: ${'█'.repeat(filled)}${'░'.repeat(10 - filled)} ${pct}%`
+  }).join('\n')
 
   await sendMsg(chatId,
     `🧭 <b>Твой карьерный профиль:</b>\n\n` +
-    `<b>${profile.name}</b>\n\n` +
-    `Подходящие профессии:\n` +
-    profile.jobs.map(j => `— ${j}`).join('\n') + '\n\n' +
-    `Пройди полный тест и узнай, в каком вузе лучше учиться на эту специальность:`,
+    `<b>${primary.name}</b> (${topPct}% совпадение)\n` +
+    `${primary.desc}\n\n` +
+    `📊 <b>Твои оси:</b>\n${bar}\n\n` +
+    `💼 <b>Подходящие профессии:</b>\n` +
+    primary.jobs.map(j => `— ${j.title} <i>(${j.salary})</i>`).join('\n') + '\n\n' +
+    `📝 <b>ЕНТ предметы:</b> ${primary.entSubjects}\n\n` +
+    `🔄 Вторая ось: <b>${secondary.name}</b>\n` +
+    secondary.jobs.slice(0, 2).map(j => `— ${j.title}`).join('\n') + '\n\n' +
+    `Пройди полный тест на сайте — там 12 вопросов и глубокий анализ:`,
     {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '🔮 Полный тест профориентации', url: `${APP_URL}/career-test` }],
-          [{ text: '🎓 Подобрать специальность',    url: `${APP_URL}/ent` }],
+          [{ text: '🔮 Полный тест профориентации', web_app: { url: `${APP_URL}/career-test` } }],
+          [{ text: '📱 Открыть StudyHub', web_app: { url: `${APP_URL}/dashboard` } }],
           BACK_TO_MENU[0]!,
         ],
       },
