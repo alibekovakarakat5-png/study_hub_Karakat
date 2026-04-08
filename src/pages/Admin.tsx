@@ -94,7 +94,7 @@ export default function Admin() {
   const navigate = useNavigate()
   const { user, logout } = useStore()
   const { t } = useTranslation()
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'revenue' | 'content' | 'courses' | 'billing' | 'uploads'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'revenue' | 'content' | 'courses' | 'billing' | 'uploads'>(user?.role === 'teacher' ? 'courses' : 'overview')
   const [stats, setStats] = useState<AdminStats>(EMPTY_STATS)
   const [statsLoading, setStatsLoading] = useState(true)
 
@@ -105,7 +105,10 @@ export default function Admin() {
       .finally(() => setStatsLoading(false))
   }, [])
 
-  if (!user || user.role !== 'admin') {
+  const isAdmin = user?.role === 'admin'
+  const isTeacher = user?.role === 'teacher'
+
+  if (!user || (!isAdmin && !isTeacher)) {
     navigate('/auth')
     return null
   }
@@ -130,15 +133,16 @@ export default function Admin() {
     { title: t('admin.premium_count'),  value: statsLoading ? '—' : premium.toLocaleString('ru-RU'), icon: GraduationCap },
   ]
 
-  const tabs = [
-    { id: 'overview' as const, label: t('admin.tab_overview') },
-    { id: 'users' as const, label: t('admin.tab_users') },
-    { id: 'revenue' as const, label: t('admin.tab_revenue') },
-    { id: 'content' as const, label: t('admin.tab_content') },
-    { id: 'courses' as const, label: t('admin.tab_courses') },
-    { id: 'uploads' as const, label: t('admin.tab_uploads') },
-    { id: 'billing' as const, label: t('admin.tab_billing') },
+  const allTabs = [
+    { id: 'overview' as const, label: t('admin.tab_overview'), adminOnly: true },
+    { id: 'users' as const, label: t('admin.tab_users'), adminOnly: true },
+    { id: 'revenue' as const, label: t('admin.tab_revenue'), adminOnly: true },
+    { id: 'content' as const, label: t('admin.tab_content'), adminOnly: false },
+    { id: 'courses' as const, label: t('admin.tab_courses'), adminOnly: false },
+    { id: 'uploads' as const, label: t('admin.tab_uploads'), adminOnly: false },
+    { id: 'billing' as const, label: t('admin.tab_billing'), adminOnly: true },
   ]
+  const tabs = isAdmin ? allTabs : allTabs.filter(tab => !tab.adminOnly)
 
   const handleLogout = () => {
     logout()
@@ -156,7 +160,9 @@ export default function Admin() {
                 <Shield className="w-4 h-4 text-white" />
               </div>
               <span className="font-bold text-lg text-slate-800">Study Hub</span>
-              <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">ADMIN</span>
+              <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', isAdmin ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700')}>
+                {isAdmin ? 'ADMIN' : 'TEACHER'}
+              </span>
             </div>
 
             <div className="flex items-center gap-4">
@@ -177,7 +183,7 @@ export default function Admin() {
                 </div>
                 <div className="hidden md:block">
                   <p className="text-sm font-medium text-slate-800">{user.name}</p>
-                  <p className="text-xs text-slate-500">{t('admin.admin_role')}</p>
+                  <p className="text-xs text-slate-500">{isAdmin ? t('admin.admin_role') : t('admin.teacher_role', 'Репетитор')}</p>
                 </div>
                 <ChevronDown className="w-4 h-4 text-slate-400" />
               </div>
@@ -453,7 +459,7 @@ export default function Admin() {
         )}
 
         {activeTab === 'content' && (
-          <ContentManager />
+          <ContentManager role={isAdmin ? 'admin' : 'teacher'} />
         )}
 
         {activeTab === 'courses' && (

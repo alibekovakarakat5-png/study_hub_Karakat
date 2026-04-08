@@ -131,7 +131,7 @@ function parseScholarshipText(text: string): Partial<Scholarship> {
 
 // ── ContentManager ────────────────────────────────────────────────────────────
 
-export default function ContentManager() {
+export default function ContentManager({ role = 'admin' }: { role?: 'admin' | 'teacher' }) {
   const {
     materials, addMaterial, deleteMaterial,
     qas, addQA, deleteQA,
@@ -202,7 +202,9 @@ export default function ContentManager() {
   const inputCls = 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-100'
   const labelCls = 'block text-xs font-medium text-slate-600 mb-1'
 
-  const sections = [
+  const ADMIN_ONLY_SECTIONS = new Set(['universities', 'scholarships', 'admissions', 'programs', 'uniProfiles'])
+
+  const allSections = [
     { id: 'materials'    as const, label: 'Материалы IELTS', icon: Globe,      count: materials.length },
     { id: 'qa'           as const, label: 'Q&A Ментора',     icon: Bot,        count: qas.length },
     { id: 'vocab'        as const, label: 'Словарь',         icon: Languages,  count: vocabWords.length },
@@ -212,6 +214,7 @@ export default function ContentManager() {
     { id: 'programs'     as const, label: 'Специальности',   icon: BookOpen,   count: programs.length },
     { id: 'uniProfiles'  as const, label: 'Профили вузов',   icon: Target,     count: universityProfiles.length },
   ]
+  const sections = role === 'admin' ? allSections : allSections.filter(s => !ADMIN_ONLY_SECTIONS.has(s.id))
 
   function applyUPaste() {
     const parsed = parseUniversityText(uPasteText)

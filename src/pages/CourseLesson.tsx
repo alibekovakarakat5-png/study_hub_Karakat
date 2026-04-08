@@ -289,7 +289,15 @@ function BlockView({ block, onQuizScore }: { block: LessonBlock; onQuizScore: (s
   if (block.type === 'text')      return <TextBlockView content={block.content} />
   if (block.type === 'video')     return <VideoBlockView url={block.url} title={block.title} />
   if (block.type === 'image')     return <ImageBlockView url={block.url} caption={block.caption} />
-  if (block.type === 'quiz')      return <QuizView questions={block.questions} onScore={onQuizScore} />
+  if (block.type === 'quiz') {
+    // Handle both formats: { questions: [...] } and flat { question, options, correct }
+    const raw = block as unknown as Record<string, unknown>
+    const questions = Array.isArray(raw.questions)
+      ? raw.questions as QuizQuestion[]
+      : raw.question ? [{ question: raw.question as string, options: raw.options as string[], correct: raw.correct as number }] : []
+    if (questions.length === 0) return null
+    return <QuizView questions={questions} onScore={onQuizScore} />
+  }
   if (block.type === 'flashcard') return <FlashcardView cards={block.cards} />
   return null
 }
@@ -508,14 +516,33 @@ export default function CourseLesson() {
             </div>
           )}
 
-          {(lesson.blocks as LessonBlock[]).map((block, idx) => (
-            <motion.div key={block.id ?? idx}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.07 }}>
-              <BlockView block={block} onQuizScore={s => setQuizScore(s)} />
-            </motion.div>
-          ))}
+          {(() => {
+            // Merge all quiz blocks into one combined quiz at the end
+            const raw = lesson.blocks as LessonBlock[]
+            const nonQuiz = raw.filter(b => b.type !== 'quiz')
+            const quizQuestions: QuizQuestion[] = []
+            for (const b of raw) {
+              if (b.type !== 'quiz') continue
+              const r = b as unknown as Record<string, unknown>
+              if (Array.isArray(r.questions)) {
+                quizQuestions.push(...(r.questions as QuizQuestion[]))
+              } else if (r.question) {
+                quizQuestions.push({ question: r.question as string, options: r.options as string[], correct: r.correct as number })
+              }
+            }
+            const mergedBlocks: LessonBlock[] = [
+              ...nonQuiz,
+              ...(quizQuestions.length > 0 ? [{ id: 'merged-quiz', type: 'quiz' as const, questions: quizQuestions }] : []),
+            ]
+            return mergedBlocks.map((block, idx) => (
+              <motion.div key={block.id ?? idx}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.07 }}>
+                <BlockView block={block} onQuizScore={s => setQuizScore(s)} />
+              </motion.div>
+            ))
+          })()}
 
           {/* Completion card */}
           {!isCompleted && (

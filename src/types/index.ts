@@ -53,6 +53,7 @@ export type Subject =
   | 'informatics'
   | 'geography'
   | 'literature'
+  | 'ielts'
 
 export const SUBJECT_NAMES: Record<Subject, string> = {
   math: 'Математика',
@@ -66,6 +67,7 @@ export const SUBJECT_NAMES: Record<Subject, string> = {
   informatics: 'Информатика',
   geography: 'География',
   literature: 'Литература',
+  ielts: 'IELTS',
 }
 
 export const SUBJECT_COLORS: Record<Subject, string> = {
@@ -80,6 +82,7 @@ export const SUBJECT_COLORS: Record<Subject, string> = {
   informatics: '#2563eb',
   geography: '#65a30d',
   literature: '#be185d',
+  ielts: '#7c3aed',
 }
 
 export interface Question {

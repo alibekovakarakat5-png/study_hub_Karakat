@@ -328,6 +328,7 @@ export const SUBJECT_LABELS: Record<Subject, string> = {
   informatics: 'Информатика',
   geography:   'География',
   literature:  'Литература',
+  ielts:       'IELTS',
 }
 
 // ── Field → programs mapping ──────────────────────────────────────────────────

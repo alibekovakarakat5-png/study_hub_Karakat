@@ -39,6 +39,10 @@ const EntTheory = lazy(() => import('@/pages/EntTheory'))
 const TopicDrill = lazy(() => import('@/pages/TopicDrill'))
 const HistoryKZCourse = lazy(() => import('@/pages/HistoryKZCourse'))
 const MathEntCourse = lazy(() => import('@/pages/MathEntCourse'))
+const PhysicsEntCourse = lazy(() => import('@/pages/PhysicsEntCourse'))
+const BiologyEntCourse = lazy(() => import('@/pages/BiologyEntCourse'))
+const ChemistryEntCourse = lazy(() => import('@/pages/ChemistryEntCourse'))
+const EnglishEntCourse = lazy(() => import('@/pages/EnglishEntCourse'))
 const StartupLab = lazy(() => import('@/pages/StartupLab'))
 const EntLab = lazy(() => import('@/pages/EntLab'))
 const IeltsLab = lazy(() => import('@/pages/IeltsLab'))
@@ -84,7 +88,7 @@ function ParentRoute({ children }: { children: React.ReactNode }) {
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useStore()
   if (!isAuthenticated) return <Navigate to="/auth" replace />
-  if (user?.role !== 'admin') return <Navigate to="/dashboard" replace />
+  if (user?.role !== 'admin' && user?.role !== 'teacher') return <Navigate to="/dashboard" replace />
   return <>{children}</>
 }
 
@@ -140,6 +144,10 @@ export default function App() {
           <Route path="/topic-drill" element={<ProtectedRoute><TopicDrill /></ProtectedRoute>} />
           <Route path="/courses/history-kz" element={<ProtectedRoute><HistoryKZCourse /></ProtectedRoute>} />
           <Route path="/courses/math-ent" element={<ProtectedRoute><MathEntCourse /></ProtectedRoute>} />
+          <Route path="/courses/physics-ent" element={<ProtectedRoute><PhysicsEntCourse /></ProtectedRoute>} />
+          <Route path="/courses/biology-ent" element={<ProtectedRoute><BiologyEntCourse /></ProtectedRoute>} />
+          <Route path="/courses/chemistry-ent" element={<ProtectedRoute><ChemistryEntCourse /></ProtectedRoute>} />
+          <Route path="/courses/english-ent" element={<ProtectedRoute><EnglishEntCourse /></ProtectedRoute>} />
           <Route path="/startup-lab" element={<ProtectedRoute><StartupLab /></ProtectedRoute>} />
           {/* ── Lab landing pages (public, entry points) ── */}
           <Route path="/ent" element={<EntLab />} />

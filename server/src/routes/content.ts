@@ -71,7 +71,7 @@ router.get('/', async (req, res) => {
 
 // ── GET /api/content/all?type=...&page=1&limit=50 — admin: all content ────────
 
-router.get('/all', verifyToken, requireRole('admin'), async (req, res) => {
+router.get('/all', verifyToken, requireRole('admin', 'teacher'), async (req, res) => {
   const type = req.query.type as string | undefined
   const { skip, take, page, limit } = parsePagination(req.query as Record<string, unknown>)
 
@@ -92,7 +92,7 @@ router.get('/all', verifyToken, requireRole('admin'), async (req, res) => {
 
 // ── POST /api/content — admin: create new content item ────────────────────────
 
-router.post('/', verifyToken, requireRole('admin'), async (req, res) => {
+router.post('/', verifyToken, requireRole('admin', 'teacher'), async (req, res) => {
   const parsed = ContentSchema.safeParse(req.body)
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.issues[0].message })
@@ -109,7 +109,7 @@ router.post('/', verifyToken, requireRole('admin'), async (req, res) => {
 
 // ── PUT /api/content/:id — admin: update content item ─────────────────────────
 
-router.put('/:id', verifyToken, requireRole('admin'), async (req, res) => {
+router.put('/:id', verifyToken, requireRole('admin', 'teacher'), async (req, res) => {
   const id = req.params['id'] as string
   const parsed = ContentSchema.partial().safeParse(req.body)
   if (!parsed.success) {
@@ -135,7 +135,7 @@ router.put('/:id', verifyToken, requireRole('admin'), async (req, res) => {
 
 // ── DELETE /api/content/:id — admin: delete content item ──────────────────────
 
-router.delete('/:id', verifyToken, requireRole('admin'), async (req, res) => {
+router.delete('/:id', verifyToken, requireRole('admin', 'teacher'), async (req, res) => {
   const id = req.params['id'] as string
   try {
     await prisma.content.delete({ where: { id } })

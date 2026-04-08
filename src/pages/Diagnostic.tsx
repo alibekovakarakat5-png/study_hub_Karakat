@@ -59,6 +59,7 @@ const SUBJECT_ICONS: Record<Subject, React.ReactNode> = {
   informatics: <Monitor className="w-6 h-6" />,
   geography: <Map className="w-6 h-6" />,
   literature: <BookOpen className="w-6 h-6" />,
+  ielts: <Languages className="w-6 h-6" />,
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────

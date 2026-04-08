@@ -37,7 +37,7 @@ import { coursesApi, type DBCourse } from '@/lib/api'
 // Adapter: convert a DB course to the static Course shape for display
 function dbCourseToStaticCourse(c: DBCourse): Course & { _dbCourseId?: string } {
   const subjectToCategory = (s: string): CourseCategory => {
-    if (['english', 'kazakh', 'russian', 'literature'].includes(s)) return 'languages'
+    if (['english', 'kazakh', 'russian', 'literature', 'ielts'].includes(s)) return 'languages'
     if (s === 'informatics') return 'programming'
     return 'ent-prep'
   }
@@ -321,17 +321,37 @@ function CourseModal({
       navigate('/courses/math-ent')
       return
     }
-    // DB course: enroll and go to first lesson
+    if (course.id === 'course-4') {
+      navigate('/courses/physics-ent')
+      return
+    }
+    if (course.id === 'course-7') {
+      navigate('/courses/biology-ent')
+      return
+    }
+    if (course.id === 'course-11') {
+      navigate('/courses/chemistry-ent')
+      return
+    }
+    if (course.id === 'course-12') {
+      navigate('/courses/english-ent')
+      return
+    }
+    // DB course: navigate to first lesson, enroll in background
     if (course._dbCourseId) {
       setEnrolling(true)
       try {
-        await coursesApi.enroll(course._dbCourseId)
         const { course: full } = await coursesApi.get(course._dbCourseId)
         const firstLesson = full.modules[0]?.lessons[0]
         if (firstLesson) {
+          // Enroll in background — don't block navigation
+          coursesApi.enroll(course._dbCourseId).catch(() => {})
           navigate(`/courses/${full.id}/lessons/${firstLesson.id}`)
         }
-      } catch { /* ignore */ } finally {
+      } catch {
+        // API unavailable — navigate to course page directly
+        navigate(`/courses/${course._dbCourseId}/lessons`)
+      } finally {
         setEnrolling(false)
       }
       return

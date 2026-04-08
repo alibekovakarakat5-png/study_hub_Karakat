@@ -63,7 +63,7 @@ router.get('/:id', async (req, res) => {
 
 // ── POST /api/courses — create (admin only) ───────────────────────────────────
 
-router.post('/', verifyToken, requireRole('admin'), async (req, res) => {
+router.post('/', verifyToken, requireRole('admin', 'teacher'), async (req, res) => {
   const { title, description, subject, level, price, coverColor } = req.body as {
     title: string; description: string; subject: string
     level: string; price: number; coverColor: string
@@ -89,7 +89,7 @@ router.post('/', verifyToken, requireRole('admin'), async (req, res) => {
 // Accepts { title, description, subject, level, price, coverColor, isPublished, modules }
 // modules is the full nested structure; we do a full replace
 
-router.put('/:id', verifyToken, requireRole('admin'), async (req, res) => {
+router.put('/:id', verifyToken, requireRole('admin', 'teacher'), async (req, res) => {
   const courseId = String(req.params['id'])
   const { title, description, subject, level, price, coverColor, isPublished, modules } = req.body as {
     title?: string; description?: string; subject?: string; level?: string
@@ -149,7 +149,7 @@ router.put('/:id', verifyToken, requireRole('admin'), async (req, res) => {
 
 // ── DELETE /api/courses/:id (admin only) ──────────────────────────────────────
 
-router.delete('/:id', verifyToken, requireRole('admin'), async (req, res) => {
+router.delete('/:id', verifyToken, requireRole('admin', 'teacher'), async (req, res) => {
   const courseId = String(req.params['id'])
   await prisma.course.delete({ where: { id: courseId } })
   res.json({ ok: true })
