@@ -106,6 +106,26 @@ router.delete('/me/telegram-link', verifyToken, async (req, res) => {
   res.json({ ok: true })
 })
 
+// ── POST /api/users/me/parent-link — generate code for parent to link via Telegram
+router.post('/me/parent-link', verifyToken, async (req, res) => {
+  const userId = req.user!.userId
+
+  // Generate 6-digit numeric code
+  const code = String(Math.floor(100000 + Math.random() * 900000))
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { parentLinkCode: code },
+  })
+
+  const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME ?? 'StudyHubKZBot'
+  res.json({
+    code,
+    instruction: `Родитель должен отправить этот код боту @${BOT_USERNAME} в Telegram`,
+    botUrl: `https://t.me/${BOT_USERNAME}`,
+  })
+})
+
 // ── GET /api/users/:id/public — public profile, no auth ──────────────────────
 
 router.get('/:id/public', async (req, res) => {

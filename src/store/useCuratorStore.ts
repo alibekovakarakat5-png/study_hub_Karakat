@@ -12,13 +12,17 @@ import type {
   CuratorDiagnosticScore,
   ModuleProgress,
 } from '@/types/curator'
-import type { TopicContent } from '@/types/curator'
+import type { TopicContent, ContentLanguage } from '@/types/curator'
 import { curatorContent, ENT_MANDATORY_SUBJECTS } from '@/data/curatorContent'
 import { generateId } from '@/lib/utils'
 
 // ── Store Interface ─────────────────────────────────────────────────────────
 
 interface CuratorState {
+  // Language
+  language: ContentLanguage
+  setLanguage: (lang: ContentLanguage) => void
+
   // Navigation
   phase: CuratorPhase
   previousPhase: CuratorPhase | null
@@ -82,6 +86,10 @@ function scoreToLevel(score: number, maxScore: number): CuratorLevel {
 export const useCuratorStore = create<CuratorState>()(
   persist(
     (set, get) => ({
+      // ── Language ──────────────────────────────────────────────────────
+      language: 'ru',
+      setLanguage: (lang) => set({ language: lang }),
+
       // ── Navigation ──────────────────────────────────────────────────────
       phase: 'goal',
       previousPhase: null,
@@ -130,8 +138,8 @@ export const useCuratorStore = create<CuratorState>()(
       },
 
       completeDiagnostic: () => {
-        const { selectedSubjects, diagnosticAnswers } = get()
-        const allContent = curatorContent
+        const { selectedSubjects, diagnosticAnswers, language } = get()
+        const allContent = curatorContent.filter(t => (t.language ?? 'ru') === language)
 
         const scores: CuratorDiagnosticScore[] = selectedSubjects.map(subject => {
           const subjectContent = allContent.filter(t => t.subject === subject)
@@ -213,7 +221,7 @@ export const useCuratorStore = create<CuratorState>()(
 
         for (const subject of sorted) {
           const level = subjectLevels[subject] || 'intermediate'
-          const subjectTopics = curatorContent.filter(t => t.subject === subject)
+          const subjectTopics = curatorContent.filter(t => t.subject === subject && (t.language ?? 'ru') === get().language)
 
           // Filter topics by level appropriateness
           const appropriateTopics = subjectTopics.filter(t => {
@@ -456,6 +464,7 @@ export const useCuratorStore = create<CuratorState>()(
     {
       name: 'studyhub-curator',
       partialize: (state) => ({
+        language: state.language,
         phase: state.phase,
         goalType: state.goalType,
         ieltsType: state.ieltsType,

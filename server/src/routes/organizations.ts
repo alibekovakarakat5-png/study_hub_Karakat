@@ -8,6 +8,7 @@
 
 import { Router } from 'express'
 import { z } from 'zod'
+import bcrypt from 'bcryptjs'
 import { prisma } from '../lib/prisma'
 import { verifyToken, requireRole } from '../middleware/auth'
 
@@ -303,6 +304,149 @@ router.delete('/:id/members/:userId', verifyToken, async (req, res) => {
 
   await prisma.orgMembership.deleteMany({ where: { orgId, userId: memberId } })
   res.json({ ok: true })
+})
+
+// ── POST /api/orgs/:id/import/teachers ────────────────────────────────────────
+// CSV format: name,email,password (one per line, first line = header)
+
+router.post('/:id/import/teachers', verifyToken, async (req, res) => {
+  const orgId  = String(req.params['id'])
+  const userId = String(req.user!.userId)
+
+  const org = await prisma.organization.findUnique({ where: { id: orgId } })
+  if (!org) { res.status(404).json({ error: 'Организация не найдена' }); return }
+  if (org.ownerId !== userId && req.user!.role !== 'admin') {
+    res.status(403).json({ error: 'Нет прав' }); return
+  }
+
+  const { csv } = req.body as { csv?: string }
+  if (!csv || typeof csv !== 'string') {
+    res.status(400).json({ error: 'Поле csv обязательно (строка CSV)' }); return
+  }
+
+  const lines = csv.trim().split('\n').map(l => l.trim()).filter(Boolean)
+  if (lines.length < 2) { res.status(400).json({ error: 'Минимум 1 строка данных + заголовок' }); return }
+
+  const created: string[] = []
+  const errors: { row: number; message: string }[] = []
+
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i]!.split(',').map(s => s.trim())
+    const [name, email, password] = parts
+
+    if (!name || !email || !password) {
+      errors.push({ row: i + 1, message: 'Нужны 3 поля: name,email,password' }); continue
+    }
+
+    if (password.length < 6) {
+      errors.push({ row: i + 1, message: 'Пароль мин. 6 символов' }); continue
+    }
+
+    try {
+      const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase() } })
+      if (existing) {
+        // If user exists, just add to org
+        const alreadyMember = await prisma.orgMembership.findUnique({
+          where: { orgId_userId: { orgId, userId: existing.id } },
+        })
+        if (!alreadyMember) {
+          await prisma.orgMembership.create({ data: { orgId, userId: existing.id, role: 'teacher' } })
+        }
+        created.push(existing.name)
+        continue
+      }
+
+      const passwordHash = await bcrypt.hash(password, 10)
+      const user = await prisma.user.create({
+        data: { name, email: email.toLowerCase(), passwordHash, role: 'teacher' },
+      })
+      await prisma.orgMembership.create({ data: { orgId, userId: user.id, role: 'teacher' } })
+      created.push(name)
+    } catch (err) {
+      errors.push({ row: i + 1, message: err instanceof Error ? err.message : 'Ошибка' })
+    }
+  }
+
+  res.json({ created: created.length, createdNames: created, errors })
+})
+
+// ── POST /api/orgs/:id/import/students ────────────────────────────────────────
+// CSV format: name,email,password,className (one per line, first line = header)
+
+router.post('/:id/import/students', verifyToken, async (req, res) => {
+  const orgId  = String(req.params['id'])
+  const userId = String(req.user!.userId)
+
+  const org = await prisma.organization.findUnique({ where: { id: orgId } })
+  if (!org) { res.status(404).json({ error: 'Организация не найдена' }); return }
+  if (org.ownerId !== userId && req.user!.role !== 'admin') {
+    res.status(403).json({ error: 'Нет прав' }); return
+  }
+
+  const { csv } = req.body as { csv?: string }
+  if (!csv || typeof csv !== 'string') {
+    res.status(400).json({ error: 'Поле csv обязательно (строка CSV)' }); return
+  }
+
+  const lines = csv.trim().split('\n').map(l => l.trim()).filter(Boolean)
+  if (lines.length < 2) { res.status(400).json({ error: 'Минимум 1 строка данных + заголовок' }); return }
+
+  // Get all classes by org teachers for matching
+  const orgTeachers = await prisma.orgMembership.findMany({ where: { orgId }, select: { userId: true } })
+  const teacherIds = orgTeachers.map(m => m.userId)
+  const allClasses = await prisma.class.findMany({
+    where: { teacherId: { in: teacherIds } },
+    select: { id: true, name: true },
+  })
+  const classMap = new Map(allClasses.map(c => [c.name.toLowerCase(), c.id]))
+
+  const created: string[] = []
+  const errors: { row: number; message: string }[] = []
+
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i]!.split(',').map(s => s.trim())
+    const [name, email, password, className] = parts
+
+    if (!name || !email || !password) {
+      errors.push({ row: i + 1, message: 'Нужны минимум 3 поля: name,email,password' }); continue
+    }
+
+    if (password.length < 6) {
+      errors.push({ row: i + 1, message: 'Пароль мин. 6 символов' }); continue
+    }
+
+    try {
+      let user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } })
+
+      if (!user) {
+        const passwordHash = await bcrypt.hash(password, 10)
+        user = await prisma.user.create({
+          data: { name, email: email.toLowerCase(), passwordHash, role: 'student' },
+        })
+      }
+
+      // Join class if className provided
+      if (className) {
+        const classId = classMap.get(className.toLowerCase())
+        if (classId) {
+          const alreadyMember = await prisma.classMembership.findUnique({
+            where: { classId_studentId: { classId, studentId: user.id } },
+          })
+          if (!alreadyMember) {
+            await prisma.classMembership.create({ data: { classId, studentId: user.id } })
+          }
+        } else {
+          errors.push({ row: i + 1, message: `Класс "${className}" не найден` })
+        }
+      }
+
+      created.push(name)
+    } catch (err) {
+      errors.push({ row: i + 1, message: err instanceof Error ? err.message : 'Ошибка' })
+    }
+  }
+
+  res.json({ created: created.length, createdNames: created, errors })
 })
 
 export default router

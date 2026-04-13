@@ -640,4 +640,85 @@ export const orgsApi = {
 
   removeMember: (orgId: string, userId: string) =>
     api.del<{ ok: boolean }>(`/orgs/${orgId}/members/${userId}`),
+
+  importTeachers: (orgId: string, csv: string) =>
+    api.post<{ created: number; createdNames: string[]; errors: { row: number; message: string }[] }>(
+      `/orgs/${orgId}/import/teachers`, { csv }
+    ),
+
+  importStudents: (orgId: string, csv: string) =>
+    api.post<{ created: number; createdNames: string[]; errors: { row: number; message: string }[] }>(
+      `/orgs/${orgId}/import/students`, { csv }
+    ),
+}
+
+// ── Schedule API ──────────────────────────────────────────────────────────────
+
+export interface ClassScheduleItem {
+  id: string
+  classId: string
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+  room?: string | null
+  className?: string
+  subject?: string
+}
+
+export const scheduleApi = {
+  getForClass: (classId: string) =>
+    api.get<{ schedules: ClassScheduleItem[] }>(`/classes/${classId}/schedule`),
+
+  add: (classId: string, body: { dayOfWeek: number; startTime: string; endTime: string; room?: string }) =>
+    api.post<{ schedule: ClassScheduleItem }>(`/classes/${classId}/schedule`, body),
+
+  remove: (classId: string, scheduleId: string) =>
+    api.del<{ ok: boolean }>(`/classes/${classId}/schedule/${scheduleId}`),
+
+  myTimetable: () =>
+    api.get<{ timetable: ClassScheduleItem[] }>('/classes/my-schedule'),
+}
+
+// ── Reports API ───────────────────────────────────────────────────────────────
+
+export const reportsApi = {
+  weeklyUrl:  (orgId: string, week: string) => `/api/orgs/${orgId}/reports/weekly?week=${week}`,
+  monthlyUrl: (orgId: string, month: string) => `/api/orgs/${orgId}/reports/monthly?month=${month}`,
+  studentUrl: (orgId: string, studentId: string) => `/api/orgs/${orgId}/reports/student/${studentId}`,
+}
+
+// ── Smart Assignment API ──────────────────────────────────────────────────────
+
+export interface StudentWeaknessAnalysis {
+  studentId: string
+  studentName: string
+  weakTopics: string[]
+  weakSubjects: string[]
+  lowScoreAssignments: { title: string; score: number | null }[]
+  diagnosticCount: number
+}
+
+export interface ClassAnalysis {
+  classId: string
+  className: string
+  subject: string
+  students: StudentWeaknessAnalysis[]
+  availableSubjects: string[]
+}
+
+export const smartAssignmentApi = {
+  analyze: (classId: string) =>
+    api.get<ClassAnalysis>(`/smart-assignment/analysis/${classId}`),
+
+  generate: (body: { classId: string; subject: string; questionCount?: number; title?: string }) =>
+    api.post<{ assignment: DBAssignment; meta: { questionsGenerated: number; weakTopicsUsed: string[]; studentsAnalyzed: number } }>(
+      '/smart-assignment/generate', body
+    ),
+}
+
+// ── Parent Link API ───────────────────────────────────────────────────────────
+
+export const parentLinkApi = {
+  generate: () =>
+    api.post<{ code: string; instruction: string; botUrl: string }>('/users/me/parent-link', {}),
 }

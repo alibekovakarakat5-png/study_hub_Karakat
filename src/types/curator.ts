@@ -7,10 +7,18 @@ export type IeltsType = 'academic' | 'general'
 export type CuratorPhase = 'goal' | 'subjects' | 'diagnostic' | 'results' | 'plan' | 'module' | 'progress'
 export type CuratorLevel = 'beginner' | 'intermediate' | 'advanced'
 
+export type ContentLanguage = 'ru' | 'kk' | 'en'
+
 export const CURATOR_LEVEL_NAMES: Record<CuratorLevel, string> = {
   beginner: 'Начинающий',
   intermediate: 'Средний',
   advanced: 'Продвинутый',
+}
+
+export const CURATOR_LEVEL_NAMES_KK: Record<CuratorLevel, string> = {
+  beginner: 'Бастауыш',
+  intermediate: 'Орта',
+  advanced: 'Жоғары',
 }
 
 export const CURATOR_LEVEL_EMOJI: Record<CuratorLevel, string> = {
@@ -107,6 +115,7 @@ export interface TopicContent {
   subject: Subject
   topic: string
   level: CuratorLevel
+  language?: ContentLanguage  // default 'ru' for backward compat
   theory: TheoryBlock
   practice: PracticeQuestion[]
   test: TestQuestion[]

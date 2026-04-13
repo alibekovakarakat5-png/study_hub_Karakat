@@ -43,6 +43,11 @@ model User {
   referralCode      String?  @unique
   referredBy        String?
 
+  // Parent notification (B2B)
+  parentPhone       String?            // parent's phone
+  parentTgChatId    String?            // parent's Telegram chatId
+  parentLinkCode    String?  @unique   // 6-digit code for parent linking
+
   @@index([createdAt])
   @@index([role])
 
@@ -385,10 +390,24 @@ model Class {
   inviteCode  String   @unique
   members     ClassMembership[]
   assignments Assignment[]
+  schedules   ClassSchedule[]
   createdAt   DateTime @default(now())
 
   @@index([teacherId])
   @@index([inviteCode])
+}
+
+model ClassSchedule {
+  id        String   @id @default(cuid())
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  dayOfWeek Int      // 1=Mon … 7=Sun
+  startTime String   // "09:00"
+  endTime   String   // "10:30"
+  room      String?
+  createdAt DateTime @default(now())
+
+  @@index([classId])
 }
 
 model ClassMembership {

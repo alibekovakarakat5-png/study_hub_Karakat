@@ -47,6 +47,31 @@ router.post('/join', verifyToken, async (req, res) => {
   res.json({ ok: true, class: cls })
 })
 
+// ── GET /api/classes/my-schedule  (MUST be before /:id) ───────────────────────
+// Teacher's full weekly timetable across all their classes
+
+router.get('/my-schedule', verifyToken, requireRole('teacher', 'admin'), async (req, res) => {
+  const userId = String(req.user!.userId)
+
+  const classes = await prisma.class.findMany({
+    where: { teacherId: userId },
+    include: {
+      schedules: { orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }] },
+    },
+  })
+
+  const timetable = classes.flatMap(cls =>
+    cls.schedules.map(s => ({
+      ...s,
+      className: cls.name,
+      subject: cls.subject,
+      classId: cls.id,
+    }))
+  ).sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime))
+
+  res.json({ timetable })
+})
+
 // ── POST /api/classes ─────────────────────────────────────────────────────────
 
 const CreateClassSchema = z.object({
@@ -158,6 +183,67 @@ router.delete('/:id/members/:studentId', verifyToken, requireRole('teacher', 'ad
   }
 
   await prisma.classMembership.deleteMany({ where: { classId: id, studentId } })
+  res.json({ ok: true })
+})
+
+// ── POST /api/classes/:id/schedule ────────────────────────────────────────────
+
+const ScheduleSchema = z.object({
+  dayOfWeek: z.number().int().min(1).max(7),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/),
+  endTime:   z.string().regex(/^\d{2}:\d{2}$/),
+  room:      z.string().max(50).optional(),
+})
+
+router.post('/:id/schedule', verifyToken, requireRole('teacher', 'admin'), async (req, res) => {
+  const id     = String(req.params['id'])
+  const userId = String(req.user!.userId)
+
+  const parsed = ScheduleSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message ?? 'Неверные данные' }); return
+  }
+
+  const cls = await prisma.class.findUnique({ where: { id } })
+  if (!cls) { res.status(404).json({ error: 'Класс не найден' }); return }
+  if (cls.teacherId !== userId && req.user!.role !== 'admin') {
+    res.status(403).json({ error: 'Нет прав' }); return
+  }
+
+  const schedule = await prisma.classSchedule.create({
+    data: { classId: id, ...parsed.data },
+  })
+
+  res.status(201).json({ schedule })
+})
+
+// ── GET /api/classes/:id/schedule ─────────────────────────────────────────────
+
+router.get('/:id/schedule', verifyToken, async (req, res) => {
+  const id = String(req.params['id'])
+
+  const schedules = await prisma.classSchedule.findMany({
+    where:   { classId: id },
+    orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
+  })
+
+  res.json({ schedules })
+})
+
+// ── DELETE /api/classes/:id/schedule/:scheduleId ──────────────────────────────
+
+router.delete('/:id/schedule/:scheduleId', verifyToken, requireRole('teacher', 'admin'), async (req, res) => {
+  const id         = String(req.params['id'])
+  const scheduleId = String(req.params['scheduleId'])
+  const userId     = String(req.user!.userId)
+
+  const cls = await prisma.class.findUnique({ where: { id } })
+  if (!cls) { res.status(404).json({ error: 'Класс не найден' }); return }
+  if (cls.teacherId !== userId && req.user!.role !== 'admin') {
+    res.status(403).json({ error: 'Нет прав' }); return
+  }
+
+  await prisma.classSchedule.delete({ where: { id: scheduleId } })
   res.json({ ok: true })
 })
 

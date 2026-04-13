@@ -6,13 +6,14 @@ import { useNavigate } from 'react-router-dom'
 import {
   LayoutGrid, Users, BookOpen, BarChart3, TrendingUp,
   Copy, Check, UserMinus, Plus, Building2, AlertCircle,
-  Loader2, Search, X, RefreshCw, School
+  Loader2, Search, X, RefreshCw, School, Upload, Clock,
+  FileText, Download, ExternalLink
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import {
-  orgsApi,
+  orgsApi, reportsApi,
   type DBOrganization,
   type OrgDashboard,
   type OrgTeacherStats,
@@ -24,7 +25,7 @@ import Sidebar from '@/components/dashboard/Sidebar'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type TabId = 'overview' | 'teachers' | 'students' | 'analytics'
+type TabId = 'overview' | 'teachers' | 'students' | 'analytics' | 'import' | 'reports'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -544,6 +545,195 @@ function InviteModal({ code, onClose }: { code: string; onClose: () => void }) {
   )
 }
 
+// ── Import Tab ───────────────────────────────────────────────────────────────
+
+function ImportTab({ orgId, onImported }: { orgId: string; onImported: () => void }) {
+  const [mode, setMode] = useState<'teachers' | 'students'>('students')
+  const [csv, setCsv] = useState('')
+  const [importing, setImporting] = useState(false)
+  const [result, setResult] = useState<{ created: number; errors: { row: number; message: string }[] } | null>(null)
+
+  const handleImport = async () => {
+    if (!csv.trim()) return
+    setImporting(true)
+    setResult(null)
+    try {
+      const res = mode === 'teachers'
+        ? await orgsApi.importTeachers(orgId, csv)
+        : await orgsApi.importStudents(orgId, csv)
+      setResult({ created: res.created, errors: res.errors })
+      if (res.created > 0) onImported()
+    } catch (err) {
+      setResult({ created: 0, errors: [{ row: 0, message: err instanceof Error ? err.message : 'Ошибка' }] })
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const template = mode === 'teachers'
+    ? 'name,email,password\nИванов Пётр,ivanov@mail.ru,pass123456\nСидорова Айгуль,sidorova@mail.ru,pass123456'
+    : 'name,email,password,className\nАлиев Айдар,aliev@mail.ru,pass123456,Математика 11А\nНурланова Дана,nurlanova@mail.ru,pass123456,Физика 11Б'
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900 mb-4">Массовый импорт</h2>
+
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => { setMode('students'); setResult(null); setCsv('') }}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${mode === 'students' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+          >
+            Ученики
+          </button>
+          <button
+            onClick={() => { setMode('teachers'); setResult(null); setCsv('') }}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${mode === 'teachers' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+          >
+            Учителя
+          </button>
+        </div>
+
+        <div className="mb-3">
+          <p className="text-sm text-slate-500 mb-2">
+            {mode === 'teachers'
+              ? 'Формат CSV: name, email, password (по строке на каждого)'
+              : 'Формат CSV: name, email, password, className (имя класса для привязки)'}
+          </p>
+          <button
+            onClick={() => setCsv(template)}
+            className="text-xs text-indigo-600 hover:text-indigo-800 underline"
+          >
+            Вставить шаблон
+          </button>
+        </div>
+
+        <textarea
+          value={csv}
+          onChange={(e) => setCsv(e.target.value)}
+          rows={8}
+          placeholder={template}
+          className="w-full border border-slate-200 rounded-xl p-3 text-sm font-mono text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-y"
+        />
+
+        <button
+          onClick={handleImport}
+          disabled={importing || !csv.trim()}
+          className="mt-3 flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {importing ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+          {importing ? 'Импортируем...' : 'Импортировать'}
+        </button>
+
+        {result && (
+          <div className="mt-4 space-y-2">
+            {result.created > 0 && (
+              <div className="bg-green-50 border border-green-100 rounded-xl p-3 text-green-700 text-sm">
+                ✅ Создано: {result.created} {mode === 'teachers' ? 'учителей' : 'учеников'}
+              </div>
+            )}
+            {result.errors.length > 0 && (
+              <div className="bg-red-50 border border-red-100 rounded-xl p-3 text-red-700 text-sm">
+                <p className="font-medium mb-1">Ошибки ({result.errors.length}):</p>
+                {result.errors.slice(0, 10).map((e, i) => (
+                  <p key={i} className="text-xs">Строка {e.row}: {e.message}</p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Reports Tab ──────────────────────────────────────────────────────────────
+
+function ReportsTab({ orgId, students }: { orgId: string; students: OrgStudentStats[] }) {
+  const now = new Date()
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+
+  // Calculate ISO week
+  const jan4 = new Date(now.getFullYear(), 0, 4)
+  const dayOfWeek = jan4.getDay() || 7
+  const startOfWeek1 = new Date(jan4)
+  startOfWeek1.setDate(jan4.getDate() - dayOfWeek + 1)
+  const weekNum = Math.ceil(((now.getTime() - startOfWeek1.getTime()) / (24 * 60 * 60 * 1000) + 1) / 7)
+  const currentWeek = `${now.getFullYear()}-W${String(weekNum).padStart(2, '0')}`
+
+  const openReport = (url: string) => {
+    // Open in new tab — reports return HTML that can be printed
+    const token = localStorage.getItem('studyhub-token')
+    window.open(`${url}&token=${token}`, '_blank')
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900 mb-4">Отчёты организации</h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <button
+            onClick={() => openReport(reportsApi.weeklyUrl(orgId, currentWeek))}
+            className="flex items-center gap-3 p-4 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-100 transition-colors text-left"
+          >
+            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white">
+              <FileText size={20} />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-900">Недельный отчёт</p>
+              <p className="text-xs text-slate-500">{currentWeek}</p>
+            </div>
+            <ExternalLink size={14} className="ml-auto text-slate-400" />
+          </button>
+
+          <button
+            onClick={() => openReport(reportsApi.monthlyUrl(orgId, currentMonth))}
+            className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-100 rounded-xl hover:bg-emerald-100 transition-colors text-left"
+          >
+            <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white">
+              <FileText size={20} />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-900">Месячный отчёт</p>
+              <p className="text-xs text-slate-500">{currentMonth}</p>
+            </div>
+            <ExternalLink size={14} className="ml-auto text-slate-400" />
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900 mb-4">Отчёты по ученикам</h2>
+        <div className="space-y-2 max-h-96 overflow-y-auto">
+          {students.length === 0 ? (
+            <p className="text-slate-400 text-sm">Нет учеников</p>
+          ) : (
+            students.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => openReport(reportsApi.studentUrl(orgId, s.id))}
+                className="w-full flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors"
+              >
+                <div className="text-left">
+                  <p className="text-sm font-medium text-slate-900">{s.name}</p>
+                  <p className="text-xs text-slate-500">{s.className} · {s.teacherName}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-sm font-medium ${scoreColor(s.avgScore)}`}>
+                    {scoreText(s.avgScore)}
+                  </span>
+                  <ExternalLink size={14} className="text-slate-400" />
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function CenterDashboard() {
@@ -605,6 +795,8 @@ export default function CenterDashboard() {
     { id: 'teachers',   label: 'Учителя',   icon: <Users size={16} /> },
     { id: 'students',   label: 'Ученики',   icon: <BookOpen size={16} /> },
     { id: 'analytics',  label: 'Аналитика', icon: <BarChart3 size={16} /> },
+    { id: 'import',     label: 'Импорт',    icon: <Upload size={16} /> },
+    { id: 'reports',    label: 'Отчёты',    icon: <FileText size={16} /> },
   ]
 
   return (
@@ -694,6 +886,12 @@ export default function CenterDashboard() {
               )}
               {activeTab === 'analytics' && (
                 <AnalyticsTab teachers={dashboard.teachers} />
+              )}
+              {activeTab === 'import' && (
+                <ImportTab orgId={dashboard.org.id} onImported={loadDashboard} />
+              )}
+              {activeTab === 'reports' && (
+                <ReportsTab orgId={dashboard.org.id} students={dashboard.students} />
               )}
             </motion.div>
           </>

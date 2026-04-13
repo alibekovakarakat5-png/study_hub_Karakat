@@ -59,6 +59,34 @@ const LEVEL_COLORS: Record<CuratorLevel, { bg: string; border: string; text: str
 
 // ── Phase 1: Goal Selection ─────────────────────────────────────────────────
 
+const LANG_OPTIONS: { id: 'ru' | 'kk' | 'en'; label: string; flag: string }[] = [
+  { id: 'ru', label: 'Русский', flag: '🇷🇺' },
+  { id: 'kk', label: 'Қазақша', flag: '🇰🇿' },
+  { id: 'en', label: 'English', flag: '🇬🇧' },
+]
+
+function LanguageToggle() {
+  const { language, setLanguage } = useCuratorStore()
+  return (
+    <div className="flex items-center justify-center gap-1 mb-6">
+      {LANG_OPTIONS.map(l => (
+        <button
+          key={l.id}
+          onClick={() => setLanguage(l.id)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+            language === l.id
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          }`}
+        >
+          <span>{l.flag}</span>
+          {l.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function GoalSelection() {
   const { setGoal, setPhase } = useCuratorStore()
   const navigate = useNavigate()
@@ -91,6 +119,8 @@ function GoalSelection() {
           Выбери свою цель, и мы построим персональный план обучения с теорией, практикой и тестами
         </p>
       </motion.div>
+
+      <LanguageToggle />
 
       <div className="grid gap-6 sm:grid-cols-2">
         <motion.button

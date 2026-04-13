@@ -14,9 +14,10 @@ import {
 import { useStore } from '@/store/useStore'
 import { cn } from '@/lib/utils'
 import {
-  classesApi, assignmentsApi, aiTestApi, coursesApi,
+  classesApi, assignmentsApi, aiTestApi, coursesApi, smartAssignmentApi, scheduleApi,
   type DBClass, type DBAssignment, type DBSubmission,
   type AITestVariant, type AssignmentStats, type DBCourse,
+  type ClassAnalysis, type ClassScheduleItem,
 } from '@/lib/api'
 
 // ── Animation variants ────────────────────────────────────────────────────────
@@ -56,12 +57,14 @@ const ratingDistribution = [
 
 // ── Tab types ─────────────────────────────────────────────────────────────────
 
-type TabId = 'classes' | 'test-builder' | 'assignments' | 'progress' | 'courses' | 'analytics' | 'earnings'
+type TabId = 'classes' | 'test-builder' | 'smart-hw' | 'assignments' | 'schedule' | 'progress' | 'courses' | 'analytics' | 'earnings'
 
 const TABS: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'classes',      label: 'Мои классы',       icon: LayoutGrid   },
   { id: 'test-builder', label: 'Конструктор тестов', icon: Brain       },
+  { id: 'smart-hw',     label: 'Умное ДЗ',          icon: FlaskConical },
   { id: 'assignments',  label: 'Задания',           icon: ClipboardList },
+  { id: 'schedule',     label: 'Расписание',        icon: Clock        },
   { id: 'progress',     label: 'Прогресс',          icon: TrendingUp   },
   { id: 'courses',      label: 'Курсы',             icon: BookOpen     },
   { id: 'analytics',    label: 'Аналитика',         icon: BarChart3    },
@@ -1049,6 +1052,287 @@ function CoursesTab() {
   )
 }
 
+// ── Smart Homework Tab ────────────────────────────────────────────────────────
+
+function SmartHomeworkTab() {
+  const [classes, setClasses] = useState<DBClass[]>([])
+  const [selectedClass, setSelectedClass] = useState<string>('')
+  const [analysis, setAnalysis] = useState<ClassAnalysis | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [result, setResult] = useState<{ questionsGenerated: number; weakTopicsUsed: string[] } | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    classesApi.list().then(r => setClasses(r.classes)).catch(() => {})
+  }, [])
+
+  const handleAnalyze = async () => {
+    if (!selectedClass) return
+    setLoading(true)
+    setError(null)
+    setAnalysis(null)
+    setResult(null)
+    try {
+      const data = await smartAssignmentApi.analyze(selectedClass)
+      setAnalysis(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGenerate = async () => {
+    if (!analysis) return
+    setGenerating(true)
+    setError(null)
+    try {
+      const res = await smartAssignmentApi.generate({
+        classId: analysis.classId,
+        subject: analysis.subject,
+        questionCount: 10,
+      })
+      setResult(res.meta)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-xl font-bold text-gray-900">Умное домашнее задание</h2>
+      <p className="text-sm text-gray-500">Система анализирует слабые темы учеников и автоматически подбирает задания</p>
+
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div className="flex items-end gap-3">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Выберите класс</label>
+            <select
+              value={selectedClass}
+              onChange={(e) => setSelectedClass(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            >
+              <option value="">— Выбрать —</option>
+              {classes.map(c => (
+                <option key={c.id} value={c.id}>{c.name} ({c.subject})</option>
+              ))}
+            </select>
+          </div>
+          <button
+            onClick={handleAnalyze}
+            disabled={!selectedClass || loading}
+            className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FlaskConical className="w-4 h-4" />}
+            Анализировать
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-3 bg-red-50 border border-red-100 rounded-2xl p-4 text-red-700 text-sm">
+          <AlertCircle className="w-5 h-5 flex-shrink-0" /> {error}
+        </div>
+      )}
+
+      {analysis && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-gray-800">Анализ класса: {analysis.className}</h3>
+            <span className="text-sm text-gray-500">{analysis.students.length} учеников</span>
+          </div>
+
+          <div className="space-y-3 max-h-64 overflow-y-auto">
+            {analysis.students.map(s => (
+              <div key={s.studentId} className="flex items-start justify-between p-3 bg-gray-50 rounded-xl">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{s.studentName}</p>
+                  {s.weakTopics.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {s.weakTopics.slice(0, 5).map(t => (
+                        <span key={t} className="text-xs bg-red-50 text-red-600 px-2 py-0.5 rounded-full">{t}</span>
+                      ))}
+                    </div>
+                  )}
+                  {s.weakTopics.length === 0 && s.diagnosticCount === 0 && (
+                    <p className="text-xs text-gray-400 mt-1">Нет данных диагностики</p>
+                  )}
+                </div>
+                <span className="text-xs text-gray-400">{s.diagnosticCount} диагн.</span>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={handleGenerate}
+            disabled={generating}
+            className="flex items-center gap-2 bg-green-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
+          >
+            {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+            Сгенерировать ДЗ по слабым темам
+          </button>
+        </div>
+      )}
+
+      {result && (
+        <div className="bg-green-50 border border-green-100 rounded-2xl p-4 text-green-700 text-sm">
+          ✅ Создано задание из {result.questionsGenerated} вопросов по темам: {result.weakTopicsUsed.join(', ') || 'общие'}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Schedule Tab ──────────────────────────────────────────────────────────────
+
+const DAY_NAMES = ['', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+const CLASS_COLORS = ['bg-blue-100 text-blue-700', 'bg-purple-100 text-purple-700', 'bg-green-100 text-green-700', 'bg-orange-100 text-orange-700', 'bg-pink-100 text-pink-700']
+
+function ScheduleTab() {
+  const [classes, setClasses] = useState<DBClass[]>([])
+  const [timetable, setTimetable] = useState<ClassScheduleItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showAdd, setShowAdd] = useState(false)
+  const [addForm, setAddForm] = useState({ classId: '', dayOfWeek: 1, startTime: '09:00', endTime: '10:30', room: '' })
+
+  const load = useCallback(async () => {
+    try {
+      setLoading(true)
+      const [cls, sched] = await Promise.all([classesApi.list(), scheduleApi.myTimetable()])
+      setClasses(cls.classes)
+      setTimetable(sched.timetable)
+    } catch {
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const handleAdd = async () => {
+    if (!addForm.classId) return
+    try {
+      await scheduleApi.add(addForm.classId, {
+        dayOfWeek: addForm.dayOfWeek,
+        startTime: addForm.startTime,
+        endTime: addForm.endTime,
+        room: addForm.room || undefined,
+      })
+      setShowAdd(false)
+      load()
+    } catch {}
+  }
+
+  const handleRemove = async (classId: string, scheduleId: string) => {
+    await scheduleApi.remove(classId, scheduleId)
+    load()
+  }
+
+  // Group by day
+  const byDay = new Map<number, ClassScheduleItem[]>()
+  for (const item of timetable) {
+    if (!byDay.has(item.dayOfWeek)) byDay.set(item.dayOfWeek, [])
+    byDay.get(item.dayOfWeek)!.push(item)
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-gray-900">Расписание занятий</h2>
+        <button
+          onClick={() => setShowAdd(true)}
+          className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors"
+        >
+          <Plus className="w-4 h-4" /> Добавить
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-indigo-400" /></div>
+      ) : timetable.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
+          <Clock className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500">Расписание пока пустое</p>
+          <p className="text-sm text-gray-400 mt-1">Добавьте занятия, нажав кнопку выше</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+          {[1, 2, 3, 4, 5, 6].map(day => (
+            <div key={day} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3">
+              <h3 className="text-sm font-semibold text-gray-700 mb-2 text-center">{DAY_NAMES[day]}</h3>
+              <div className="space-y-2">
+                {(byDay.get(day) ?? []).map((item, idx) => (
+                  <div key={item.id} className={`rounded-xl p-2 text-xs ${CLASS_COLORS[idx % CLASS_COLORS.length]}`}>
+                    <p className="font-medium">{item.className}</p>
+                    <p>{item.startTime}–{item.endTime}</p>
+                    {item.room && <p className="opacity-70">{item.room}</p>}
+                    <button onClick={() => handleRemove(item.classId, item.id)} className="text-red-500 hover:text-red-700 mt-1">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add schedule modal */}
+      {showAdd && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowAdd(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-4">Добавить занятие</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-gray-700">Класс</label>
+                <select value={addForm.classId} onChange={e => setAddForm(p => ({ ...p, classId: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm mt-1">
+                  <option value="">Выбрать</option>
+                  {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">День</label>
+                <select value={addForm.dayOfWeek} onChange={e => setAddForm(p => ({ ...p, dayOfWeek: Number(e.target.value) }))}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm mt-1">
+                  {[1,2,3,4,5,6].map(d => <option key={d} value={d}>{DAY_NAMES[d]}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Начало</label>
+                  <input type="time" value={addForm.startTime} onChange={e => setAddForm(p => ({ ...p, startTime: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm mt-1" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Конец</label>
+                  <input type="time" value={addForm.endTime} onChange={e => setAddForm(p => ({ ...p, endTime: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm mt-1" />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Кабинет (опционально)</label>
+                <input value={addForm.room} onChange={e => setAddForm(p => ({ ...p, room: e.target.value }))}
+                  placeholder="Каб. 201" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm mt-1" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-5">
+              <button onClick={() => setShowAdd(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-xl">Отмена</button>
+              <button onClick={handleAdd} disabled={!addForm.classId}
+                className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50">
+                Добавить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function TeacherDashboard() {
@@ -1179,6 +1463,10 @@ export default function TeacherDashboard() {
               </div>
             </div>
           )}
+
+          {activeTab === 'smart-hw' && <SmartHomeworkTab />}
+
+          {activeTab === 'schedule' && <ScheduleTab />}
 
           {activeTab === 'earnings' && (
             <div className="space-y-6">

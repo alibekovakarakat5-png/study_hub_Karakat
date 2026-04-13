@@ -4,6 +4,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma'
 import { verifyToken, requireRole } from '../middleware/auth'
+import { notifyParent } from '../lib/parentNotify'
 
 const router = Router()
 
@@ -130,6 +131,13 @@ router.post('/:id/submit', verifyToken, async (req, res) => {
     ? ((assignment.content as { questions?: unknown[] }).questions?.length ?? 0)
     : undefined
 
+  // Notify parent via Telegram (fire & forget)
+  const student = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, parentTgChatId: true } })
+  if (student?.parentTgChatId) {
+    const scoreText = score !== null ? `${score}%` : 'на проверке'
+    notifyParent(student.parentTgChatId, `📝 ${student.name} сдал(а) задание «${assignment.title}» — ${scoreText}`)
+  }
+
   res.status(201).json({ submission: { ...submission, totalQuestions } })
 })
 
@@ -206,7 +214,15 @@ router.put('/:id/grade/:submissionId', verifyToken, requireRole('teacher', 'admi
   const submission = await prisma.assignmentSubmission.update({
     where: { id: submissionId },
     data:  { score: parsed.data.score, feedback: parsed.data.feedback ?? null },
+    include: { student: { select: { name: true, parentTgChatId: true } } },
   })
+
+  // Notify parent about grade
+  const sub = submission as typeof submission & { student: { name: string; parentTgChatId: string | null } }
+  if (sub.student.parentTgChatId) {
+    const fb = parsed.data.feedback ? ` — ${parsed.data.feedback}` : ''
+    notifyParent(sub.student.parentTgChatId, `✅ Оценка за «${assignment.title}»: ${parsed.data.score}%${fb}`)
+  }
 
   res.json({ submission })
 })
