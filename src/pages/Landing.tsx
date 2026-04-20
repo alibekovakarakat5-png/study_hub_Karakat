@@ -3,6 +3,7 @@ import { PageMeta } from '@/components/PageMeta';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { whatsappHref, whatsappTelHref, formatWhatsappDisplay, WHATSAPP_NUMBER } from '@/lib/whatsapp';
 
 import { motion, useInView } from 'framer-motion';
 import {
@@ -1837,7 +1838,7 @@ function Footer() {
             <div className="mt-6 flex gap-3">
               {/* WhatsApp */}
               <a
-                href="https://wa.me/77075884651"
+                href={whatsappHref()}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="WhatsApp"
@@ -1860,13 +1861,15 @@ function Footer() {
             </div>
 
             {/* Phone number */}
-            <a
-              href="tel:+77075884651"
-              className="mt-4 inline-flex items-center gap-2 text-sm text-slate-500 transition-colors hover:text-primary-600"
-            >
-              <MessageCircle className="h-4 w-4" />
-              +7 707 588 46 51
-            </a>
+            {WHATSAPP_NUMBER && (
+              <a
+                href={whatsappTelHref()}
+                className="mt-4 inline-flex items-center gap-2 text-sm text-slate-500 transition-colors hover:text-primary-600"
+              >
+                <MessageCircle className="h-4 w-4" />
+                {formatWhatsappDisplay()}
+              </a>
+            )}
 
             {/* App badges */}
             <div className="mt-6">

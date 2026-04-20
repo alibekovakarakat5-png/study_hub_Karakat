@@ -11,6 +11,7 @@ import { prisma } from './prisma'
 import { tg } from './telegram'
 import { cronDailyContent, cronDeadlineReminder, checkWarmLeads } from './growthBot'
 import { generateChannelPost } from './growthAI'
+import { sendWeeklyParentSummaries } from './parentNotify'
 import {
   FALLBACK_QUESTIONS, getQuestions, getRandomQuestion,
   buildQuestionText, buildQuestionKeyboard,
@@ -206,8 +207,9 @@ async function sendDailyStats() {
 
 // ── Exported for manual trigger ───────────────────────────────────────────────
 
-export const sendDailyQuestionsNow  = sendDailyQuestions
-export const sendWeeklyReportsNow   = sendWeeklyReports
+export const sendDailyQuestionsNow        = sendDailyQuestions
+export const sendWeeklyReportsNow         = sendWeeklyReports
+export const sendWeeklyParentSummariesNow = sendWeeklyParentSummaries
 
 // ── Register all cron jobs ────────────────────────────────────────────────────
 
@@ -244,6 +246,11 @@ export function startCronJobs() {
     sendWeeklyReports().catch(err => console.error('[Cron] sendWeeklyReports error:', err))
   }, { timezone: 'UTC' })
 
+  // Weekly parent summary — воскресенье 19:30 Almaty (UTC+5) = 14:30 UTC
+  cron.schedule('30 14 * * 0', () => {
+    sendWeeklyParentSummaries().catch(err => console.error('[Cron] sendWeeklyParentSummaries error:', err))
+  }, { timezone: 'UTC' })
+
   // ── @skyllaAI channel auto-posting ──────────────────────────────────────
 
   // Morning post — 10:00 Almaty (UTC+5) = 05:00 UTC
@@ -256,5 +263,5 @@ export function startCronJobs() {
     sendChannelPost().catch(err => console.error('[Cron] channel evening post error:', err))
   }, { timezone: 'UTC' })
 
-  console.log('[Cron] Jobs registered: question @ 09:00, stats @ 08:00, content @ 07:00, deadlines @ 10:00, leads @ 12:00, weekly Sun @ 19:00, channel @ 10:00 + 18:00 (Almaty)')
+  console.log('[Cron] Jobs registered: question @ 09:00, stats @ 08:00, content @ 07:00, deadlines @ 10:00, leads @ 12:00, weekly Sun @ 19:00, parents Sun @ 19:30, channel @ 10:00 + 18:00 (Almaty)')
 }

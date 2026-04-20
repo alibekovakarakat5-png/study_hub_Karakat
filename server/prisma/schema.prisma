@@ -387,6 +387,8 @@ model Class {
   description String?
   teacherId   String
   teacher     User     @relation("TeacherClasses", fields: [teacherId], references: [id], onDelete: Cascade)
+  orgId       String?
+  org         Organization? @relation(fields: [orgId], references: [id], onDelete: SetNull)
   inviteCode  String   @unique
   members     ClassMembership[]
   assignments Assignment[]
@@ -394,6 +396,7 @@ model Class {
   createdAt   DateTime @default(now())
 
   @@index([teacherId])
+  @@index([orgId])
   @@index([inviteCode])
 }
 
@@ -430,6 +433,8 @@ model Assignment {
   class       Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
   teacherId   String
   teacher     User      @relation("TeacherAssignments", fields: [teacherId], references: [id], onDelete: Cascade)
+  orgId       String?
+  org         Organization? @relation(fields: [orgId], references: [id], onDelete: SetNull)
   type        String    // 'test' | 'homework' | 'reading'
   content     Json      // { questions: [] } for test; { text: '' } for others
   dueDate     DateTime?
@@ -438,6 +443,7 @@ model Assignment {
 
   @@index([classId])
   @@index([teacherId])
+  @@index([orgId])
 }
 
 model AssignmentSubmission {
@@ -472,7 +478,7 @@ model StudyAbroadCountry {
   timeline       Json                             // [{ month, action }]
   costs          Json                             // { tuitionUSD, livingUSD, insuranceUSD }
   languageReqs   Json                             // { primary, tests[], courses }
-  mentorWhatsApp String   @default("77075884651")
+  mentorWhatsApp String   @default("")
   isActive       Boolean  @default(true)
   order          Int      @default(0)
   createdAt      DateTime @default(now())
@@ -482,15 +488,25 @@ model StudyAbroadCountry {
 // ── B2B Organization System ───────────────────────────────────────────────────
 
 model Organization {
-  id         String          @id @default(cuid())
-  name       String
-  type       String          // 'tutoring_center' | 'school' | 'corporate'
-  city       String?
-  inviteCode String          @unique
-  ownerId    String
-  owner      User            @relation("OrgOwner", fields: [ownerId], references: [id])
-  members    OrgMembership[]
-  createdAt  DateTime        @default(now())
+  id           String          @id @default(cuid())
+  name         String
+  type         String          // 'tutoring_center' | 'school' | 'corporate'
+  city         String?
+  address      String?
+  bin          String?         // БИН/ИИН для счёт-фактур
+  logoUrl      String?
+  brandColor   String?         // HEX цвет бренда для white-label
+  contactEmail String?
+  contactPhone String?         // WhatsApp центра для родителей
+  website      String?
+  inviteCode   String          @unique
+  ownerId      String
+  owner        User            @relation("OrgOwner", fields: [ownerId], references: [id])
+  members      OrgMembership[]
+  classes      Class[]
+  assignments  Assignment[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt @default(now())
 
   @@index([ownerId])
   @@index([inviteCode])

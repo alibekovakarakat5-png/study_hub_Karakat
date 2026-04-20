@@ -583,11 +583,32 @@ export interface DBOrganization {
   name: string
   type: string           // 'tutoring_center' | 'school' | 'corporate'
   city?: string | null
+  address?: string | null
+  bin?: string | null
+  logoUrl?: string | null
+  brandColor?: string | null
+  contactEmail?: string | null
+  contactPhone?: string | null
+  website?: string | null
   inviteCode: string
   ownerId: string
   myRole?: string        // set when fetched via /mine
   _count?: { members: number }
   createdAt: string
+  updatedAt?: string
+}
+
+export interface OrgUpdatePayload {
+  name?: string
+  type?: 'tutoring_center' | 'school' | 'corporate'
+  city?: string
+  address?: string
+  bin?: string
+  logoUrl?: string
+  brandColor?: string
+  contactEmail?: string
+  contactPhone?: string
+  website?: string
 }
 
 export interface OrgTeacherStats {
@@ -637,6 +658,9 @@ export const orgsApi = {
     api.post<{ ok: true; org: DBOrganization }>('/orgs/join', { inviteCode: code }),
 
   dashboard: (id: string) => api.get<OrgDashboard>(`/orgs/${id}/dashboard`),
+
+  update: (id: string, body: OrgUpdatePayload) =>
+    api.put<{ org: DBOrganization }>(`/orgs/${id}`, body),
 
   removeMember: (orgId: string, userId: string) =>
     api.del<{ ok: boolean }>(`/orgs/${orgId}/members/${userId}`),

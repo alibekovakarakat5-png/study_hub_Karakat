@@ -48,16 +48,15 @@ async function authOrgOwner(orgId: string, userId: string, userRole: string) {
 }
 
 async function buildReportData(orgId: string, start: Date, end: Date) {
-  // Get all teacher IDs in org
+  // Teachers in org (for per-teacher stats)
   const memberships = await prisma.orgMembership.findMany({
     where: { orgId },
     include: { user: { select: { id: true, name: true, email: true } } },
   })
-  const teacherIds = memberships.map((m) => m.userId)
 
-  // Assignments created in period
+  // Assignments created in period (filter by orgId, not teacherId — teachers may belong to multiple orgs)
   const assignments = await prisma.assignment.findMany({
-    where: { teacherId: { in: teacherIds }, createdAt: { gte: start, lte: end } },
+    where: { orgId, createdAt: { gte: start, lte: end } },
     include: {
       class: { select: { name: true } },
       teacher: { select: { name: true } },
@@ -65,10 +64,10 @@ async function buildReportData(orgId: string, start: Date, end: Date) {
     },
   })
 
-  // Submissions in period
+  // Submissions in period for this org only
   const submissions = await prisma.assignmentSubmission.findMany({
     where: {
-      assignment: { teacherId: { in: teacherIds } },
+      assignment:  { orgId },
       submittedAt: { gte: start, lte: end },
     },
     include: {
@@ -77,9 +76,9 @@ async function buildReportData(orgId: string, start: Date, end: Date) {
     },
   })
 
-  // All students in org's classes
+  // All students in this org's classes
   const allClasses = await prisma.class.findMany({
-    where: { teacherId: { in: teacherIds } },
+    where: { orgId },
     include: { _count: { select: { members: true } } },
   })
 
@@ -242,9 +241,9 @@ router.get('/:id/reports/student/:studentId', verifyToken, async (req, res) => {
   })
   if (!student) { res.status(404).json({ error: 'Ученик не найден' }); return }
 
-  // All submissions
+  // Submissions for this student within THIS org only
   const submissions = await prisma.assignmentSubmission.findMany({
-    where: { studentId },
+    where: { studentId, assignment: { orgId } },
     include: {
       assignment: { select: { title: true, type: true, class: { select: { name: true, subject: true } }, createdAt: true } },
     },

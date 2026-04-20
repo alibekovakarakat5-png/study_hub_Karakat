@@ -42,6 +42,7 @@ router.post('/', verifyToken, requireRole('teacher', 'admin'), async (req, res) 
       type,
       content:   content as object,
       teacherId: userId,
+      orgId:     cls.orgId,
       dueDate:   dueDate ? new Date(dueDate) : null,
     },
   })

@@ -86,9 +86,25 @@ router.post('/', verifyToken, requireRole('teacher', 'admin'), async (req, res) 
     res.status(400).json({ error: parsed.error.issues[0]?.message ?? 'Неверные данные' }); return
   }
 
+  const teacherId = String(req.user!.userId)
+
+  // Derive orgId: owned org first, otherwise first joined org.
+  const ownedOrg = await prisma.organization.findFirst({
+    where: { ownerId: teacherId },
+    select: { id: true },
+  })
+  const membership = ownedOrg
+    ? null
+    : await prisma.orgMembership.findFirst({
+        where:   { userId: teacherId },
+        orderBy: { joinedAt: 'asc' },
+        select:  { orgId: true },
+      })
+  const orgId = ownedOrg?.id ?? membership?.orgId ?? null
+
   const inviteCode = await generateUniqueInviteCode()
   const cls = await prisma.class.create({
-    data: { ...parsed.data, teacherId: String(req.user!.userId), inviteCode },
+    data: { ...parsed.data, teacherId, orgId, inviteCode },
     include: { _count: { select: { members: true, assignments: true } } },
   })
 

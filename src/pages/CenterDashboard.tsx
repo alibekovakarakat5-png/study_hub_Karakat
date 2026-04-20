@@ -7,7 +7,8 @@ import {
   LayoutGrid, Users, BookOpen, BarChart3, TrendingUp,
   Copy, Check, UserMinus, Plus, Building2, AlertCircle,
   Loader2, Search, X, RefreshCw, School, Upload, Clock,
-  FileText, Download, ExternalLink
+  FileText, Download, ExternalLink, MessageCircle, Sparkles,
+  Settings, Save
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -18,14 +19,16 @@ import {
   type OrgDashboard,
   type OrgTeacherStats,
   type OrgStudentStats,
+  type OrgUpdatePayload,
 } from '@/lib/api'
 import { useStore } from '@/store/useStore'
 import { PageMeta } from '@/components/PageMeta'
 import Sidebar from '@/components/dashboard/Sidebar'
+import { openWhatsApp, buildOrgActivationMessage } from '@/lib/whatsapp'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type TabId = 'overview' | 'teachers' | 'students' | 'analytics' | 'import' | 'reports'
+type TabId = 'overview' | 'teachers' | 'students' | 'analytics' | 'import' | 'reports' | 'settings'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -177,14 +180,53 @@ function OverviewTab({
   dashboard: OrgDashboard
   onInvite: () => void
 }) {
+  const { user } = useStore()
   const { stats, teachers } = dashboard
 
   const topTeachers = [...teachers]
     .sort((a, b) => (b.avgScore ?? -1) - (a.avgScore ?? -1))
     .slice(0, 3)
 
+  const handleRequestActivation = () => {
+    openWhatsApp(buildOrgActivationMessage({
+      orgName:      dashboard.org.name,
+      orgType:      dashboard.org.type,
+      city:         dashboard.org.city ?? undefined,
+      teacherCount: stats.totalTeachers,
+      studentCount: stats.totalStudents,
+      ownerName:    user?.name,
+    }))
+  }
+
   return (
     <div className="space-y-6">
+      {/* Activation CTA — B2B billing by WhatsApp request */}
+      <div className="relative overflow-hidden rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-5">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles size={16} className="text-emerald-600" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
+                Подключение центра
+              </span>
+            </div>
+            <h3 className="font-semibold text-slate-900 text-lg">
+              Активируйте полный доступ для вашего центра
+            </h3>
+            <p className="text-sm text-slate-600 mt-1">
+              Стоимость зависит от количества учеников и учителей. Напишите нам — подберём условия под ваш центр.
+            </p>
+          </div>
+          <button
+            onClick={handleRequestActivation}
+            className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-5 py-3 rounded-xl text-sm transition-colors whitespace-nowrap shadow-sm"
+          >
+            <MessageCircle size={16} />
+            Написать в WhatsApp
+          </button>
+        </div>
+      </div>
+
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Учителей"  value={stats.totalTeachers}    icon={<Users size={18} />} />
@@ -734,6 +776,304 @@ function ReportsTab({ orgId, students }: { orgId: string; students: OrgStudentSt
   )
 }
 
+// ── Settings Tab ──────────────────────────────────────────────────────────────
+
+type OrgForm = {
+  name: string
+  type: 'tutoring_center' | 'school' | 'corporate'
+  city: string
+  address: string
+  bin: string
+  logoUrl: string
+  brandColor: string
+  contactEmail: string
+  contactPhone: string
+  website: string
+}
+
+function SettingsTab({
+  org,
+  onSaved,
+}: {
+  org: DBOrganization
+  onSaved: (org: DBOrganization) => void
+}) {
+  const initial: OrgForm = {
+    name:         org.name,
+    type:         (org.type as OrgForm['type']) ?? 'tutoring_center',
+    city:         org.city         ?? '',
+    address:      org.address      ?? '',
+    bin:          org.bin          ?? '',
+    logoUrl:      org.logoUrl      ?? '',
+    brandColor:   org.brandColor   ?? '',
+    contactEmail: org.contactEmail ?? '',
+    contactPhone: org.contactPhone ?? '',
+    website:      org.website      ?? '',
+  }
+
+  const [form, setForm]       = useState<OrgForm>(initial)
+  const [saving, setSaving]   = useState(false)
+  const [error, setError]     = useState<string | null>(null)
+  const [savedAt, setSavedAt] = useState<number | null>(null)
+
+  const dirty = (Object.keys(form) as (keyof OrgForm)[]).some((k) => form[k] !== initial[k])
+
+  const update = <K extends keyof OrgForm>(k: K, v: OrgForm[K]) => {
+    setForm((f) => ({ ...f, [k]: v }))
+    setError(null)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.name.trim()) { setError('Название центра обязательно'); return }
+    if (form.brandColor && !/^#[0-9a-fA-F]{6}$/.test(form.brandColor)) {
+      setError('Цвет бренда — HEX, например #6366f1'); return
+    }
+    if (form.contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contactEmail)) {
+      setError('Неверный email'); return
+    }
+
+    setSaving(true)
+    try {
+      const payload: OrgUpdatePayload = {}
+      ;(Object.keys(form) as (keyof OrgForm)[]).forEach((k) => {
+        const v = form[k].trim?.() ?? form[k]
+        if (v !== (initial[k] ?? '')) payload[k] = v as never
+      })
+      const { org: updated } = await orgsApi.update(org.id, payload)
+      onSaved(updated)
+      setSavedAt(Date.now())
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка сохранения')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleReset = () => { setForm(initial); setError(null) }
+
+  const logoPreview = form.logoUrl || null
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
+
+      {/* ── Preview ──────────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div
+            className="w-16 h-16 rounded-2xl flex items-center justify-center overflow-hidden border border-slate-200 flex-shrink-0"
+            style={{ background: form.brandColor || '#eef2ff' }}
+          >
+            {logoPreview ? (
+              <img
+                src={logoPreview}
+                alt={form.name}
+                className="w-full h-full object-cover"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+              />
+            ) : (
+              <Building2 size={26} className="text-white mix-blend-difference" />
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-slate-400 uppercase tracking-wider mb-0.5">Предпросмотр бренда</p>
+            <h3 className="font-semibold text-slate-900 truncate">{form.name || 'Название центра'}</h3>
+            <p className="text-sm text-slate-500 truncate">
+              {form.city}{form.city && form.contactPhone ? ' · ' : ''}{form.contactPhone}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Основное ─────────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+        <h3 className="font-semibold text-slate-900 mb-4">Основное</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="sm:col-span-2">
+            <label className="text-sm font-medium text-slate-700 mb-1.5 block">Название центра *</label>
+            <input
+              type="text"
+              value={form.name}
+              onChange={(e) => update('name', e.target.value)}
+              maxLength={100}
+              required
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-slate-700 mb-1.5 block">Тип</label>
+            <select
+              value={form.type}
+              onChange={(e) => update('type', e.target.value as OrgForm['type'])}
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="tutoring_center">Учебный центр</option>
+              <option value="school">Школа</option>
+              <option value="corporate">Корпоративное обучение</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-slate-700 mb-1.5 block">Город</label>
+            <input
+              type="text"
+              value={form.city}
+              onChange={(e) => update('city', e.target.value)}
+              maxLength={100}
+              placeholder="Алматы"
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Контакты ─────────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+        <h3 className="font-semibold text-slate-900 mb-4">Контакты</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="text-sm font-medium text-slate-700 mb-1.5 block">Email центра</label>
+            <input
+              type="email"
+              value={form.contactEmail}
+              onChange={(e) => update('contactEmail', e.target.value)}
+              maxLength={200}
+              placeholder="hello@center.kz"
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-slate-700 mb-1.5 block">WhatsApp для родителей</label>
+            <input
+              type="tel"
+              value={form.contactPhone}
+              onChange={(e) => update('contactPhone', e.target.value)}
+              maxLength={30}
+              placeholder="+7 777 123 45 67"
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="text-sm font-medium text-slate-700 mb-1.5 block">Сайт</label>
+            <input
+              type="url"
+              value={form.website}
+              onChange={(e) => update('website', e.target.value)}
+              maxLength={300}
+              placeholder="https://center.kz"
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Реквизиты ────────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+        <h3 className="font-semibold text-slate-900 mb-1">Реквизиты</h3>
+        <p className="text-xs text-slate-500 mb-4">Для счёт-фактур и договоров</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="text-sm font-medium text-slate-700 mb-1.5 block">БИН / ИИН</label>
+            <input
+              type="text"
+              value={form.bin}
+              onChange={(e) => update('bin', e.target.value)}
+              maxLength={20}
+              placeholder="123456789012"
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-slate-700 mb-1.5 block">Адрес</label>
+            <input
+              type="text"
+              value={form.address}
+              onChange={(e) => update('address', e.target.value)}
+              maxLength={300}
+              placeholder="ул. Абая 10, офис 5"
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Брендинг ─────────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+        <h3 className="font-semibold text-slate-900 mb-1">Брендинг</h3>
+        <p className="text-xs text-slate-500 mb-4">Логотип и цвет для отчётов родителям</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="sm:col-span-2">
+            <label className="text-sm font-medium text-slate-700 mb-1.5 block">URL логотипа</label>
+            <input
+              type="url"
+              value={form.logoUrl}
+              onChange={(e) => update('logoUrl', e.target.value)}
+              maxLength={500}
+              placeholder="https://cdn.center.kz/logo.png"
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-slate-700 mb-1.5 block">Цвет бренда (HEX)</label>
+            <div className="flex gap-2">
+              <input
+                type="color"
+                value={form.brandColor || '#6366f1'}
+                onChange={(e) => update('brandColor', e.target.value)}
+                className="h-11 w-14 rounded-xl border border-slate-200 cursor-pointer bg-white"
+              />
+              <input
+                type="text"
+                value={form.brandColor}
+                onChange={(e) => update('brandColor', e.target.value)}
+                maxLength={7}
+                placeholder="#6366f1"
+                className="flex-1 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Actions ──────────────────────────────────────────────────────── */}
+      {error && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-xl p-3 text-red-700 text-sm">
+          <AlertCircle size={16} />
+          {error}
+        </div>
+      )}
+
+      <div className="sticky bottom-0 flex items-center justify-between gap-3 bg-white/90 backdrop-blur border-t border-slate-100 py-4 -mx-6 px-6">
+        <div className="text-xs text-slate-500">
+          {savedAt && !dirty && (
+            <span className="flex items-center gap-1.5 text-emerald-600">
+              <Check size={14} /> Сохранено
+            </span>
+          )}
+          {dirty && <span>Есть несохранённые изменения</span>}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleReset}
+            disabled={!dirty || saving}
+            className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Отменить
+          </button>
+          <button
+            type="submit"
+            disabled={!dirty || saving}
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium px-5 py-2.5 rounded-xl text-sm transition-colors"
+          >
+            {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+            Сохранить
+          </button>
+        </div>
+      </div>
+    </form>
+  )
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function CenterDashboard() {
@@ -790,6 +1130,8 @@ export default function CenterDashboard() {
     }
   }
 
+  const isOwner = !!dashboard && !!user && dashboard.org.ownerId === user.id
+
   const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
     { id: 'overview',   label: 'Обзор',     icon: <LayoutGrid size={16} /> },
     { id: 'teachers',   label: 'Учителя',   icon: <Users size={16} /> },
@@ -797,6 +1139,7 @@ export default function CenterDashboard() {
     { id: 'analytics',  label: 'Аналитика', icon: <BarChart3 size={16} /> },
     { id: 'import',     label: 'Импорт',    icon: <Upload size={16} /> },
     { id: 'reports',    label: 'Отчёты',    icon: <FileText size={16} /> },
+    ...(isOwner ? [{ id: 'settings' as TabId, label: 'Настройки', icon: <Settings size={16} /> }] : []),
   ]
 
   return (
@@ -892,6 +1235,12 @@ export default function CenterDashboard() {
               )}
               {activeTab === 'reports' && (
                 <ReportsTab orgId={dashboard.org.id} students={dashboard.students} />
+              )}
+              {activeTab === 'settings' && isOwner && (
+                <SettingsTab
+                  org={dashboard.org}
+                  onSaved={(updated) => setDashboard({ ...dashboard, org: updated })}
+                />
               )}
             </motion.div>
           </>

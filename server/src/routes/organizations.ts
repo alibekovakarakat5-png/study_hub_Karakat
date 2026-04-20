@@ -65,6 +65,16 @@ router.post('/', verifyToken, requireRole('teacher', 'admin'), async (req, res) 
     include: { _count: { select: { members: true } } },
   })
 
+  // Backfill owner's existing unassigned classes/assignments to new org
+  await prisma.class.updateMany({
+    where: { teacherId: userId, orgId: null },
+    data:  { orgId: org.id },
+  })
+  await prisma.assignment.updateMany({
+    where: { teacherId: userId, orgId: null },
+    data:  { orgId: org.id },
+  })
+
   res.status(201).json({ org })
 })
 
@@ -105,6 +115,18 @@ router.post('/join', verifyToken, async (req, res) => {
   if (existing) { res.status(409).json({ error: 'Вы уже в этой организации' }); return }
 
   await prisma.orgMembership.create({ data: { orgId: org.id, userId, role: 'teacher' } })
+
+  // Backfill: attach teacher's unassigned classes/assignments to this org.
+  // Only classes with orgId=null are moved — we never steal from another org.
+  await prisma.class.updateMany({
+    where: { teacherId: userId, orgId: null },
+    data:  { orgId: org.id },
+  })
+  await prisma.assignment.updateMany({
+    where: { teacherId: userId, orgId: null },
+    data:  { orgId: org.id },
+  })
+
   res.json({ ok: true, org })
 })
 
@@ -137,9 +159,9 @@ router.get('/:id/dashboard', verifyToken, async (req, res) => {
     memberships.map(async (m) => {
       const teacherId = m.userId
 
-      // All classes of this teacher
+      // All classes of this teacher IN THIS ORG (critical: isolate by orgId)
       const classes = await prisma.class.findMany({
-        where: { teacherId },
+        where: { teacherId, orgId },
         include: { _count: { select: { members: true, assignments: true } } },
         orderBy: { createdAt: 'desc' },
       })
@@ -152,18 +174,18 @@ router.get('/:id/dashboard', verifyToken, async (req, res) => {
         return sum + cc._count.members
       }, 0)
 
-      // All assignments created by this teacher
+      // Assignments created by this teacher IN THIS ORG
       const assignments = await prisma.assignment.findMany({
-        where: { teacherId },
+        where: { teacherId, orgId },
         orderBy: { createdAt: 'desc' },
         take: 1, // only need latest for activity calculation
       })
-      const assignmentCount = await prisma.assignment.count({ where: { teacherId } })
+      const assignmentCount = await prisma.assignment.count({ where: { teacherId, orgId } })
 
-      // Avg score from all submissions to this teacher's assignments
+      // Avg score from all submissions to this teacher's assignments IN THIS ORG
       const scoreAgg = await prisma.assignmentSubmission.aggregate({
         where: {
-          assignment: { teacherId },
+          assignment: { teacherId, orgId },
           score:      { not: null },
         },
         _avg: { score: true },
@@ -198,11 +220,9 @@ router.get('/:id/dashboard', verifyToken, async (req, res) => {
   )
 
   // ── Build per-student stats ────────────────────────────────────────────────
-  // Collect all class IDs owned by org members
-  const allTeacherIds = memberships.map((m) => m.userId)
-
+  // Only classes that belong to THIS org (not all teacher's classes globally)
   const allClasses = await prisma.class.findMany({
-    where: { teacherId: { in: allTeacherIds } },
+    where: { orgId },
     include: {
       teacher: { select: { id: true, name: true } },
       members: { include: { student: { select: { id: true, name: true, email: true } } } },
@@ -284,6 +304,52 @@ router.get('/:id/dashboard', verifyToken, async (req, res) => {
     teachers,
     students,
   })
+})
+
+// ── PUT /api/orgs/:id  — update org profile (owner only) ──────────────────────
+
+const UpdateOrgSchema = z.object({
+  name:         z.string().min(2).max(100).optional(),
+  type:         z.enum(['tutoring_center', 'school', 'corporate']).optional(),
+  city:         z.string().max(100).optional(),
+  address:      z.string().max(300).optional(),
+  bin:          z.string().max(20).optional(),
+  logoUrl:      z.string().url().max(500).optional().or(z.literal('')),
+  brandColor:   z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().or(z.literal('')),
+  contactEmail: z.string().email().max(200).optional().or(z.literal('')),
+  contactPhone: z.string().max(30).optional(),
+  website:      z.string().url().max(300).optional().or(z.literal('')),
+})
+
+router.put('/:id', verifyToken, async (req, res) => {
+  const orgId  = String(req.params['id'])
+  const userId = String(req.user!.userId)
+
+  const org = await prisma.organization.findUnique({ where: { id: orgId } })
+  if (!org) { res.status(404).json({ error: 'Организация не найдена' }); return }
+  if (org.ownerId !== userId && req.user!.role !== 'admin') {
+    res.status(403).json({ error: 'Нет прав' }); return
+  }
+
+  const parsed = UpdateOrgSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message ?? 'Неверные данные' }); return
+  }
+
+  // Normalize empty strings to null for optional URL/email fields
+  const data: Record<string, string | null> = {}
+  for (const [k, v] of Object.entries(parsed.data)) {
+    if (v === undefined) continue
+    data[k] = v === '' ? null : v
+  }
+
+  const updated = await prisma.organization.update({
+    where: { id: orgId },
+    data,
+    include: { _count: { select: { members: true } } },
+  })
+
+  res.json({ org: updated })
 })
 
 // ── DELETE /api/orgs/:id/members/:userId ──────────────────────────────────────
