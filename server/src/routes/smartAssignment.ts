@@ -8,6 +8,8 @@ import { z } from 'zod'
 import { prisma } from '../lib/prisma'
 import { verifyToken, requireRole } from '../middleware/auth'
 import { getQuestionsForTopics, AVAILABLE_SUBJECTS } from '../data/questionBank'
+import { weakTopicsToIds } from '../lib/topicMatcher'
+import { pickQuestionsFromContent } from '../lib/contentQuestionPicker'
 
 const router = Router()
 
@@ -122,8 +124,40 @@ router.post('/generate', verifyToken, requireRole('teacher', 'admin'), async (re
     .sort((a, b) => b[1] - a[1])
     .map(([topic]) => topic)
 
-  // Get questions from question bank
-  const questions = getQuestionsForTopics(subject, sortedTopics.length > 0 ? sortedTopics : [subject], questionCount)
+  // ── Resolve the class's org so we can prefer the center's own content ────
+  const cls2 = await prisma.class.findUnique({ where: { id: classId }, select: { orgId: true } })
+  const studentOrgId = cls2?.orgId ?? null
+
+  // Map free-form weak topics → canonical taxonomy IDs (drops unknowns).
+  const weakTopicIds = weakTopicsToIds(sortedTopics, subject)
+
+  // First try: pull questions from Content table (org's lessons + global).
+  const fromContent = await pickQuestionsFromContent({
+    subject,
+    weakTopicIds,
+    orgId: studentOrgId,
+    count: questionCount,
+  })
+
+  type AssemblyQuestion = {
+    id: string; text: string; options: string[]; correctAnswer: number
+    explanation?: string; topic: string; subject: string
+  }
+  let questions: AssemblyQuestion[] = fromContent.map((q) => ({
+    id: q.id, text: q.text, options: q.options, correctAnswer: q.correctAnswer,
+    explanation: q.explanation, topic: q.topic, subject: q.subject,
+  }))
+
+  // Fallback: if Content didn't yield enough, top up from the legacy bank.
+  if (questions.length < questionCount) {
+    const need = questionCount - questions.length
+    const fallback = getQuestionsForTopics(
+      subject,
+      sortedTopics.length > 0 ? sortedTopics : [subject],
+      need,
+    )
+    questions = [...questions, ...fallback]
+  }
 
   if (questions.length === 0) {
     res.status(422).json({ error: `Нет вопросов для предмета "${subject}". Доступные: ${AVAILABLE_SUBJECTS.join(', ')}` }); return
@@ -138,7 +172,14 @@ router.post('/generate', verifyToken, requireRole('teacher', 'admin'), async (re
       title,
       description: `Автоматически подобрано по слабым темам класса. Темы: ${sortedTopics.slice(0, 5).join(', ') || 'общие'}`,
       type: 'test',
-      content: { questions: questions.map(q => ({ ...q })), personalized: true, weakTopics: sortedTopics.slice(0, 5) } as object,
+      content: {
+        questions: questions.map(q => ({ ...q })),
+        personalized: true,
+        weakTopics: sortedTopics.slice(0, 5),
+        weakTopicIds,
+        orgContentCount: fromContent.length,
+        fallbackBankCount: Math.max(0, questions.length - fromContent.length),
+      } as object,
       dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // +7 days
     },
   })
@@ -148,7 +189,10 @@ router.post('/generate', verifyToken, requireRole('teacher', 'admin'), async (re
     meta: {
       questionsGenerated: questions.length,
       weakTopicsUsed: sortedTopics.slice(0, 5),
+      weakTopicIds,
       studentsAnalyzed: cls.members.length,
+      orgContentUsed: fromContent.length,
+      fallbackBankUsed: Math.max(0, questions.length - fromContent.length),
     },
   })
 })
