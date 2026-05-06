@@ -10,6 +10,7 @@ import {
   GraduationCap, CheckCircle2, Banknote, BarChart3, Eye, Layers,
   Copy, ClipboardList, FlaskConical, ChevronRight, X, AlertCircle,
   Loader2, Check, Clock, Brain, UserPlus, FileText, LayoutGrid,
+  Sparkles,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { cn } from '@/lib/utils'
@@ -18,6 +19,7 @@ import {
   type DBClass, type DBAssignment, type DBSubmission,
   type AITestVariant, type AssignmentStats, type DBCourse,
   type ClassAnalysis, type ClassScheduleItem,
+  type StudentPreviewResponse,
 } from '@/lib/api'
 
 // ── Animation variants ────────────────────────────────────────────────────────
@@ -37,23 +39,16 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] as const } },
 } satisfies import('framer-motion').Variants
 
-// ── Mock analytics data (kept for analytics/earnings tabs) ───────────────────
+// ── Analytics & earnings data ────────────────────────────────────────────────
+//
+// Until the backend exposes per-teacher enrollment / earnings / rating
+// aggregations, these arrays stay empty. The analytics and earnings tabs
+// render an "Данных пока нет" empty state when the array is empty —
+// fabricated numbers were misleading and have been removed.
 
-const enrollmentData = [
-  { month: 'Сен', students: 12 }, { month: 'Окт', students: 24 },
-  { month: 'Ноя', students: 38 }, { month: 'Дек', students: 51 },
-  { month: 'Янв', students: 68 }, { month: 'Фев', students: 89 },
-]
-const monthlyEarnings = [
-  { month: 'Сен', earnings: 42000 }, { month: 'Окт', earnings: 68000 },
-  { month: 'Ноя', earnings: 95000 }, { month: 'Дек', earnings: 124000 },
-  { month: 'Янв', earnings: 158000 }, { month: 'Фев', earnings: 189000 },
-]
-const ratingDistribution = [
-  { stars: '5★', count: 65, fill: '#16a34a' }, { stars: '4★', count: 20, fill: '#22c55e' },
-  { stars: '3★', count: 10, fill: '#facc15' }, { stars: '2★', count: 3,  fill: '#f97316' },
-  { stars: '1★', count: 2,  fill: '#ef4444' },
-]
+const enrollmentData: Array<{ month: string; students: number }> = []
+const monthlyEarnings: Array<{ month: string; earnings: number }> = []
+const ratingDistribution: Array<{ stars: string; count: number; fill: string }> = []
 
 // ── Tab types ─────────────────────────────────────────────────────────────────
 
@@ -1063,6 +1058,30 @@ function SmartHomeworkTab() {
   const [result, setResult] = useState<{ questionsGenerated: number; weakTopicsUsed: string[] } | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // ── Per-student personal preview ────────────────────────────────────────
+  const [previewLoading, setPreviewLoading] = useState<string | null>(null) // studentId being previewed
+  const [previewModal, setPreviewModal] = useState<StudentPreviewResponse | null>(null)
+  const [previewError, setPreviewError] = useState<string | null>(null)
+
+  const handlePreviewForStudent = async (studentId: string) => {
+    if (!analysis) return
+    setPreviewLoading(studentId)
+    setPreviewError(null)
+    try {
+      const data = await smartAssignmentApi.previewForStudent({
+        classId: analysis.classId,
+        studentId,
+        subject: analysis.subject,
+        questionCount: 8,
+      })
+      setPreviewModal(data)
+    } catch (err) {
+      setPreviewError(err instanceof Error ? err.message : 'Ошибка генерации превью')
+    } finally {
+      setPreviewLoading(null)
+    }
+  }
+
   useEffect(() => {
     classesApi.list().then(r => setClasses(r.classes)).catch(() => {})
   }, [])
@@ -1145,10 +1164,10 @@ function SmartHomeworkTab() {
             <span className="text-sm text-gray-500">{analysis.students.length} учеников</span>
           </div>
 
-          <div className="space-y-3 max-h-64 overflow-y-auto">
+          <div className="space-y-3 max-h-72 overflow-y-auto">
             {analysis.students.map(s => (
-              <div key={s.studentId} className="flex items-start justify-between p-3 bg-gray-50 rounded-xl">
-                <div>
+              <div key={s.studentId} className="flex items-start justify-between gap-3 p-3 bg-gray-50 rounded-xl">
+                <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900">{s.studentName}</p>
                   {s.weakTopics.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1">
@@ -1161,10 +1180,32 @@ function SmartHomeworkTab() {
                     <p className="text-xs text-gray-400 mt-1">Нет данных диагностики</p>
                   )}
                 </div>
-                <span className="text-xs text-gray-400">{s.diagnosticCount} диагн.</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs text-gray-400">{s.diagnosticCount} диагн.</span>
+                  <button
+                    type="button"
+                    onClick={() => handlePreviewForStudent(s.studentId)}
+                    disabled={previewLoading !== null || s.weakTopics.length === 0}
+                    title={s.weakTopics.length === 0 ? 'Сначала ученик должен пройти диагностику' : 'Создать персональное ДЗ'}
+                    className="inline-flex items-center gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white px-2.5 py-1 rounded-lg transition-colors"
+                  >
+                    {previewLoading === s.studentId ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-3.5 h-3.5" />
+                    )}
+                    Персональное ДЗ
+                  </button>
+                </div>
               </div>
             ))}
           </div>
+
+          {previewError && (
+            <div className="flex items-center gap-3 bg-red-50 border border-red-100 rounded-xl p-3 text-red-700 text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" /> {previewError}
+            </div>
+          )}
 
           <button
             onClick={handleGenerate}
@@ -1180,6 +1221,99 @@ function SmartHomeworkTab() {
       {result && (
         <div className="bg-green-50 border border-green-100 rounded-2xl p-4 text-green-700 text-sm">
           ✅ Создано задание из {result.questionsGenerated} вопросов по темам: {result.weakTopicsUsed.join(', ') || 'общие'}
+        </div>
+      )}
+
+      {/* ── Per-student preview modal ──────────────────────────────────── */}
+      {previewModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setPreviewModal(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3 p-5 border-b border-slate-100">
+              <div>
+                <h3 className="font-bold text-slate-900 text-lg">Персональное ДЗ для {previewModal.student.name}</h3>
+                <div className="flex flex-wrap gap-2 mt-2 text-xs">
+                  <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">
+                    {previewModal.meta.questionsGenerated} вопросов
+                  </span>
+                  <span className="bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
+                    из материалов центра: {previewModal.meta.orgContentUsed}
+                  </span>
+                  <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                    из общей базы: {previewModal.meta.globalContentUsed}
+                  </span>
+                  <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full">
+                    fallback: {previewModal.meta.fallbackBankUsed}
+                  </span>
+                  <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">
+                    диагностик: {previewModal.meta.diagnosticsAnalyzed}
+                  </span>
+                </div>
+                {previewModal.meta.weakTopicsRaw.length > 0 && (
+                  <div className="text-xs text-slate-500 mt-2">
+                    Слабые темы:&nbsp;
+                    {previewModal.meta.weakTopicsRaw.map((t, i) => (
+                      <span key={i} className="inline-block bg-red-50 text-red-600 px-2 py-0.5 rounded-full mr-1 mb-1">{t}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewModal(null)}
+                className="text-slate-400 hover:text-slate-700 p-1"
+                aria-label="Закрыть"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-3">
+              {previewModal.questions.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-8">Не удалось подобрать вопросы</p>
+              ) : previewModal.questions.map((q, i) => (
+                <div key={q.id} className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <span className="text-sm font-medium text-slate-900">{i + 1}. {q.text}</span>
+                    <span className={cn(
+                      'text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0',
+                      q.source === 'org'    && 'bg-green-100 text-green-700',
+                      q.source === 'global' && 'bg-blue-100 text-blue-700',
+                      q.source === 'bank'   && 'bg-amber-100 text-amber-700',
+                    )}>
+                      {q.source === 'org' ? 'центр' : q.source === 'global' ? 'общее' : 'банк'}
+                    </span>
+                  </div>
+                  <ul className="space-y-1 text-sm">
+                    {q.options.map((opt, j) => (
+                      <li key={j} className={cn(
+                        'pl-2',
+                        j === q.correctAnswer ? 'text-green-700 font-medium' : 'text-slate-600',
+                      )}>
+                        {String.fromCharCode(65 + j)}) {opt}
+                        {j === q.correctAnswer && ' ✓'}
+                      </li>
+                    ))}
+                  </ul>
+                  {q.explanation && (
+                    <p className="text-xs text-slate-500 italic mt-2">{q.explanation}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t border-slate-100 p-4 flex items-center justify-between">
+              <p className="text-xs text-slate-500">
+                Это превью. Чтобы превратить в реальное задание — скопируйте вопросы или нажмите «Создать задание» (TODO).
+              </p>
+              <button
+                type="button"
+                onClick={() => setPreviewModal(null)}
+                className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg"
+              >
+                Закрыть
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -1436,29 +1570,41 @@ export default function TeacherDashboard() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                   <h3 className="font-semibold text-gray-800 mb-4">Рост учеников</h3>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <LineChart data={enrollmentData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                      <YAxis tick={{ fontSize: 12 }} />
-                      <Tooltip content={<ChartTooltip suffix="уч." />} />
-                      <Line type="monotone" dataKey="students" stroke="#3b82f6" strokeWidth={2.5} dot={{ fill: '#3b82f6', r: 4 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  {enrollmentData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={200}>
+                      <LineChart data={enrollmentData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                        <YAxis tick={{ fontSize: 12 }} />
+                        <Tooltip content={<ChartTooltip suffix="уч." />} />
+                        <Line type="monotone" dataKey="students" stroke="#3b82f6" strokeWidth={2.5} dot={{ fill: '#3b82f6', r: 4 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-[200px] flex items-center justify-center text-gray-400 text-sm">
+                      Данных пока нет — статистика появится после первых записей в классы
+                    </div>
+                  )}
                 </div>
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                   <h3 className="font-semibold text-gray-800 mb-4">Распределение оценок</h3>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={ratingDistribution}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis dataKey="stars" tick={{ fontSize: 12 }} />
-                      <YAxis tick={{ fontSize: 12 }} />
-                      <Tooltip content={<ChartTooltip suffix="%" />} />
-                      <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                        {ratingDistribution.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {ratingDistribution.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={200}>
+                      <BarChart data={ratingDistribution}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <XAxis dataKey="stars" tick={{ fontSize: 12 }} />
+                        <YAxis tick={{ fontSize: 12 }} />
+                        <Tooltip content={<ChartTooltip suffix="%" />} />
+                        <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                          {ratingDistribution.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-[200px] flex items-center justify-center text-gray-400 text-sm">
+                      Данных пока нет — оценки появятся после проверки заданий
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1473,9 +1619,9 @@ export default function TeacherDashboard() {
               <h2 className="text-xl font-bold text-gray-900">Доход</h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[
-                  { label: 'Всего заработано', value: '1 890 000 ₸', icon: Banknote, color: 'text-purple-600', bg: 'bg-purple-50' },
-                  { label: 'В этом месяце',    value: '189 000 ₸',   icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-50' },
-                  { label: 'Транзакций',        value: '47',           icon: FileText, color: 'text-blue-600',   bg: 'bg-blue-50' },
+                  { label: 'Всего заработано', value: '—', icon: Banknote, color: 'text-purple-600', bg: 'bg-purple-50' },
+                  { label: 'В этом месяце',    value: '—', icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-50' },
+                  { label: 'Транзакций',        value: '—', icon: FileText, color: 'text-blue-600',   bg: 'bg-blue-50' },
                 ].map((card, i) => (
                   <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                     <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center mb-3', card.bg)}>
@@ -1488,15 +1634,21 @@ export default function TeacherDashboard() {
               </div>
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                 <h3 className="font-semibold text-gray-800 mb-4">Доход по месяцам</h3>
-                <ResponsiveContainer width="100%" height={220}>
-                  <LineChart data={monthlyEarnings}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-                    <Tooltip content={<ChartTooltip suffix="₸" />} />
-                    <Line type="monotone" dataKey="earnings" stroke="#8b5cf6" strokeWidth={2.5} dot={{ fill: '#8b5cf6', r: 4 }} />
-                  </LineChart>
-                </ResponsiveContainer>
+                {monthlyEarnings.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <LineChart data={monthlyEarnings}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                      <YAxis tick={{ fontSize: 12 }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+                      <Tooltip content={<ChartTooltip suffix="₸" />} />
+                      <Line type="monotone" dataKey="earnings" stroke="#8b5cf6" strokeWidth={2.5} dot={{ fill: '#8b5cf6', r: 4 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-[220px] flex items-center justify-center text-gray-400 text-sm">
+                    Данных пока нет — доход появится после первых платежей через KaspiPay
+                  </div>
+                )}
               </div>
             </div>
           )}
