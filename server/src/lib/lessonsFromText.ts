@@ -8,6 +8,8 @@
 // biologyEntCourse.ts and historyKZCourse.ts so the same UI components and
 // the same smartAssignment logic can consume it.
 
+import { chunkText } from './textChunker'
+
 interface QuizQ {
   q: string
   options: [string, string, string, string]
@@ -168,4 +170,46 @@ function validate(raw: unknown): GeneratedLesson {
     // type contract is always honoured even if the model omits the field.
     topics: [],
   }
+}
+
+// ── Multi-chunk wrapper ─────────────────────────────────────────────────────
+
+/**
+ * Wrap lessonsFromText with auto-chunking for big texts. Splits input via
+ * chunkText, runs the generator per chunk with a 6s pause between calls
+ * (Groq free-tier TPM ≈ 12k), aggregates lessons. Failed chunks are
+ * skipped — does NOT abort the whole run.
+ *
+ * Returns aggregated lessons + per-chunk stats so callers can show progress.
+ */
+export async function lessonsFromTextChunked(
+  text: string,
+  opts: CallOptions & { onChunkStart?: (i: number, total: number) => void } = {},
+): Promise<{
+  lessons: GeneratedLesson[]
+  stats: { chunksTotal: number; chunksOk: number; chunksFailed: number }
+}> {
+  const chunks = chunkText(text)
+  const all: GeneratedLesson[] = []
+  let ok = 0, failed = 0
+
+  for (let i = 0; i < chunks.length; i++) {
+    opts.onChunkStart?.(i + 1, chunks.length)
+    try {
+      const lessons = await lessonsFromText(chunks[i]!, {
+        subject: opts.subject,
+        materialName: opts.materialName ? `${opts.materialName} (часть ${i + 1}/${chunks.length})` : undefined,
+        maxLessons: 4, // smaller per-chunk to fit token budget
+        apiKey: opts.apiKey,
+      })
+      all.push(...lessons)
+      ok++
+    } catch (err) {
+      console.warn(`[lessonsFromTextChunked] chunk ${i + 1} failed: ${err instanceof Error ? err.message : 'unknown'}`)
+      failed++
+    }
+    if (i < chunks.length - 1) await new Promise((r) => setTimeout(r, 6000))
+  }
+
+  return { lessons: all, stats: { chunksTotal: chunks.length, chunksOk: ok, chunksFailed: failed } }
 }

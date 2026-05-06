@@ -144,7 +144,7 @@ export default function MaterialsTab({ orgId }: MaterialsTabProps) {
       }
 
       setStage('generating')
-      setStageDetail('Skylla AI читает текст и формирует уроки. Это займёт 20–60 секунд…')
+      setStageDetail('Skylla AI читает текст и формирует уроки. Большие тексты обрабатываются частями — может занять 1–3 минуты…')
 
       const result = await contentApi.fromText({
         uploadId,
@@ -155,7 +155,11 @@ export default function MaterialsTab({ orgId }: MaterialsTabProps) {
 
       setLastBatch(result.items.map(toPreview))
       setStage('done')
-      setStageDetail(`Создано уроков: ${result.stats.lessons}, вопросов: ${result.stats.totalQuiz}`)
+      const stats = result.stats as { lessons: number; totalQuiz: number; chunksTotal?: number; chunksOk?: number; chunksFailed?: number }
+      const chunkInfo = stats.chunksTotal && stats.chunksTotal > 1
+        ? ` · обработано частей: ${stats.chunksOk}/${stats.chunksTotal}${stats.chunksFailed ? ` (ошибок: ${stats.chunksFailed})` : ''}`
+        : ''
+      setStageDetail(`Создано уроков: ${stats.lessons}, вопросов: ${stats.totalQuiz}${chunkInfo}`)
       // Refresh the full list
       await reload()
       // Reset form (but keep last batch banner)

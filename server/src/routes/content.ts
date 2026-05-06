@@ -6,7 +6,7 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma'
 import { verifyToken, requireRole } from '../middleware/auth'
 import { sanitizeObject } from '../lib/sanitize'
-import { lessonsFromText } from '../lib/lessonsFromText'
+import { lessonsFromText, lessonsFromTextChunked } from '../lib/lessonsFromText'
 import { tagLessonTopics } from '../lib/topicTagger'
 import { extractText } from '../lib/textExtractor'
 import { UPLOADS_DIR } from '../lib/upload'
@@ -371,13 +371,16 @@ router.post('/from-text', verifyToken, requireRole('admin', 'teacher'), async (r
     return
   }
 
-  // ── Generate lessons via Groq ───────────────────────────────────────────────
+  // ── Generate lessons via Groq (auto-chunked for big inputs) ────────────────
   let lessons: Awaited<ReturnType<typeof lessonsFromText>>
+  let chunkStats = { chunksTotal: 0, chunksOk: 0, chunksFailed: 0 }
   try {
-    lessons = await lessonsFromText(sourceText, {
+    const result = await lessonsFromTextChunked(sourceText, {
       subject: parsed.data.subject,
       materialName: parsed.data.materialName,
     })
+    lessons = result.lessons
+    chunkStats = result.stats
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'unknown'
     res.status(502).json({ error: `Не удалось сгенерировать уроки: ${msg}` })
@@ -435,6 +438,7 @@ router.post('/from-text', verifyToken, requireRole('admin', 'teacher'), async (r
     stats: {
       lessons: created.length,
       totalQuiz: lessons.reduce((sum, l) => sum + l.quiz.length, 0),
+      ...chunkStats,
     },
   })
 })
