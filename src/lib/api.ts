@@ -72,6 +72,16 @@ export type ContentType =
   | 'career_test_question'
   | 'cambridge_passage'
   | 'cambridge_question_bank'
+  // ── Rich IELTS practice content ──
+  | 'ielts_reading_passage'
+  | 'ielts_writing_task'
+  | 'ielts_speaking_part1'
+  | 'ielts_speaking_part2'
+  | 'ielts_speaking_part3'
+  | 'ielts_listening_section'
+  | 'ielts_vocab_set'
+  // ── ENT subject course lessons ──
+  | 'ent_lesson'
 
 export interface ContentItem {
   id: string
@@ -79,6 +89,11 @@ export interface ContentItem {
   data: Record<string, unknown>
   active: boolean
   order: number
+  /**
+   * Organization scope. `null` (or absent) = global/platform content visible
+   * to everyone. When set, only members of that org (and admins) see it.
+   */
+  orgId?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -305,17 +320,30 @@ export const contentApi = {
     return api.get<PaginatedResponse<ContentItem>>(`/content/all${q ? `?${q}` : ''}`)
   },
 
-  /** Admin: create new content item */
-  create: (body: { type: ContentType; data: Record<string, unknown>; active?: boolean; order?: number }) =>
+  /** Admin/teacher: create new content item.
+   *  Teachers in an org are auto-scoped to that org; passing orgId is ignored.
+   *  Admins can pass orgId to scope, or omit/null for global. */
+  create: (body: { type: ContentType; data: Record<string, unknown>; active?: boolean; order?: number; orgId?: string | null }) =>
     api.post<{ item: ContentItem }>('/content', body),
 
-  /** Admin: update content item */
-  update: (id: string, body: Partial<{ type: ContentType; data: Record<string, unknown>; active: boolean; order: number }>) =>
+  /** Admin/teacher: update content item. Teachers can only update their org's items. */
+  update: (id: string, body: Partial<{ type: ContentType; data: Record<string, unknown>; active: boolean; order: number; orgId: string | null }>) =>
     api.put<{ item: ContentItem }>(`/content/${id}`, body),
 
   /** Admin: delete content item */
   remove: (id: string) =>
     api.del<{ ok: boolean }>(`/content/${id}`),
+
+  /** Generate lessons from raw text or uploaded file (auto-scoped to caller's org). */
+  fromText: (body: {
+    uploadId?: string
+    text?: string
+    subject?: string
+    materialName?: string
+  }) => api.post<{
+    items: ContentItem[]
+    stats: { lessons: number; totalQuiz: number }
+  }>('/content/from-text', body),
 }
 
 // ── Study Plans API ──────────────────────────────────────────────────────────
@@ -576,6 +604,13 @@ export const aiTestApi = {
   }) => api.post<{ variants: AITestVariant[] }>('/ai/generate-test', body),
 }
 
+// ── AI Chat API (Skylla student mentor) ────────────────────────────────────────
+
+export const aiChatApi = {
+  send: (message: string) =>
+    api.post<{ reply: string; ms: number }>('/ai/chat', { message }),
+}
+
 // ── Organization / B2B Types ───────────────────────────────────────────────────
 
 export interface DBOrganization {
@@ -730,6 +765,32 @@ export interface ClassAnalysis {
   availableSubjects: string[]
 }
 
+export interface PersonalisedQuestion {
+  id: string
+  text: string
+  options: string[]
+  correctAnswer: number
+  explanation?: string
+  topic: string
+  subject: string
+  source: 'org' | 'global' | 'bank'
+}
+
+export interface StudentPreviewResponse {
+  student: { id: string; name: string }
+  questions: PersonalisedQuestion[]
+  meta: {
+    questionsGenerated: number
+    requested: number
+    diagnosticsAnalyzed: number
+    weakTopicsRaw: string[]
+    weakTopicIds: string[]
+    orgContentUsed: number
+    globalContentUsed: number
+    fallbackBankUsed: number
+  }
+}
+
 export const smartAssignmentApi = {
   analyze: (classId: string) =>
     api.get<ClassAnalysis>(`/smart-assignment/analysis/${classId}`),
@@ -738,6 +799,12 @@ export const smartAssignmentApi = {
     api.post<{ assignment: DBAssignment; meta: { questionsGenerated: number; weakTopicsUsed: string[]; studentsAnalyzed: number } }>(
       '/smart-assignment/generate', body
     ),
+
+  /** Per-student preview — returns questions tailored to ONE student's
+   *  diagnostic weak topics, prioritising the center's own content. Does
+   *  NOT persist anything; teacher reviews before publishing. */
+  previewForStudent: (body: { classId: string; studentId: string; subject: string; questionCount?: number }) =>
+    api.post<StudentPreviewResponse>('/smart-assignment/preview-for-student', body),
 }
 
 // ── Parent Link API ───────────────────────────────────────────────────────────

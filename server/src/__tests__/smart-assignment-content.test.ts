@@ -199,11 +199,15 @@ describe('smart-assignment with org content', () => {
       .set('Authorization', `Bearer ${studentFb.token}`)
       .send({ inviteCode })
 
+    // Use a weakTopic that is NOT in our taxonomy at all — guaranteed not
+    // to match any tagged Content row, so the fallback to questionBank
+    // is the only path that can produce questions.
     await prisma.diagnosticResult.create({
       data: {
         userId: studentFb.id,
         subject: 'physics',
-        scores: { score: 3, maxScore: 10, percentage: 30, level: 'low', weakTopics: ['Кинематика'] },
+        scores: { score: 3, maxScore: 10, percentage: 30, level: 'low',
+          weakTopics: ['__test_iso__ Полностью несуществующая тема'] },
       },
     })
 
@@ -215,6 +219,8 @@ describe('smart-assignment with org content', () => {
 
     assert.ok(Array.isArray(res.body.assignment.content.questions))
     assert.ok(res.body.assignment.content.questions.length >= 1)
+    // No taxonomy match → orgContentUsed must be 0 → fallback to bank fired.
     assert.equal(res.body.meta.orgContentUsed, 0)
+    assert.ok(res.body.meta.fallbackBankUsed >= 1, 'expected questionBank fallback')
   })
 })

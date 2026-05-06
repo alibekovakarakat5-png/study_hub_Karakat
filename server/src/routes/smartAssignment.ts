@@ -197,4 +197,119 @@ router.post('/generate', verifyToken, requireRole('teacher', 'admin'), async (re
   })
 })
 
+// ── POST /api/smart-assignment/preview-for-student ──────────────────────────
+//
+// Personalised homework PREVIEW for a single student. Pulls ONLY that
+// student's diagnostic weak topics (not the class aggregate), maps them to
+// taxonomy IDs, then prefers the center's content over the platform bank.
+//
+// Returns the question set + metadata WITHOUT creating a DB assignment, so
+// the teacher can review before deciding to publish. To convert a preview
+// into a real assignment, the teacher follows up with POST /api/assignments
+// using the returned questions.
+
+const PreviewSchema = z.object({
+  classId: z.string(),
+  studentId: z.string(),
+  subject: z.string(),
+  questionCount: z.number().int().min(3).max(30).default(8),
+})
+
+router.post('/preview-for-student', verifyToken, requireRole('teacher', 'admin'), async (req, res) => {
+  const parsed = PreviewSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message ?? 'Неверные данные' }); return
+  }
+
+  const { classId, studentId, subject, questionCount } = parsed.data
+  const userId = String(req.user!.userId)
+
+  // ── Authorise: teacher must own the class (or admin). Student must be
+  // a member of that class. This blocks cross-class / cross-org leaks.
+  const cls = await prisma.class.findUnique({
+    where: { id: classId },
+    include: { members: { where: { studentId }, select: { studentId: true } } },
+  })
+  if (!cls) { res.status(404).json({ error: 'Класс не найден' }); return }
+  if (cls.teacherId !== userId && req.user!.role !== 'admin') {
+    res.status(403).json({ error: 'Нет прав на этот класс' }); return
+  }
+  if (cls.members.length === 0) {
+    res.status(404).json({ error: 'Ученик не состоит в этом классе' }); return
+  }
+
+  // ── Fetch THIS student's diagnostic weak topics only (no aggregation) ──
+  const diagnostics = await prisma.diagnosticResult.findMany({
+    where: { userId: studentId, subject },
+    orderBy: { takenAt: 'desc' },
+    take: 5,
+  })
+
+  const studentWeakTopics: string[] = []
+  for (const d of diagnostics) {
+    const sc = d.scores as { weakTopics?: string[] }
+    if (Array.isArray(sc.weakTopics)) studentWeakTopics.push(...sc.weakTopics)
+  }
+  const uniqueWeakTopics = [...new Set(studentWeakTopics)]
+
+  // Look up student name for the response (UI convenience)
+  const student = await prisma.user.findUnique({
+    where: { id: studentId },
+    select: { name: true },
+  })
+
+  // Map free-form RU topics to taxonomy IDs (drops unknowns)
+  const weakTopicIds = weakTopicsToIds(uniqueWeakTopics, subject)
+
+  // First try: org content + global, prioritised by org membership
+  const fromContent = await pickQuestionsFromContent({
+    subject,
+    weakTopicIds,
+    orgId: cls.orgId,
+    count: questionCount,
+  })
+
+  type Question = {
+    id: string; text: string; options: string[]; correctAnswer: number
+    explanation?: string; topic: string; subject: string
+    source?: 'org' | 'global' | 'bank'
+  }
+  let questions: Question[] = fromContent.map((q) => ({
+    id: q.id, text: q.text, options: q.options, correctAnswer: q.correctAnswer,
+    explanation: q.explanation, topic: q.topic, subject: q.subject,
+    source: q.source === 'org' ? 'org' : 'global',
+  }))
+
+  // Fallback: top up from legacy questionBank if Content didn't yield enough
+  if (questions.length < questionCount) {
+    const need = questionCount - questions.length
+    const fallback = getQuestionsForTopics(
+      subject,
+      uniqueWeakTopics.length > 0 ? uniqueWeakTopics : [subject],
+      need,
+    )
+    for (const q of fallback) {
+      questions.push({ ...q, source: 'bank' })
+    }
+  }
+
+  res.json({
+    student: {
+      id: studentId,
+      name: student?.name ?? '(unknown)',
+    },
+    questions,
+    meta: {
+      questionsGenerated: questions.length,
+      requested: questionCount,
+      diagnosticsAnalyzed: diagnostics.length,
+      weakTopicsRaw: uniqueWeakTopics,
+      weakTopicIds,
+      orgContentUsed: questions.filter((q) => q.source === 'org').length,
+      globalContentUsed: questions.filter((q) => q.source === 'global').length,
+      fallbackBankUsed: questions.filter((q) => q.source === 'bank').length,
+    },
+  })
+})
+
 export default router
