@@ -8,7 +8,9 @@
     "start": "node dist/index.js",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "db:migrate": "prisma migrate dev"
+    "db:migrate": "prisma migrate dev",
+    "test": "node --import tsx --test --test-concurrency=1 src/__tests__/multitenant.test.ts src/__tests__/e2e-center.test.ts src/__tests__/content-isolation.test.ts src/__tests__/from-text.test.ts src/__tests__/topic-matcher.test.ts src/__tests__/smart-assignment-content.test.ts",
+    "test:watch": "node --import tsx --test --watch --test-concurrency=1 src/__tests__/multitenant.test.ts src/__tests__/e2e-center.test.ts src/__tests__/content-isolation.test.ts src/__tests__/from-text.test.ts src/__tests__/topic-matcher.test.ts src/__tests__/smart-assignment-content.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
@@ -41,9 +43,11 @@
     "@types/node": "^22.10.0",
     "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^7.0.11",
+    "@types/supertest": "^6.0.3",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
     "prisma": "^5.22.0",
+    "supertest": "^7.2.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }
