@@ -120,6 +120,27 @@ const QUESTIONS: BankQuestion[] = [
   { id: 'qb-kk-chem-1', subject: 'chemistry', topic: 'Атом құрылысы', text: 'Оттегі атомындағы (Z = 8) протондар саны:', options: ['8', '16', '6', '2'], correctAnswer: 0, explanation: 'Z = 8 → 8 протон', language: 'kk' },
   { id: 'qb-kk-chem-2', subject: 'chemistry', topic: 'Химиялық реакциялар', text: '2H₂ + O₂ → 2H₂O реакциясы:', options: ['Қосылу', 'Ыдырау', 'Алмасу', 'Орын басу'], correctAnswer: 0, explanation: 'Екі зат біріккен — қосылу', language: 'kk' },
   { id: 'qb-kk-chem-3', subject: 'chemistry', topic: 'Органикалық химия', text: 'Алкандардың жалпы формуласы:', options: ['CₙH₂ₙ₊₂', 'CₙH₂ₙ', 'CₙH₂ₙ₋₂', 'CₙHₙ'], correctAnswer: 0, explanation: 'Алкандар — CₙH₂ₙ₊₂', language: 'kk' },
+
+  // ── Math (ru) — 2026-04-14 — NEW topics: Прогрессии, Вероятность, Производная, Системы уравнений, Дроби ──
+  { id: 'qb-ru-math-20260414-1', subject: 'math', topic: 'Прогрессии', text: 'Найдите сумму первых 5 членов арифметической прогрессии, если a₁ = 2 и d = 3.', options: ['40', '20', '30', '35'], correctAnswer: 0, explanation: 'S₅ = (5/2)(2·2 + 4·3) = (5/2)·16 = 40', language: 'ru' },
+  { id: 'qb-ru-math-20260414-2', subject: 'math', topic: 'Прогрессии', text: 'Найдите 5-й член геометрической прогрессии, если b₁ = 2 и q = 3.', options: ['162', '54', '486', '81'], correctAnswer: 0, explanation: 'b₅ = b₁·q⁴ = 2·81 = 162', language: 'ru' },
+  { id: 'qb-ru-math-20260414-3', subject: 'math', topic: 'Вероятность', text: 'В мешке 3 красных и 7 белых шара. Какова вероятность вытащить красный шар?', options: ['3/10', '7/10', '1/3', '3/7'], correctAnswer: 0, explanation: 'P = 3 / (3 + 7) = 3/10 = 0,3', language: 'ru' },
+  { id: 'qb-ru-math-20260414-4', subject: 'math', topic: 'Производная', text: 'Найдите производную функции y = x³.', options: ['3x²', '3x', 'x²', '3'], correctAnswer: 0, explanation: 'По правилу степени: (xⁿ)′ = n·xⁿ⁻¹, поэтому (x³)′ = 3x²', language: 'ru' },
+  { id: 'qb-ru-math-20260414-5', subject: 'math', topic: 'Системы уравнений', text: 'Решите систему: x + y = 7, x − y = 3. Найдите x.', options: ['5', '2', '4', '7'], correctAnswer: 0, explanation: 'Складываем уравнения: 2x = 10, x = 5; подставляем: y = 2', language: 'ru' },
+
+  // ── Math (kk) — 2026-04-14 — NEW topics: Прогрессиялар, Ықтималдық, Туынды, Теңдеулер жүйесі ──────────
+  { id: 'qb-kk-math-20260414-1', subject: 'math', topic: 'Прогрессиялар', text: 'a₁ = 2, d = 3 болса, арифметикалық прогрессияның алғашқы 5 мүшесінің қосындысы:', options: ['40', '20', '30', '35'], correctAnswer: 0, explanation: 'S₅ = (5/2)(2·2 + 4·3) = 40', language: 'kk' },
+  { id: 'qb-kk-math-20260414-2', subject: 'math', topic: 'Прогрессиялар', text: 'b₁ = 2, q = 3. Геометриялық прогрессияның 5-ші мүшесі:', options: ['162', '54', '486', '81'], correctAnswer: 0, explanation: 'b₅ = 2 · 3⁴ = 2 · 81 = 162', language: 'kk' },
+  { id: 'qb-kk-math-20260414-3', subject: 'math', topic: 'Ықтималдық', text: 'Қапшықта 3 қызыл және 7 ақ шар бар. Кездейсоқ бір шар алғандағы қызыл шар алу ықтималдығы:', options: ['3/10', '7/10', '1/3', '3/7'], correctAnswer: 0, explanation: 'P = 3 / (3 + 7) = 3/10', language: 'kk' },
+  { id: 'qb-kk-math-20260414-4', subject: 'math', topic: 'Туынды', text: 'y = x³ функциясының туындысын табыңыз.', options: ['3x²', '3x', 'x²', '3'], correctAnswer: 0, explanation: '(xⁿ)′ = nxⁿ⁻¹ ережесі бойынша: (x³)′ = 3x²', language: 'kk' },
+  { id: 'qb-kk-math-20260414-5', subject: 'math', topic: 'Теңдеулер жүйесі', text: 'x + y = 7, x − y = 3 жүйесін шешіп, x мәнін табыңыз.', options: ['5', '2', '4', '7'], correctAnswer: 0, explanation: 'Теңдеулерді қосса: 2x = 10, x = 5; y = 2', language: 'kk' },
+
+  // ── Math (en) — 2026-04-14 — NEW: first English math questions ───────────────────────────────────────────
+  { id: 'qb-en-math-20260414-1', subject: 'math', topic: 'Progressions', text: 'Find the sum of the first 5 terms of an arithmetic sequence where a₁ = 2 and d = 3.', options: ['40', '20', '30', '35'], correctAnswer: 0, explanation: 'S₅ = (5/2)(2·2 + 4·3) = (5/2)·16 = 40', language: 'en' },
+  { id: 'qb-en-math-20260414-2', subject: 'math', topic: 'Progressions', text: 'Find the 5th term of a geometric sequence where b₁ = 2 and q = 3.', options: ['162', '54', '486', '81'], correctAnswer: 0, explanation: 'b₅ = b₁·q⁴ = 2·3⁴ = 2·81 = 162', language: 'en' },
+  { id: 'qb-en-math-20260414-3', subject: 'math', topic: 'Probability', text: 'A bag contains 3 red and 7 white balls. What is the probability of drawing a red ball at random?', options: ['3/10', '7/10', '1/3', '3/7'], correctAnswer: 0, explanation: 'P = favorable / total = 3 / (3 + 7) = 3/10 = 0.3', language: 'en' },
+  { id: 'qb-en-math-20260414-4', subject: 'math', topic: 'Calculus', text: 'Find the derivative of y = x³.', options: ['3x²', '3x', 'x²', '3'], correctAnswer: 0, explanation: 'Power rule: (xⁿ)′ = n·xⁿ⁻¹, so (x³)′ = 3x²', language: 'en' },
+  { id: 'qb-en-math-20260414-5', subject: 'math', topic: 'Geometry', text: 'What is the area of a circle with radius 5? (Use π ≈ 3.14)', options: ['78.5', '31.4', '25', '15.7'], correctAnswer: 0, explanation: 'A = πr² = 3.14 × 5² = 3.14 × 25 = 78.5', language: 'en' },
 ]
 
 // ── Deduplication ─────────────────────────────────────────────────────────────

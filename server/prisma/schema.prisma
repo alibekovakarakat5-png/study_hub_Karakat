@@ -351,11 +351,17 @@ model Content {
   data      Json     // flexible payload per type
   active    Boolean  @default(true)
   order     Int      @default(0)
+  // orgId scopes content to one organisation. NULL = global/platform content
+  // (visible to everyone). When a center uploads its own materials, every row
+  // gets that center's orgId so other centers cannot see it.
+  orgId     String?
+  org       Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([type, active])
   @@index([createdAt])
+  @@index([orgId, type])
 }
 
 // ── File Uploads ──────────────────────────────────────────────────────────────
@@ -505,6 +511,7 @@ model Organization {
   members      OrgMembership[]
   classes      Class[]
   assignments  Assignment[]
+  contents     Content[]
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt @default(now())
 

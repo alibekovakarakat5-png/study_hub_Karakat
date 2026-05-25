@@ -27,6 +27,7 @@ import referralRoutes      from './routes/referral'
 import classesRoutes       from './routes/classes'
 import assignmentsRoutes   from './routes/assignments'
 import aiTestRoutes        from './routes/aiTest'
+import aiChatRoutes        from './routes/aiChat'
 import orgsRoutes          from './routes/organizations'
 import reportsRoutes       from './routes/reports'
 import smartAssignRoutes   from './routes/smartAssignment'
@@ -99,6 +100,7 @@ app.use('/api/referral',        referralRoutes)
 app.use('/api/classes',        classesRoutes)
 app.use('/api/assignments',    assignmentsRoutes)
 app.use('/api/ai',             aiTestRoutes)
+app.use('/api/ai',             aiChatRoutes)
 app.use('/api/orgs',              orgsRoutes)
 app.use('/api/orgs',              reportsRoutes) // adds /api/orgs/:id/reports/*
 app.use('/api/smart-assignment',  smartAssignRoutes)
