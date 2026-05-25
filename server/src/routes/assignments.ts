@@ -110,17 +110,28 @@ router.post('/:id/submit', verifyToken, async (req, res) => {
   })
   if (existing) { res.status(409).json({ error: 'Вы уже сдали это задание' }); return }
 
-  // Auto-score for tests
+  // Auto-score for tests AND for reading-type AI lessons that carry a quiz.
+  // AI lessons are saved with type='reading', content={ theory, quiz, isLesson:true }.
+  // The student takes the quiz inline (number[] payload), so we grade the same way.
   let score: number | null = null
-  if (assignment.type === 'test') {
-    const content = assignment.content as { questions?: Array<{ correctAnswer: number }> }
+  const contentObj = assignment.content as {
+    questions?: Array<{ correctAnswer: number }>
+    quiz?:      Array<{ correctAnswer: number }>
+    isLesson?:  boolean
+  }
+  const gradedQuestions =
+    assignment.type === 'test'                          ? contentObj.questions :
+    (assignment.type === 'reading' && contentObj.isLesson) ? contentObj.quiz :
+    undefined
+
+  if (gradedQuestions?.length) {
     const studentAnswers = answers as number[]
-    if (Array.isArray(studentAnswers) && content.questions?.length) {
+    if (Array.isArray(studentAnswers)) {
       let correct = 0
-      content.questions.forEach((q, i) => {
+      gradedQuestions.forEach((q, i) => {
         if (studentAnswers[i] === q.correctAnswer) correct++
       })
-      score = Math.round((correct / content.questions.length) * 100)
+      score = Math.round((correct / gradedQuestions.length) * 100)
     }
   }
 

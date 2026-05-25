@@ -53,6 +53,7 @@ import {
 import NotificationDropdown from '@/components/NotificationDropdown'
 import RecommendationsWidget from '@/components/RecommendationsWidget'
 import Sidebar from '@/components/dashboard/Sidebar'
+import LessonRenderer, { InlineMd } from '@/components/LessonRenderer'
 import { useTranslation } from 'react-i18next'
 import {
   coursesApi, classesApi, assignmentsApi,
@@ -733,10 +734,24 @@ function AssignmentTakingModal({ assignment, onClose, onSubmitted }: {
   onClose: () => void
   onSubmitted: () => void
 }) {
-  const content = assignment.content as { questions?: Array<{ id: string; text: string; options: string[] }>, text?: string }
-  const isTest  = assignment.type === 'test'
+  const content = assignment.content as {
+    questions?: Array<{ id: string; text: string; options: string[]; correctAnswer?: number; explanation?: string }>
+    text?: string
+    // AI lesson shape (type === 'reading' with isLesson: true)
+    isLesson?: boolean
+    theory?: string
+    keyFormulas?: { formula: string; name: string }[]
+    quiz?: Array<{ id: string; text: string; options: string[]; correctAnswer?: number; explanation?: string }>
+  }
+  const isTest    = assignment.type === 'test'
+  const isLesson  = !!content.isLesson && Array.isArray(content.quiz)
 
-  const [answers, setAnswers]   = useState<number[]>(Array(content.questions?.length ?? 0).fill(-1))
+  // For lesson mode: phase 'theory' shows the rendered lesson, then 'quiz'
+  const [phase, setPhase] = useState<'theory' | 'quiz'>(isLesson ? 'theory' : 'quiz')
+
+  // Quiz answers — works for both test mode and lesson-quiz mode
+  const quizQuestions = isLesson ? content.quiz ?? [] : content.questions ?? []
+  const [answers, setAnswers]   = useState<number[]>(Array(quizQuestions.length).fill(-1))
   const [textAns, setTextAns]   = useState('')
   const [current, setCurrent]   = useState(0)
   const [submitting, setSubmit] = useState(false)
@@ -746,7 +761,7 @@ function AssignmentTakingModal({ assignment, onClose, onSubmitted }: {
   async function handleSubmit() {
     setSubmit(true)
     try {
-      const payload = isTest ? answers : { text: textAns }
+      const payload = isTest || isLesson ? answers : { text: textAns }
       const res = await assignmentsApi.submit(assignment.id, payload)
       setScore(res.submission.score ?? null)
       setDone(true)
@@ -758,13 +773,22 @@ function AssignmentTakingModal({ assignment, onClose, onSubmitted }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto"
+        className={cn(
+          'bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-y-auto',
+          isLesson ? 'max-w-3xl' : 'max-w-xl'
+        )}
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between p-5 border-b border-gray-100">
+        <div className="flex items-center justify-between p-5 border-b border-gray-100 sticky top-0 bg-white z-10">
           <div>
             <h3 className="font-bold text-gray-900">{assignment.title}</h3>
-            <p className="text-xs text-gray-400 mt-0.5">{isTest ? `Вопрос ${current + 1} из ${content.questions?.length}` : 'Письменная работа'}</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {isLesson && phase === 'theory'
+                ? '📖 Изучение теории'
+                : (isTest || (isLesson && phase === 'quiz'))
+                    ? `Вопрос ${current + 1} из ${quizQuestions.length}`
+                    : 'Письменная работа'}
+            </p>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center"><X className="w-4 h-4 text-gray-500" /></button>
         </div>
@@ -776,24 +800,53 @@ function AssignmentTakingModal({ assignment, onClose, onSubmitted }: {
                 <CheckCircle2 className="w-8 h-8 text-green-600" />
               </div>
               <p className="text-lg font-bold text-gray-900">
-                {isTest && score !== null ? `Результат: ${score}%` : 'Работа сдана!'}
+                {(isTest || isLesson) && score !== null ? `Результат: ${score}%` : 'Работа сдана!'}
               </p>
               <p className="text-sm text-gray-500 mt-1">
-                {isTest && score !== null
+                {(isTest || isLesson) && score !== null
                   ? score >= 80 ? '🎉 Отлично!' : score >= 60 ? '👍 Хорошо!' : '📚 Нужно повторить'
                   : 'Учитель проверит и выставит оценку'}
               </p>
             </div>
-          ) : isTest && content.questions ? (
+          ) : isLesson && phase === 'theory' ? (
+            <>
+              {content.theory && (
+                <div className="rounded-xl bg-gradient-to-br from-purple-50/40 to-blue-50/40 border border-purple-100 p-5 mb-4">
+                  <LessonRenderer markdown={content.theory} />
+                </div>
+              )}
+              {content.keyFormulas && content.keyFormulas.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">🧮 Ключевые формулы</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {content.keyFormulas.map((f, i) => (
+                      <div key={i} className="bg-purple-50 border border-purple-100 rounded-lg px-3 py-2">
+                        <div className="text-sm font-bold text-purple-900"><InlineMd>{f.formula}</InlineMd></div>
+                        <span className="text-xs text-purple-700">{f.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <button
+                onClick={() => setPhase('quiz')}
+                className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2"
+              >
+                <Brain className="w-4 h-4" /> Пройти тест по уроку ({quizQuestions.length} вопрос(а/ов))
+              </button>
+            </>
+          ) : (isTest || isLesson) && quizQuestions.length > 0 ? (
             <>
               {/* Progress bar */}
               <div className="w-full bg-gray-100 rounded-full h-1.5 mb-5">
-                <div className="bg-blue-500 h-1.5 rounded-full transition-all" style={{ width: `${((current + 1) / content.questions.length) * 100}%` }} />
+                <div className="bg-blue-500 h-1.5 rounded-full transition-all" style={{ width: `${((current + 1) / quizQuestions.length) * 100}%` }} />
               </div>
 
-              <p className="font-medium text-gray-900 mb-4 leading-snug">{content.questions[current]?.text}</p>
+              <div className="font-medium text-gray-900 mb-4 leading-snug">
+                <InlineMd>{quizQuestions[current]?.text ?? ''}</InlineMd>
+              </div>
               <div className="space-y-2">
-                {content.questions[current]?.options.map((opt, i) => (
+                {quizQuestions[current]?.options.map((opt, i) => (
                   <button key={i} onClick={() => setAnswers(prev => { const a = [...prev]; a[current] = i; return a })}
                     className={cn(
                       'w-full text-left px-4 py-2.5 rounded-xl border text-sm transition-colors',
@@ -801,7 +854,7 @@ function AssignmentTakingModal({ assignment, onClose, onSubmitted }: {
                         ? 'bg-blue-600 border-blue-600 text-white font-medium'
                         : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300'
                     )}
-                  >{opt}</button>
+                  ><InlineMd>{opt}</InlineMd></button>
                 ))}
               </div>
 
@@ -809,7 +862,7 @@ function AssignmentTakingModal({ assignment, onClose, onSubmitted }: {
                 <button onClick={() => setCurrent(p => Math.max(0, p - 1))} disabled={current === 0}
                   className="px-4 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm disabled:opacity-40 hover:bg-gray-50 transition-colors"
                 >← Назад</button>
-                {current < content.questions.length - 1 ? (
+                {current < quizQuestions.length - 1 ? (
                   <button onClick={() => setCurrent(p => p + 1)} disabled={answers[current] === -1}
                     className="flex-1 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium disabled:opacity-50 hover:bg-blue-700 transition-colors"
                   >Далее →</button>
