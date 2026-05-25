@@ -67,6 +67,7 @@ const TABS: { id: TabId; label: string; icon: React.ComponentType<{ className?: 
 ]
 
 const SUBJECTS: { value: string; label: string }[] = [
+  { value: 'ent-prep',    label: 'Подготовка к ЕНТ' },
   { value: 'math',        label: 'Математика' },
   { value: 'physics',     label: 'Физика' },
   { value: 'chemistry',   label: 'Химия' },
