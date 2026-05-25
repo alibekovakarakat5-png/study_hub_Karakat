@@ -10,9 +10,10 @@ import {
   GraduationCap, CheckCircle2, Banknote, BarChart3, Eye, Layers,
   Copy, ClipboardList, FlaskConical, ChevronRight, X, AlertCircle,
   Loader2, Check, Clock, Brain, UserPlus, FileText, LayoutGrid,
-  Sparkles,
+  Sparkles, Share2,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
+import { openWhatsAppShare, buildClassInviteMessage } from '@/lib/whatsapp'
 import { cn } from '@/lib/utils'
 import {
   classesApi, assignmentsApi, aiTestApi, coursesApi, smartAssignmentApi, scheduleApi,
@@ -154,6 +155,7 @@ function Modal({ open, onClose, title, children }: {
 // ── Classes Tab ───────────────────────────────────────────────────────────────
 
 function ClassesTab({ userId }: { userId: string }) {
+  const teacherName = useStore(s => s.user?.name ?? 'Учитель')
   const [classes, setClasses]           = useState<DBClass[]>([])
   const [loading, setLoading]           = useState(true)
   const [showCreate, setShowCreate]     = useState(false)
@@ -259,6 +261,7 @@ function ClassesTab({ userId }: { userId: string }) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {classes.map(cls => (
             <motion.div key={cls.id} variants={itemVariants}
+              initial="hidden" animate="visible"
               className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all cursor-pointer p-5"
               onClick={() => void selectClass(cls)}
             >
@@ -284,13 +287,32 @@ function ClassesTab({ userId }: { userId: string }) {
 
               <div className="flex items-center justify-between bg-slate-50 rounded-xl px-3 py-2">
                 <span className="font-mono text-sm font-bold text-slate-700 tracking-widest">{cls.inviteCode}</span>
-                <button
-                  onClick={e => { e.stopPropagation(); void copyCode(cls.inviteCode) }}
-                  className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 transition-colors"
-                >
-                  {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  {copied ? 'Скопировано' : 'Копировать'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={e => { e.stopPropagation(); void copyCode(cls.inviteCode) }}
+                    className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 transition-colors"
+                  >
+                    {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copied ? 'Скопировано' : 'Копировать'}
+                  </button>
+                  <span className="text-gray-300">·</span>
+                  <button
+                    onClick={e => {
+                      e.stopPropagation()
+                      const msg = buildClassInviteMessage({
+                        className:   cls.name,
+                        teacherName,
+                        inviteCode:  cls.inviteCode,
+                      })
+                      openWhatsAppShare(msg)
+                    }}
+                    className="flex items-center gap-1 text-xs text-green-600 hover:text-green-700 transition-colors"
+                    title="Поделиться приглашением в WhatsApp"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    WhatsApp
+                  </button>
+                </div>
               </div>
             </motion.div>
           ))}

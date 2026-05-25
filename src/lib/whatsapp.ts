@@ -102,6 +102,39 @@ export function buildOrgActivationMessage(info: {
     .join('\n')
 }
 
+// ── Class invite (teacher → student) ─────────────────────────────────────────
+// Opens WhatsApp WITHOUT a fixed recipient so the teacher picks the contact.
+
+export function openWhatsAppShare(message: string): void {
+  const url = `https://wa.me/?text=${encodeURIComponent(message)}`
+  window.open(url, '_blank')
+}
+
+export function buildClassInviteMessage(opts: {
+  className: string
+  teacherName: string
+  inviteCode: string
+  appUrl?: string
+}): string {
+  const url = opts.appUrl ?? (typeof window !== 'undefined' ? window.location.origin : 'https://studyhub.kz')
+  return [
+    `👋 Привет! Приглашаю тебя в учебный класс на StudyHub`,
+    '',
+    `🏫 *${opts.className}*`,
+    `👨‍🏫 Учитель: ${opts.teacherName}`,
+    '',
+    `🔑 Код доступа: *${opts.inviteCode}*`,
+    '',
+    `📌 Как зайти:`,
+    `1. Открой ${url}/auth`,
+    `2. Зарегистрируйся или войди в свой аккаунт`,
+    `3. На дашборде нажми «Войти в класс»`,
+    `4. Введи код: *${opts.inviteCode}*`,
+    '',
+    `Удачи в подготовке! 🚀`,
+  ].join('\n')
+}
+
 export function buildStudyAbroadMessage(countryName: string): string {
   return [
     '🌍 *Запрос — обучение за рубежом — Study Hub*',
