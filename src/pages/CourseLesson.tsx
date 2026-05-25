@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/store/useStore'
-import { getToken } from '@/lib/api'
+import { getToken, apiUrl } from '@/lib/api'
 import type { LessonBlock, QuizQuestion, FlashCard, CourseData, ModuleData, LessonData } from '@/components/admin/CourseBuilder'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -323,7 +323,7 @@ export default function CourseLesson() {
   // Fetch course data
   useEffect(() => {
     if (!courseId) return
-    fetch(`/api/courses/${courseId}`)
+    fetch(apiUrl(`/api/courses/${courseId}`))
       .then(r => r.json())
       .then(d => {
         setCourse(d.course as CourseData)
@@ -341,7 +341,7 @@ export default function CourseLesson() {
     if (!courseId || !user) return
     const token = getToken()
     if (!token) return
-    fetch(`/api/courses/${courseId}/progress`, {
+    fetch(apiUrl(`/api/courses/${courseId}/progress`), {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.json())
@@ -366,7 +366,7 @@ export default function CourseLesson() {
     if (!token) return
     setCompleting(true)
     try {
-      await fetch(`/api/courses/lessons/${lessonId}/complete`, {
+      await fetch(apiUrl(`/api/courses/lessons/${lessonId}/complete`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ quizScore }),

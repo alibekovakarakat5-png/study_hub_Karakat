@@ -1,3 +1,11 @@
+// ── API base URL ──────────────────────────────────────────────────────────────
+// Empty string in dev → Vite proxy forwards /api to localhost:3001.
+// In prod set VITE_API_URL to the backend's public URL (no trailing slash).
+export const API_BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
+
+/** Prepend the configured backend origin to an `/api/...` path. */
+export const apiUrl = (path: string): string => `${API_BASE}${path}`
+
 // ── Token management ──────────────────────────────────────────────────────────
 
 const TOKEN_KEY = 'studyhub-token'
@@ -19,7 +27,7 @@ export function clearToken(): void {
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const token = getToken()
 
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(apiUrl(`/api${path}`), {
     method,
     headers: {
       'Content-Type': 'application/json',
@@ -393,7 +401,7 @@ export const uploadApi = {
     const form = new FormData()
     form.append('file', file)
     const token = getToken()
-    const res = await fetch('/api/uploads', {
+    const res = await fetch(apiUrl('/api/uploads'), {
       method: 'POST',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: form,

@@ -3,6 +3,7 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Lock, CheckCircle2, Loader2, Eye, EyeOff, ShieldCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { apiUrl } from '@/lib/api'
 
 export default function ResetPassword() {
   const { t } = useTranslation()
@@ -30,7 +31,7 @@ export default function ResetPassword() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/auth/reset-password', {
+      const res = await fetch(apiUrl('/api/auth/reset-password'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, password }),

@@ -27,6 +27,7 @@ import { useStore } from '@/store/useStore'
 import { SUBJECT_NAMES, SUBJECT_COLORS } from '@/types'
 import type { Achievement, DiagnosticResult } from '@/types'
 import { cn, formatDate, minutesToHumanReadable } from '@/lib/utils'
+import { apiUrl } from '@/lib/api'
 
 // ─── Animation Variants ──────────────────────────────────────────────────────
 
@@ -991,7 +992,7 @@ export default function PublicProfile() {
     if (isOwnProfile || !id) return
     setLoadingExternal(true)
     setNotFound(false)
-    fetch(`/api/users/${id}/public`)
+    fetch(apiUrl(`/api/users/${id}/public`))
       .then(r => r.json())
       .then((data: ExternalProfileData & { error?: string }) => {
         if (data.error) { setNotFound(true); return }

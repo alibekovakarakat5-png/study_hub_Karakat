@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronLeft, User, Lock, Check, AlertCircle, Send, Copy, ExternalLink, Gift, Users } from 'lucide-react'
 import { useStore } from '@/store/useStore'
-import { api } from '@/lib/api'
+import { api, apiUrl } from '@/lib/api'
 import { useTranslation } from 'react-i18next'
 
 type Status = { type: 'success' | 'error'; msg: string } | null
@@ -66,7 +66,7 @@ export default function Settings() {
   useEffect(() => {
     const token = localStorage.getItem('studyhub-token')
     if (!token) return
-    fetch('/api/referral/my', {
+    fetch(apiUrl('/api/referral/my'), {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(res => { if (res.ok) return res.json(); throw new Error('fail') })

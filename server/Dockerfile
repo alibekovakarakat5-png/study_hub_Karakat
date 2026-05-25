@@ -35,5 +35,7 @@ RUN mkdir -p uploads
 
 EXPOSE 3001
 
-# Run migrations then start server
-CMD ["node", "dist/index.js"]
+# Push the Prisma schema to the database (idempotent: no-op when schema already
+# matches), then start the server. Use --accept-data-loss for first-deploy
+# bootstrap; switch to `prisma migrate deploy` once a migrations folder exists.
+CMD ["sh", "-c", "npx prisma db push --skip-generate --accept-data-loss && node dist/index.js"]

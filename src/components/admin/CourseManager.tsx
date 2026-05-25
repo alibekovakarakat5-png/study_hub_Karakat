@@ -7,7 +7,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { getToken } from '@/lib/api'
+import { getToken, apiUrl } from '@/lib/api'
 import CourseBuilderComponent from '@/components/admin/CourseBuilder'
 import type { CourseData } from '@/components/admin/CourseBuilder'
 
@@ -32,7 +32,7 @@ export default function CourseManager() {
   const fetchCourses = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/courses', { headers: authHeader() })
+      const res = await fetch(apiUrl('/api/courses'), { headers: authHeader() })
       const data = await res.json()
       setCourses((data.courses ?? []) as CourseData[])
     } catch { /* offline */ }
@@ -67,7 +67,7 @@ export default function CourseManager() {
       return
     }
     setDeleteConfirmId(null)
-    await fetch(`/api/courses/${id}`, { method: 'DELETE', headers: authHeader() })
+    await fetch(apiUrl(`/api/courses/${id}`), { method: 'DELETE', headers: authHeader() })
     await fetchCourses()
   }
 

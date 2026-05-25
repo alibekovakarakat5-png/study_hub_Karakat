@@ -17,7 +17,7 @@ import {
   Gift,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
-import { getToken } from '@/lib/api'
+import { getToken, apiUrl } from '@/lib/api'
 import type { UserRole } from '@/types'
 import { useTranslation } from 'react-i18next'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
@@ -167,7 +167,7 @@ export default function Auth() {
       if (referralCode) {
         try {
           const token = getToken()
-          await fetch('/api/referral/apply', {
+          await fetch(apiUrl('/api/referral/apply'), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
