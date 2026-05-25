@@ -117,21 +117,23 @@ export function buildClassInviteMessage(opts: {
   appUrl?: string
 }): string {
   const url = opts.appUrl ?? (typeof window !== 'undefined' ? window.location.origin : 'https://studyhub.kz')
+  // Single-codepoint emojis only — ZWJ sequences (e.g. 👨‍🏫) render as
+  // tofu boxes on older WhatsApp / Android emoji fonts.
   return [
-    `👋 Привет! Приглашаю тебя в учебный класс на StudyHub`,
+    `Привет! Приглашаю тебя в учебный класс на StudyHub 📚`,
     '',
-    `🏫 *${opts.className}*`,
-    `👨‍🏫 Учитель: ${opts.teacherName}`,
+    `Класс: *${opts.className}*`,
+    `Учитель: ${opts.teacherName}`,
     '',
-    `🔑 Код доступа: *${opts.inviteCode}*`,
+    `Код доступа: *${opts.inviteCode}*`,
     '',
-    `📌 Как зайти:`,
+    `Как зайти:`,
     `1. Открой ${url}/auth`,
     `2. Зарегистрируйся или войди в свой аккаунт`,
     `3. На дашборде нажми «Войти в класс»`,
     `4. Введи код: *${opts.inviteCode}*`,
     '',
-    `Удачи в подготовке! 🚀`,
+    `Удачи в подготовке!`,
   ].join('\n')
 }
 
