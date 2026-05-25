@@ -429,69 +429,90 @@ export async function generateLesson(params: {
   subject: string
   difficulty: 'easy' | 'medium' | 'hard'
   quizCount: number
-}): Promise<{ lesson: AILesson }> {
-  if (!GROQ_API_KEY) throw new Error('GROQ_API_KEY not set')
+}): Promise<{ lesson: AILesson; provider: string }> {
+  const { callLLM } = await import('./llmProviders')
 
   const subjectLabel = SUBJECT_LABELS[params.subject] ?? params.subject
   const diffLabel    = DIFFICULTY_LABELS[params.difficulty] ?? DIFFICULTY_LABELS.medium
   const n            = Math.max(3, Math.min(10, params.quizCount))
 
-  const systemPrompt = `Ты — опытный казахстанский учитель. Твоя задача — сгенерировать ОДИН учебный урок по заданной теме для подготовки к ЕНТ.
+  const systemPrompt = `Ты — опытный казахстанский учитель ЕНТ. Сгенерируй ОДИН учебный урок по заданной теме.
 
-СТРОГИЕ ПРАВИЛА:
-1. Ответ ТОЛЬКО в формате JSON — никакого текста до или после JSON
-2. theory — структурированная теория в формате Markdown (заголовки ##, списки, выделение **жирным**, формулы). Длина 400–800 слов
-3. theory должна объяснять тему с нуля: определения, основные формулы/правила, 2–3 примера с решением
-4. keyFormulas — массив 3–6 ключевых формул/правил (каждое: { "formula": "...", "name": "..." })
-5. quiz — ровно ${n} вопросов в конце урока для самопроверки
-6. Каждый вопрос: 4 варианта ответа (options: string[4]), correctAnswer — индекс (0-3), explanation — краткое объяснение
-7. id вопросов: "q1", "q2", ..., "q${n}"
+ФОРМАТ:
+- Ответ ТОЛЬКО валидный JSON, никакого текста вокруг
+- theory: Markdown 400–800 слов (## заголовки, **жирный**, списки, формулы)
+- theory покрывает: определения → ключевые формулы → 2–3 примера С ПОЛНЫМ РЕШЕНИЕМ
+- keyFormulas: 3–6 объектов { "formula": "...", "name": "..." }
+- quiz: РОВНО ${n} вопросов в конце для самопроверки
+- Каждый вопрос: { "id":"qN", "text", "options":["A) ...","B) ...","C) ...","D) ..."], "correctAnswer":0..3, "explanation" }
 
-ФОРМАТ ОТВЕТА (только JSON):
+ПРАВИЛА КАЧЕСТВА КВИЗА (КРИТИЧНО):
+✗ ЗАПРЕЩЕНО: тавтологические вопросы где ответ повторяет термин из вопроса
+   Плохо:  "Что такое знаменатель дроби?" → ответ "Знаменатель"
+   Хорошо: "В дроби 7/12 какое число — знаменатель?" → ответ "12"
+✗ ЗАПРЕЩЕНО: вопросы на одно слово без контекста ("Числитель?", "Производная?")
+✗ ЗАПРЕЩЕНО: дистракторы (неправильные варианты) из не относящихся к теме областей
+   Плохо: вариантами к вопросу про дроби давать "Дискриминант", "Корень уравнения"
+   Хорошо: давать близкие по смыслу варианты ("числитель", "знаменатель", "числовая запись", "результат деления")
+✓ Вопрос должен требовать ПРИМЕНЕНИЯ знаний, не просто узнавания слова
+✓ Каждый вопрос → конкретная задача или ситуация с числами/буквами/формулой
+✓ Дистракторы должны быть правдоподобными (типичные ошибки школьников)
+✓ explanation — краткое объяснение ПОЧЕМУ этот ответ правильный (а не просто повторение ответа)
+
+ФОРМАТ ОТВЕТА:
 {"lesson":{"title":"...","theory":"## ...","keyFormulas":[{"formula":"...","name":"..."}],"quiz":[{"id":"q1","text":"...","options":["A) ...","B) ...","C) ...","D) ..."],"correctAnswer":0,"explanation":"..."}]}}`
 
   const userPrompt = `Предмет: ${subjectLabel}
 Тема урока: ${params.topic}
 Уровень сложности: ${diffLabel}
-Количество вопросов для самопроверки: ${n}
+Вопросов для самопроверки: ${n}
 
-Сгенерируй один полный урок. Только JSON.`
+Сгенерируй один полный урок. Только JSON. Помни правила качества квиза.`
 
-  const res = await fetch(GROQ_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type':  'application/json',
-      'Authorization': `Bearer ${GROQ_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model:       GROQ_MODEL,
-      max_tokens:  4000,
-      temperature: 0.7,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user',   content: userPrompt   },
-      ],
-    }),
+  const result = await callLLM<{ lesson: AILesson }>({
+    system:      systemPrompt,
+    user:        userPrompt,
+    maxTokens:   4000,
+    temperature: 0.5,
   })
 
-  if (!res.ok) throw new Error(`Groq error: ${res.status}`)
-
-  const json = await res.json() as { choices: Array<{ message: { content: string } }> }
-  const raw  = json.choices[0]?.message?.content ?? ''
-  const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
-
-  let parsed: { lesson: AILesson }
-  try {
-    parsed = JSON.parse(cleaned) as { lesson: AILesson }
-  } catch {
-    throw new Error('AI вернул некорректный JSON — попробуйте ещё раз')
-  }
-
-  if (!parsed.lesson || !parsed.lesson.theory || !Array.isArray(parsed.lesson.quiz)) {
+  if (!result.json.lesson || !result.json.lesson.theory || !Array.isArray(result.json.lesson.quiz)) {
     throw new Error('AI вернул неполный ответ — попробуйте ещё раз')
   }
 
-  return parsed
+  // ── Quality validation: detect tautological questions ────────────────────
+  const lesson = result.json.lesson
+  const filteredQuiz = lesson.quiz.filter(q => !isTautological(q))
+  if (filteredQuiz.length < lesson.quiz.length) {
+    console.warn(`[generateLesson] Filtered ${lesson.quiz.length - filteredQuiz.length} tautological question(s)`)
+    lesson.quiz = filteredQuiz
+  }
+  if (lesson.quiz.length === 0) {
+    throw new Error('AI сгенерировал только тавтологические вопросы — попробуйте ещё раз')
+  }
+
+  return { lesson, provider: result.provider }
+}
+
+// ── Quality filter: catch the "what is X? answer: X" pattern ─────────────────
+//
+// Splits question text into significant words; if the correct answer is exactly
+// one of those words (case-insensitive, no punctuation), it's tautological.
+function isTautological(q: AILessonQuiz): boolean {
+  const correctText = (q.options[q.correctAnswer] ?? '')
+    .replace(/^[A-DА-Г]\)\s*/, '')          // drop "A) " prefix
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .trim()
+    .toLowerCase()
+  if (correctText.length < 2 || correctText.length > 30) return false
+  const correctWords = correctText.split(/\s+/).filter(w => w.length > 2)
+  if (correctWords.length === 0) return false
+
+  const qText = (q.text ?? '')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .toLowerCase()
+  // Tautology if every word of the correct answer appears in the question
+  return correctWords.every(w => qText.includes(w))
 }
 
 export async function generateTest(params: {

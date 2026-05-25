@@ -157,29 +157,58 @@ router.post('/generate-lesson', verifyToken, requireRole('teacher', 'admin'), as
   const { topic, subject, difficulty, quizCount, forceFresh } = parsed.data
   const topicKey = normalizeTopic(topic)
 
-  // ── 1. Try cache ─────────────────────────────────────────────────────────
+  // Lightweight tautology check for cached entries (cache pre-validation).
+  // The full filter lives in growthAI.ts; we just need a quick rejection here.
+  function looksTautological(lesson: unknown): boolean {
+    type Q = { text?: string; options?: string[]; correctAnswer?: number }
+    type L = { quiz?: Q[] }
+    const l = lesson as L
+    if (!Array.isArray(l?.quiz)) return false
+    for (const q of l.quiz) {
+      if (!q.text || !Array.isArray(q.options) || typeof q.correctAnswer !== 'number') continue
+      const ans = (q.options[q.correctAnswer] ?? '')
+        .replace(/^[A-DА-Г]\)\s*/, '')
+        .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+        .toLowerCase()
+        .trim()
+      const qt = q.text.replace(/[^\p{L}\p{N}\s]/gu, ' ').toLowerCase()
+      const ansWords = ans.split(/\s+/).filter(w => w.length > 2)
+      if (ansWords.length > 0 && ansWords.every(w => qt.includes(w))) return true
+    }
+    return false
+  }
+
+  // ── 1. Try cache (drop entries that fail quality check) ──────────────────
   if (!forceFresh && topicKey.length > 0) {
     const hit = await prisma.aILessonCache.findUnique({
       where: { subject_difficulty_quizCount_topicKey: { subject, difficulty, quizCount, topicKey } },
     })
     if (hit) {
-      await prisma.aILessonCache.update({
-        where: { id: hit.id },
-        data:  { hitCount: { increment: 1 }, lastHitAt: new Date() },
-      })
-      res.json({
-        lesson:    hit.lesson,
-        cached:    true,
-        hitCount:  hit.hitCount + 1,
-        firstSeen: hit.createdAt,
-      })
-      return
+      if (looksTautological(hit.lesson)) {
+        // Bad cache — silently delete and regenerate fresh
+        console.warn(`[lesson-cache] dropping tautological entry id=${hit.id} topic="${hit.topicOriginal}"`)
+        await prisma.aILessonCache.delete({ where: { id: hit.id } }).catch(() => {})
+        // fall through to generation
+      } else {
+        await prisma.aILessonCache.update({
+          where: { id: hit.id },
+          data:  { hitCount: { increment: 1 }, lastHitAt: new Date() },
+        })
+        res.json({
+          lesson:    hit.lesson,
+          cached:    true,
+          provider:  'cache',
+          hitCount:  hit.hitCount + 1,
+          firstSeen: hit.createdAt,
+        })
+        return
+      }
     }
   }
 
-  // ── 2. Generate via Groq ─────────────────────────────────────────────────
+  // ── 2. Generate via provider chain (Anthropic → Gemini → Groq) ───────────
   try {
-    const { lesson } = await generateLesson({ topic, subject, difficulty, quizCount })
+    const { lesson, provider } = await generateLesson({ topic, subject, difficulty, quizCount })
 
     // ── 3. Cache (best-effort — don't fail request if cache write breaks) ──
     if (topicKey.length > 0) {
@@ -201,7 +230,7 @@ router.post('/generate-lesson', verifyToken, requireRole('teacher', 'admin'), as
       } catch { /* swallow — cache is non-critical */ }
     }
 
-    res.json({ lesson, cached: false })
+    res.json({ lesson, cached: false, provider })
   } catch (e) {
     res.status(500).json({ error: e instanceof Error ? e.message : 'Ошибка генерации' })
   }
