@@ -118,14 +118,33 @@ router.post('/generate-test', verifyToken, requireRole('teacher', 'admin'), asyn
 
 // ── POST /api/ai/generate-lesson ─────────────────────────────────────────────
 // Teacher describes a topic → AI generates one full lesson (theory + quiz).
-// The lesson is returned to the client only — nothing is stored. The teacher
-// reviews / edits, then publishes via POST /api/assignments with type='reading'.
+//
+// CACHE: looked up in AILessonCache by (subject, difficulty, quizCount, topicKey)
+// where topicKey is a normalized form of the topic. On hit we return the cached
+// lesson and increment hitCount; on miss we call Groq, store, return. This way
+// the same topic across teachers stops burning tokens.
+//
+// Pass `forceFresh: true` to skip cache (e.g. for regenerate button).
+
+// Normalize topic for cache lookups: lowercase, strip punctuation/extra spaces,
+// dedupe & sort meaningful words → stable hash-friendly key.
+function normalizeTopic(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]+/gu, ' ')   // drop punctuation
+    .split(/\s+/)
+    .filter(w => w.length > 1)             // drop single-letter/empty
+    .sort()
+    .join(' ')
+    .slice(0, 240)                          // cap length for index
+}
 
 const GenerateLessonSchema = z.object({
   topic:      z.string().min(3).max(200),
   subject:    z.string().min(1),
   difficulty: z.enum(['easy', 'medium', 'hard']).default('medium'),
   quizCount:  z.number().int().min(3).max(10).default(5),
+  forceFresh: z.boolean().optional().default(false),
 })
 
 router.post('/generate-lesson', verifyToken, requireRole('teacher', 'admin'), async (req, res) => {
@@ -134,12 +153,80 @@ router.post('/generate-lesson', verifyToken, requireRole('teacher', 'admin'), as
     res.status(400).json({ error: parsed.error.issues[0]?.message ?? 'Неверные данные' }); return
   }
 
+  const userId = String(req.user!.userId)
+  const { topic, subject, difficulty, quizCount, forceFresh } = parsed.data
+  const topicKey = normalizeTopic(topic)
+
+  // ── 1. Try cache ─────────────────────────────────────────────────────────
+  if (!forceFresh && topicKey.length > 0) {
+    const hit = await prisma.aILessonCache.findUnique({
+      where: { subject_difficulty_quizCount_topicKey: { subject, difficulty, quizCount, topicKey } },
+    })
+    if (hit) {
+      await prisma.aILessonCache.update({
+        where: { id: hit.id },
+        data:  { hitCount: { increment: 1 }, lastHitAt: new Date() },
+      })
+      res.json({
+        lesson:    hit.lesson,
+        cached:    true,
+        hitCount:  hit.hitCount + 1,
+        firstSeen: hit.createdAt,
+      })
+      return
+    }
+  }
+
+  // ── 2. Generate via Groq ─────────────────────────────────────────────────
   try {
-    const { lesson } = await generateLesson(parsed.data)
-    res.json({ lesson })
+    const { lesson } = await generateLesson({ topic, subject, difficulty, quizCount })
+
+    // ── 3. Cache (best-effort — don't fail request if cache write breaks) ──
+    if (topicKey.length > 0) {
+      try {
+        await prisma.aILessonCache.upsert({
+          where:  { subject_difficulty_quizCount_topicKey: { subject, difficulty, quizCount, topicKey } },
+          create: {
+            subject, difficulty, quizCount, topicKey,
+            topicOriginal: topic,
+            lesson:        lesson as unknown as object,
+            createdBy:     userId,
+          },
+          update: {
+            // If two teachers raced — keep first, just bump hit
+            hitCount:  { increment: 1 },
+            lastHitAt: new Date(),
+          },
+        })
+      } catch { /* swallow — cache is non-critical */ }
+    }
+
+    res.json({ lesson, cached: false })
   } catch (e) {
     res.status(500).json({ error: e instanceof Error ? e.message : 'Ошибка генерации' })
   }
+})
+
+// ── GET /api/ai/lesson-cache/stats — admin-style overview ────────────────────
+
+router.get('/lesson-cache/stats', verifyToken, requireRole('teacher', 'admin'), async (_req, res) => {
+  const [total, topHits] = await Promise.all([
+    prisma.aILessonCache.count(),
+    prisma.aILessonCache.findMany({
+      orderBy: { hitCount: 'desc' },
+      take: 10,
+      select: { topicOriginal: true, subject: true, difficulty: true, hitCount: true, createdAt: true },
+    }),
+  ])
+  const totalHits = await prisma.aILessonCache.aggregate({ _sum: { hitCount: true } })
+  const totalGenerations = total
+  const totalReuses = (totalHits._sum.hitCount ?? 0) - total // first save counts as 1
+  res.json({
+    totalCached:        total,
+    totalReuses:        Math.max(0, totalReuses),
+    tokensSavedEst:     Math.max(0, totalReuses) * 4000, // rough: ~4k tokens per lesson
+    topReused:          topHits,
+  })
 })
 
 export default router
