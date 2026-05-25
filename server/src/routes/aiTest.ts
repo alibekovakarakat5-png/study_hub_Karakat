@@ -140,7 +140,7 @@ function normalizeTopic(raw: string): string {
 }
 
 const GenerateLessonSchema = z.object({
-  topic:      z.string().min(3).max(200),
+  topic:      z.string().min(3).max(800),   // allow detailed multi-section topics
   subject:    z.string().min(1),
   difficulty: z.enum(['easy', 'medium', 'hard']).default('medium'),
   quizCount:  z.number().int().min(3).max(10).default(5),

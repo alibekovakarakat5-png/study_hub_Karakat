@@ -49,10 +49,11 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export const api = {
-  get:  <T>(path: string)                   => request<T>('GET',    path),
-  post: <T>(path: string, body?: unknown)   => request<T>('POST',   path, body),
-  put:  <T>(path: string, body?: unknown)   => request<T>('PUT',    path, body),
-  del:  <T>(path: string)                   => request<T>('DELETE', path),
+  get:   <T>(path: string)                   => request<T>('GET',    path),
+  post:  <T>(path: string, body?: unknown)   => request<T>('POST',   path, body),
+  put:   <T>(path: string, body?: unknown)   => request<T>('PUT',    path, body),
+  patch: <T>(path: string, body?: unknown)   => request<T>('PATCH',  path, body),
+  del:   <T>(path: string)                   => request<T>('DELETE', path),
 }
 
 // ── Content API helpers ────────────────────────────────────────────────────────
@@ -635,7 +636,34 @@ export const aiLessonApi = {
     subject: string
     difficulty: 'easy' | 'medium' | 'hard'
     quizCount: number
-  }) => api.post<{ lesson: AILesson }>('/ai/generate-lesson', body),
+  }) => api.post<{ lesson: AILesson; cached?: boolean; provider?: string }>('/ai/generate-lesson', body),
+}
+
+// ── Teacher Lesson Drafts (personal library) ──────────────────────────────────
+
+export interface LessonDraftMeta {
+  id:                    string
+  title:                 string
+  topic:                 string
+  subject:               string
+  difficulty:            'easy' | 'medium' | 'hard'
+  publishedAssignmentId: string | null
+  createdAt:             string
+  updatedAt:             string
+}
+
+export interface LessonDraftFull extends LessonDraftMeta {
+  lesson: AILesson
+}
+
+export const lessonDraftsApi = {
+  list:   () => api.get<{ drafts: LessonDraftMeta[] }>('/ai/drafts'),
+  get:    (id: string) => api.get<{ draft: LessonDraftFull }>(`/ai/drafts/${id}`),
+  create: (body: { title: string; topic: string; subject: string; difficulty: string; lesson: AILesson }) =>
+    api.post<{ draft: LessonDraftFull }>('/ai/drafts', body),
+  update: (id: string, body: { title?: string; lesson?: AILesson; publishedAssignmentId?: string | null }) =>
+    api.patch<{ draft: LessonDraftFull }>(`/ai/drafts/${id}`, body),
+  delete: (id: string) => api.del<{ ok: boolean }>(`/ai/drafts/${id}`),
 }
 
 // ── AI Chat API (Skylla student mentor) ────────────────────────────────────────

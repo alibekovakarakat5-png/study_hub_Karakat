@@ -75,6 +75,9 @@ model User {
   // Organization (B2B)
   ownedOrgs         Organization[]        @relation("OrgOwner")
   orgMemberships    OrgMembership[]
+
+  // AI lesson drafts (teacher's personal library)
+  lessonDrafts      TeacherLessonDraft[]  @relation("TeacherLessonDrafts")
 }
 
 model DiagnosticResult {
@@ -388,6 +391,32 @@ model AILessonCache {
   @@unique([subject, difficulty, quizCount, topicKey])
   @@index([subject])
   @@index([hitCount])
+}
+
+// ── Teacher Lesson Drafts (personal library) ─────────────────────────────────
+//
+// When a teacher generates an AI lesson, they can save it to their personal
+// library before publishing to a class. This lets them:
+//   - keep work-in-progress lessons
+//   - review previously-generated material later
+//   - delete experiments they don't want
+// Published lessons live as Assignment rows in their class — drafts are pure
+// teacher property until they say "Publish".
+
+model TeacherLessonDraft {
+  id        String   @id @default(cuid())
+  teacherId String
+  teacher   User     @relation("TeacherLessonDrafts", fields: [teacherId], references: [id], onDelete: Cascade)
+  title     String
+  topic     String                                // original prompt topic
+  subject   String                                // 'math', 'physics', ...
+  difficulty String   @default("medium")
+  lesson    Json                                  // { theory, keyFormulas, quiz }
+  publishedAssignmentId String?                   // set if teacher later published
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([teacherId, createdAt])
 }
 
 // ── File Uploads ──────────────────────────────────────────────────────────────

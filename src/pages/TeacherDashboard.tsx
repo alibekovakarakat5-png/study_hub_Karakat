@@ -17,11 +17,13 @@ import { openWhatsAppShare, buildClassInviteMessage } from '@/lib/whatsapp'
 import LessonRenderer, { InlineMd } from '@/components/LessonRenderer'
 import { cn } from '@/lib/utils'
 import {
-  classesApi, assignmentsApi, aiTestApi, aiLessonApi, coursesApi, smartAssignmentApi, scheduleApi,
+  classesApi, assignmentsApi, aiTestApi, aiLessonApi, lessonDraftsApi,
+  coursesApi, smartAssignmentApi, scheduleApi,
   type DBClass, type DBAssignment, type DBSubmission,
   type AITestVariant, type AILesson, type AssignmentStats, type DBCourse,
   type ClassAnalysis, type ClassScheduleItem,
   type StudentPreviewResponse,
+  type LessonDraftMeta,
 } from '@/lib/api'
 
 // ── Animation variants ────────────────────────────────────────────────────────
@@ -503,16 +505,76 @@ function AILessonTab() {
     topic: '', subject: 'math', difficulty: 'medium' as 'easy' | 'medium' | 'hard', quizCount: 5,
   })
   const [lesson, setLesson]           = useState<AILesson | null>(null)
+  const [draftId, setDraftId]         = useState<string | null>(null) // null = unsaved
   const [generating, setGenerating]   = useState(false)
   const [genError, setGenError]       = useState('')
   const [classes, setClasses]         = useState<DBClass[]>([])
+  const [drafts, setDrafts]           = useState<LessonDraftMeta[]>([])
   const [assignForm, setAssignForm]   = useState({ classId: '', title: '', dueDate: '' })
   const [publishing, setPublishing]   = useState(false)
+  const [saving, setSaving]           = useState(false)
   const [done, setDone]               = useState(false)
+  const [savedToast, setSavedToast]   = useState(false)
+
+  const reloadDrafts = useCallback(() => {
+    lessonDraftsApi.list().then(r => setDrafts(r.drafts)).catch(() => {})
+  }, [])
 
   useEffect(() => {
     classesApi.list().then(r => setClasses(r.classes)).catch(() => {})
-  }, [])
+    reloadDrafts()
+  }, [reloadDrafts])
+
+  async function handleSaveDraft() {
+    if (!lesson) return
+    setSaving(true); setGenError('')
+    try {
+      if (draftId) {
+        await lessonDraftsApi.update(draftId, { title: lesson.title, lesson })
+      } else {
+        const r = await lessonDraftsApi.create({
+          title:      lesson.title,
+          topic:      form.topic,
+          subject:    form.subject,
+          difficulty: form.difficulty,
+          lesson,
+        })
+        setDraftId(r.draft.id)
+      }
+      reloadDrafts()
+      setSavedToast(true)
+      setTimeout(() => setSavedToast(false), 2000)
+    } catch (e) {
+      setGenError(e instanceof Error ? e.message : 'Не удалось сохранить')
+    }
+    setSaving(false)
+  }
+
+  async function handleOpenDraft(id: string) {
+    setGenerating(true); setGenError('')
+    try {
+      const r = await lessonDraftsApi.get(id)
+      setDraftId(r.draft.id)
+      setForm({ topic: r.draft.topic, subject: r.draft.subject, difficulty: r.draft.difficulty, quizCount: r.draft.lesson.quiz.length })
+      setLesson(r.draft.lesson)
+      setAssignForm(p => ({ ...p, title: r.draft.lesson.title }))
+      setStage(2)
+    } catch (e) {
+      setGenError(e instanceof Error ? e.message : 'Не удалось загрузить')
+    }
+    setGenerating(false)
+  }
+
+  async function handleDeleteDraft(id: string) {
+    if (!confirm('Удалить этот урок из библиотеки? Действие необратимо.')) return
+    try {
+      await lessonDraftsApi.delete(id)
+      reloadDrafts()
+      if (draftId === id) {
+        setDraftId(null); setLesson(null); setStage(1)
+      }
+    } catch (e) { console.error(e) }
+  }
 
   async function handleGenerate() {
     if (!form.topic.trim()) { setGenError('Введите тему урока'); return }
@@ -520,6 +582,7 @@ function AILessonTab() {
     try {
       const res = await aiLessonApi.generate(form)
       setLesson(res.lesson)
+      setDraftId(null) // new generation = new unsaved draft
       setAssignForm(p => ({ ...p, title: res.lesson.title }))
       setStage(2)
     } catch (e) {
@@ -537,7 +600,7 @@ function AILessonTab() {
     if (!assignForm.classId || !lesson) return
     setPublishing(true)
     try {
-      await assignmentsApi.create({
+      const r = await assignmentsApi.create({
         classId:     assignForm.classId,
         title:       assignForm.title || lesson.title,
         description: `AI-урок. Тема: ${form.topic}`,
@@ -545,9 +608,27 @@ function AILessonTab() {
         content:     { theory: lesson.theory, keyFormulas: lesson.keyFormulas ?? [], quiz: lesson.quiz, isLesson: true },
         dueDate:     assignForm.dueDate || undefined,
       })
+
+      // Auto-save / link to draft so it shows up in "Мои уроки" as published
+      try {
+        if (draftId) {
+          await lessonDraftsApi.update(draftId, { publishedAssignmentId: r.assignment.id })
+        } else {
+          const d = await lessonDraftsApi.create({
+            title:      lesson.title,
+            topic:      form.topic,
+            subject:    form.subject,
+            difficulty: form.difficulty,
+            lesson,
+          })
+          await lessonDraftsApi.update(d.draft.id, { publishedAssignmentId: r.assignment.id })
+        }
+        reloadDrafts()
+      } catch { /* non-critical */ }
+
       setDone(true)
       setTimeout(() => {
-        setStage(1); setLesson(null); setDone(false)
+        setStage(1); setLesson(null); setDraftId(null); setDone(false)
         setForm({ topic: '', subject: 'math', difficulty: 'medium', quizCount: 5 })
       }, 2500)
     } catch (e) {
@@ -651,6 +732,59 @@ function AILessonTab() {
         </motion.div>
       )}
 
+      {/* Stage 1 — My drafts library */}
+      {stage === 1 && drafts.length > 0 && (
+        <motion.div variants={fadeIn} initial="hidden" animate="visible"
+          className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-3"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-purple-600" /> Мои уроки
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5">{drafts.length} {drafts.length === 1 ? 'урок' : drafts.length < 5 ? 'урока' : 'уроков'} в библиотеке</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {drafts.map(d => (
+              <div key={d.id}
+                className="border border-gray-200 rounded-xl p-3 hover:border-purple-300 hover:bg-purple-50/30 transition-colors group"
+              >
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <button
+                    onClick={() => void handleOpenDraft(d.id)}
+                    className="flex-1 text-left min-w-0"
+                  >
+                    <p className="font-medium text-sm text-gray-900 truncate">{d.title}</p>
+                  </button>
+                  <button
+                    onClick={() => void handleDeleteDraft(d.id)}
+                    className="w-6 h-6 rounded-md hover:bg-red-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                    title="Удалить"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-gray-400 hover:text-red-500" />
+                  </button>
+                </div>
+                <button onClick={() => void handleOpenDraft(d.id)} className="text-left w-full">
+                  <p className="text-xs text-gray-500 truncate">📚 {d.topic}</p>
+                  <div className="flex items-center gap-2 mt-1.5 text-xs text-gray-400">
+                    <span className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-medium">{subjectLabel(d.subject)}</span>
+                    <span>·</span>
+                    <span>{new Date(d.createdAt).toLocaleDateString('ru-RU')}</span>
+                    {d.publishedAssignmentId && (
+                      <>
+                        <span>·</span>
+                        <span className="text-green-600 flex items-center gap-0.5"><CheckCircle2 className="w-3 h-3" /> Опубликован</span>
+                      </>
+                    )}
+                  </div>
+                </button>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
       {/* Stage 2 — Preview & approve */}
       {stage === 2 && lesson && (
         <motion.div variants={fadeIn} initial="hidden" animate="visible" className="space-y-4">
@@ -726,18 +860,27 @@ function AILessonTab() {
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <button
-              onClick={() => { setStage(1); setLesson(null) }}
-              className="flex-1 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+              onClick={() => { setStage(1); setLesson(null); setDraftId(null) }}
+              className="sm:flex-1 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
             >
               Начать заново
             </button>
             <button
-              onClick={() => setStage(3)}
-              className="flex-1 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2"
+              onClick={() => void handleSaveDraft()}
+              disabled={saving}
+              className="sm:flex-1 py-2.5 bg-white border-2 border-purple-300 text-purple-700 rounded-xl text-sm font-medium hover:bg-purple-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              title={draftId ? 'Обновить сохранённый урок' : 'Сохранить в Мои уроки'}
             >
-              <CheckCircle2 className="w-4 h-4" /> Одобрить → Опубликовать
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : savedToast ? <Check className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+              {savedToast ? 'Сохранено ✓' : draftId ? 'Обновить черновик' : 'Сохранить как урок'}
+            </button>
+            <button
+              onClick={() => setStage(3)}
+              className="sm:flex-1 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2"
+            >
+              <CheckCircle2 className="w-4 h-4" /> Опубликовать в класс
             </button>
           </div>
         </motion.div>
