@@ -1,5 +1,11 @@
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 WORKDIR /app
+
+# Prisma's engines link against libssl at runtime. node:20-slim (Debian
+# bookworm) ships openssl 3, but the package needs to be present for the
+# query/schema engines to load.
+RUN apt-get update -qq && apt-get install -y --no-install-recommends openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install ALL deps (including devDeps — needed for TypeScript build)
 COPY package.json package-lock.json* ./
@@ -15,9 +21,12 @@ COPY src ./src
 RUN npm run build
 
 # ── Production image ───────────────────────────────────────────────────────────
-FROM node:20-alpine AS production
+FROM node:20-slim AS production
 WORKDIR /app
 ENV NODE_ENV=production
+
+RUN apt-get update -qq && apt-get install -y --no-install-recommends openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install only production deps (smaller image)
 COPY package.json package-lock.json* ./
