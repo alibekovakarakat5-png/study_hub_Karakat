@@ -612,6 +612,32 @@ export const aiTestApi = {
   }) => api.post<{ variants: AITestVariant[] }>('/ai/generate-test', body),
 }
 
+// ── AI Lesson API (теория + квиз для одобрения учителем) ───────────────────────
+
+export interface AILessonQuiz {
+  id: string
+  text: string
+  options: string[]
+  correctAnswer: number
+  explanation: string
+}
+
+export interface AILesson {
+  title: string
+  theory: string                 // markdown
+  keyFormulas?: { formula: string; name: string }[]
+  quiz: AILessonQuiz[]
+}
+
+export const aiLessonApi = {
+  generate: (body: {
+    topic: string
+    subject: string
+    difficulty: 'easy' | 'medium' | 'hard'
+    quizCount: number
+  }) => api.post<{ lesson: AILesson }>('/ai/generate-lesson', body),
+}
+
 // ── AI Chat API (Skylla student mentor) ────────────────────────────────────────
 
 export const aiChatApi = {

@@ -404,6 +404,96 @@ const DIFFICULTY_LABELS: Record<string, string> = {
   hard:   'сложный (уровень олимпиады, нестандартные задачи)',
 }
 
+// ── AI Lesson Generation ─────────────────────────────────────────────────────
+//
+// Generates a single lesson (theory + key formulas + quiz). Used by teachers
+// to create a draft they can review and edit before publishing to students.
+
+export interface AILessonQuiz {
+  id: string
+  text: string
+  options: string[]
+  correctAnswer: number
+  explanation: string
+}
+
+export interface AILesson {
+  title: string
+  theory: string                 // markdown
+  keyFormulas?: { formula: string; name: string }[]
+  quiz: AILessonQuiz[]
+}
+
+export async function generateLesson(params: {
+  topic: string
+  subject: string
+  difficulty: 'easy' | 'medium' | 'hard'
+  quizCount: number
+}): Promise<{ lesson: AILesson }> {
+  if (!GROQ_API_KEY) throw new Error('GROQ_API_KEY not set')
+
+  const subjectLabel = SUBJECT_LABELS[params.subject] ?? params.subject
+  const diffLabel    = DIFFICULTY_LABELS[params.difficulty] ?? DIFFICULTY_LABELS.medium
+  const n            = Math.max(3, Math.min(10, params.quizCount))
+
+  const systemPrompt = `Ты — опытный казахстанский учитель. Твоя задача — сгенерировать ОДИН учебный урок по заданной теме для подготовки к ЕНТ.
+
+СТРОГИЕ ПРАВИЛА:
+1. Ответ ТОЛЬКО в формате JSON — никакого текста до или после JSON
+2. theory — структурированная теория в формате Markdown (заголовки ##, списки, выделение **жирным**, формулы). Длина 400–800 слов
+3. theory должна объяснять тему с нуля: определения, основные формулы/правила, 2–3 примера с решением
+4. keyFormulas — массив 3–6 ключевых формул/правил (каждое: { "formula": "...", "name": "..." })
+5. quiz — ровно ${n} вопросов в конце урока для самопроверки
+6. Каждый вопрос: 4 варианта ответа (options: string[4]), correctAnswer — индекс (0-3), explanation — краткое объяснение
+7. id вопросов: "q1", "q2", ..., "q${n}"
+
+ФОРМАТ ОТВЕТА (только JSON):
+{"lesson":{"title":"...","theory":"## ...","keyFormulas":[{"formula":"...","name":"..."}],"quiz":[{"id":"q1","text":"...","options":["A) ...","B) ...","C) ...","D) ..."],"correctAnswer":0,"explanation":"..."}]}}`
+
+  const userPrompt = `Предмет: ${subjectLabel}
+Тема урока: ${params.topic}
+Уровень сложности: ${diffLabel}
+Количество вопросов для самопроверки: ${n}
+
+Сгенерируй один полный урок. Только JSON.`
+
+  const res = await fetch(GROQ_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${GROQ_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model:       GROQ_MODEL,
+      max_tokens:  4000,
+      temperature: 0.7,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user',   content: userPrompt   },
+      ],
+    }),
+  })
+
+  if (!res.ok) throw new Error(`Groq error: ${res.status}`)
+
+  const json = await res.json() as { choices: Array<{ message: { content: string } }> }
+  const raw  = json.choices[0]?.message?.content ?? ''
+  const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
+
+  let parsed: { lesson: AILesson }
+  try {
+    parsed = JSON.parse(cleaned) as { lesson: AILesson }
+  } catch {
+    throw new Error('AI вернул некорректный JSON — попробуйте ещё раз')
+  }
+
+  if (!parsed.lesson || !parsed.lesson.theory || !Array.isArray(parsed.lesson.quiz)) {
+    throw new Error('AI вернул неполный ответ — попробуйте ещё раз')
+  }
+
+  return parsed
+}
+
 export async function generateTest(params: {
   topic: string
   subject: string

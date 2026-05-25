@@ -16,9 +16,9 @@ import { useStore } from '@/store/useStore'
 import { openWhatsAppShare, buildClassInviteMessage } from '@/lib/whatsapp'
 import { cn } from '@/lib/utils'
 import {
-  classesApi, assignmentsApi, aiTestApi, coursesApi, smartAssignmentApi, scheduleApi,
+  classesApi, assignmentsApi, aiTestApi, aiLessonApi, coursesApi, smartAssignmentApi, scheduleApi,
   type DBClass, type DBAssignment, type DBSubmission,
-  type AITestVariant, type AssignmentStats, type DBCourse,
+  type AITestVariant, type AILesson, type AssignmentStats, type DBCourse,
   type ClassAnalysis, type ClassScheduleItem,
   type StudentPreviewResponse,
 } from '@/lib/api'
@@ -53,18 +53,19 @@ const ratingDistribution: Array<{ stars: string; count: number; fill: string }> 
 
 // ── Tab types ─────────────────────────────────────────────────────────────────
 
-type TabId = 'classes' | 'test-builder' | 'smart-hw' | 'assignments' | 'schedule' | 'progress' | 'courses' | 'analytics' | 'earnings'
+type TabId = 'classes' | 'ai-lesson' | 'test-builder' | 'smart-hw' | 'assignments' | 'schedule' | 'progress' | 'courses' | 'analytics' | 'earnings'
 
 const TABS: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'classes',      label: 'Мои классы',       icon: LayoutGrid   },
-  { id: 'test-builder', label: 'Конструктор тестов', icon: Brain       },
-  { id: 'smart-hw',     label: 'Умное ДЗ',          icon: FlaskConical },
-  { id: 'assignments',  label: 'Задания',           icon: ClipboardList },
-  { id: 'schedule',     label: 'Расписание',        icon: Clock        },
-  { id: 'progress',     label: 'Прогресс',          icon: TrendingUp   },
-  { id: 'courses',      label: 'Курсы',             icon: BookOpen     },
-  { id: 'analytics',    label: 'Аналитика',         icon: BarChart3    },
-  { id: 'earnings',     label: 'Доход',             icon: Banknote     },
+  { id: 'classes',      label: 'Мои классы',         icon: LayoutGrid   },
+  { id: 'ai-lesson',    label: 'AI Урок',            icon: Sparkles     },
+  { id: 'test-builder', label: 'Конструктор тестов', icon: Brain        },
+  { id: 'smart-hw',     label: 'Умное ДЗ',           icon: FlaskConical },
+  { id: 'assignments',  label: 'Задания',            icon: ClipboardList },
+  { id: 'schedule',     label: 'Расписание',         icon: Clock        },
+  { id: 'progress',     label: 'Прогресс',           icon: TrendingUp   },
+  { id: 'courses',      label: 'Курсы',              icon: BookOpen     },
+  { id: 'analytics',    label: 'Аналитика',          icon: BarChart3    },
+  { id: 'earnings',     label: 'Доход',              icon: Banknote     },
 ]
 
 const SUBJECTS: { value: string; label: string }[] = [
@@ -445,6 +446,323 @@ function ClassesTab({ userId }: { userId: string }) {
 }
 
 // ── Test Builder Tab ──────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI Lesson Tab — учитель описывает тему → AI генерит урок (теория+квиз)
+// → учитель просматривает / редактирует → публикует Никите (или классу).
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AILessonTab() {
+  const [stage, setStage]             = useState<1 | 2 | 3>(1)
+  const [form, setForm]               = useState({
+    topic: '', subject: 'math', difficulty: 'medium' as 'easy' | 'medium' | 'hard', quizCount: 5,
+  })
+  const [lesson, setLesson]           = useState<AILesson | null>(null)
+  const [generating, setGenerating]   = useState(false)
+  const [genError, setGenError]       = useState('')
+  const [classes, setClasses]         = useState<DBClass[]>([])
+  const [assignForm, setAssignForm]   = useState({ classId: '', title: '', dueDate: '' })
+  const [publishing, setPublishing]   = useState(false)
+  const [done, setDone]               = useState(false)
+
+  useEffect(() => {
+    classesApi.list().then(r => setClasses(r.classes)).catch(() => {})
+  }, [])
+
+  async function handleGenerate() {
+    if (!form.topic.trim()) { setGenError('Введите тему урока'); return }
+    setGenerating(true); setGenError('')
+    try {
+      const res = await aiLessonApi.generate(form)
+      setLesson(res.lesson)
+      setAssignForm(p => ({ ...p, title: res.lesson.title }))
+      setStage(2)
+    } catch (e) {
+      setGenError(e instanceof Error ? e.message : 'Ошибка генерации')
+    }
+    setGenerating(false)
+  }
+
+  async function handleRegenerate() {
+    setLesson(null)
+    await handleGenerate()
+  }
+
+  async function handlePublish() {
+    if (!assignForm.classId || !lesson) return
+    setPublishing(true)
+    try {
+      await assignmentsApi.create({
+        classId:     assignForm.classId,
+        title:       assignForm.title || lesson.title,
+        description: `AI-урок. Тема: ${form.topic}`,
+        type:        'reading',
+        content:     { theory: lesson.theory, keyFormulas: lesson.keyFormulas ?? [], quiz: lesson.quiz, isLesson: true },
+        dueDate:     assignForm.dueDate || undefined,
+      })
+      setDone(true)
+      setTimeout(() => {
+        setStage(1); setLesson(null); setDone(false)
+        setForm({ topic: '', subject: 'math', difficulty: 'medium', quizCount: 5 })
+      }, 2500)
+    } catch (e) {
+      setGenError(e instanceof Error ? e.message : 'Ошибка публикации')
+    }
+    setPublishing(false)
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-purple-600" />
+          AI Урок — генерация с одобрением
+        </h2>
+        <p className="text-sm text-gray-500 mt-0.5">Опишите тему — Skylla AI напишет полный урок: теория, формулы, 5 вопросов для самопроверки. Вы проверяете, редактируете и публикуете.</p>
+      </div>
+
+      {/* Steps */}
+      <div className="flex items-center gap-2">
+        {[
+          { n: 1, label: 'Тема' },
+          { n: 2, label: 'Просмотр' },
+          { n: 3, label: 'Опубликовать' },
+        ].map((s, i) => (
+          <div key={s.n} className="flex items-center gap-2">
+            <div className={cn(
+              'w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold transition-colors',
+              stage >= s.n ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-400'
+            )}>{s.n}</div>
+            <span className={cn('text-sm hidden sm:block', stage >= s.n ? 'text-gray-900 font-medium' : 'text-gray-400')}>{s.label}</span>
+            {i < 2 && <ChevronRight className="w-4 h-4 text-gray-300 mx-1" />}
+          </div>
+        ))}
+      </div>
+
+      {/* Stage 1 — Form */}
+      {stage === 1 && (
+        <motion.div variants={fadeIn} initial="hidden" animate="visible"
+          className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5"
+        >
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Тема урока</label>
+            <textarea
+              value={form.topic}
+              onChange={e => setForm(p => ({ ...p, topic: e.target.value }))}
+              placeholder="Например: Производная функции — определение, основные формулы, правила дифференцирования. Или: Квадратные уравнения, теорема Виета..."
+              rows={3}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 resize-none"
+            />
+            <p className="text-xs text-gray-500 mt-1.5">Чем подробнее тема — тем точнее урок. Можно перечислить подтемы через запятую.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Предмет</label>
+              <select
+                value={form.subject}
+                onChange={e => setForm(p => ({ ...p, subject: e.target.value }))}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400"
+              >
+                {SUBJECTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Сложность</label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {(['easy', 'medium', 'hard'] as const).map(d => (
+                  <button key={d}
+                    onClick={() => setForm(p => ({ ...p, difficulty: d }))}
+                    className={cn(
+                      'py-2 rounded-xl text-xs font-medium border transition-colors',
+                      form.difficulty === d
+                        ? 'bg-purple-600 text-white border-purple-600'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-purple-300'
+                    )}
+                  >
+                    {d === 'easy' ? 'Лёгко' : d === 'medium' ? 'Средне' : 'Сложно'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Вопросов в квизе</label>
+              <select
+                value={form.quizCount}
+                onChange={e => setForm(p => ({ ...p, quizCount: Number(e.target.value) }))}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400"
+              >
+                {[3, 5, 7, 10].map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
+          </div>
+          {genError && <p className="text-sm text-red-600 flex items-center gap-1.5"><AlertCircle className="w-4 h-4" />{genError}</p>}
+          <button
+            onClick={handleGenerate}
+            disabled={generating || !form.topic.trim()}
+            className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+          >
+            {generating ? (<><Loader2 className="w-4 h-4 animate-spin" /> Skylla генерит урок (10–20 сек)...</>) : (<><Sparkles className="w-4 h-4" /> Сгенерировать урок</>)}
+          </button>
+        </motion.div>
+      )}
+
+      {/* Stage 2 — Preview & approve */}
+      {stage === 2 && lesson && (
+        <motion.div variants={fadeIn} initial="hidden" animate="visible" className="space-y-4">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <div className="flex items-start justify-between mb-4 gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-purple-600 uppercase tracking-wide mb-1">Заголовок урока</p>
+                <input
+                  value={lesson.title}
+                  onChange={e => setLesson({ ...lesson, title: e.target.value })}
+                  className="w-full text-lg font-bold text-gray-900 px-2 py-1 -mx-2 -my-1 rounded hover:bg-gray-50 focus:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-200"
+                />
+              </div>
+              <button
+                onClick={() => void handleRegenerate()}
+                disabled={generating}
+                className="flex-shrink-0 px-3 py-2 text-sm text-purple-600 hover:bg-purple-50 rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                title="Перегенерировать"
+              >
+                {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                Перегенерить
+              </button>
+            </div>
+
+            {/* Theory editor */}
+            <div className="mb-5">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Теория (можно редактировать)</p>
+              <textarea
+                value={lesson.theory}
+                onChange={e => setLesson({ ...lesson, theory: e.target.value })}
+                rows={14}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 resize-y"
+              />
+              <p className="text-xs text-gray-400 mt-1">Markdown: **жирный**, ## заголовок, - список</p>
+            </div>
+
+            {/* Key formulas */}
+            {lesson.keyFormulas && lesson.keyFormulas.length > 0 && (
+              <div className="mb-5">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Ключевые формулы</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {lesson.keyFormulas.map((f, i) => (
+                    <div key={i} className="bg-purple-50 border border-purple-100 rounded-lg px-3 py-2">
+                      <code className="text-sm font-bold text-purple-900 block">{f.formula}</code>
+                      <span className="text-xs text-purple-700">{f.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Quiz preview */}
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Квиз — {lesson.quiz.length} вопрос(а/ов)</p>
+              <div className="space-y-3">
+                {lesson.quiz.map((q, i) => (
+                  <div key={q.id} className="border border-gray-200 rounded-xl p-3 bg-gray-50/50">
+                    <p className="text-sm font-medium text-gray-900 mb-2">{i + 1}. {q.text}</p>
+                    <div className="space-y-1">
+                      {q.options.map((opt, oi) => (
+                        <div key={oi} className={cn(
+                          'text-xs px-2 py-1 rounded',
+                          oi === q.correctAnswer ? 'bg-green-100 text-green-900 font-medium' : 'text-gray-600'
+                        )}>
+                          {oi === q.correctAnswer && '✓ '} {opt}
+                        </div>
+                      ))}
+                    </div>
+                    {q.explanation && <p className="text-xs text-blue-700 mt-2 italic">💡 {q.explanation}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => { setStage(1); setLesson(null) }}
+              className="flex-1 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+            >
+              Начать заново
+            </button>
+            <button
+              onClick={() => setStage(3)}
+              className="flex-1 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2"
+            >
+              <CheckCircle2 className="w-4 h-4" /> Одобрить → Опубликовать
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Stage 3 — Publish */}
+      {stage === 3 && lesson && (
+        <motion.div variants={fadeIn} initial="hidden" animate="visible"
+          className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4"
+        >
+          {done ? (
+            <div className="text-center py-8">
+              <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-3" />
+              <p className="font-bold text-gray-900 mb-1">Опубликовано!</p>
+              <p className="text-sm text-gray-500">Ученики увидят урок в своих заданиях.</p>
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Класс</label>
+                <select
+                  value={assignForm.classId}
+                  onChange={e => setAssignForm(p => ({ ...p, classId: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400"
+                >
+                  <option value="">— выберите класс —</option>
+                  {classes.map(c => <option key={c.id} value={c.id}>{c.name} ({c._count?.members ?? 0} уч.)</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Название (можно изменить)</label>
+                <input
+                  value={assignForm.title}
+                  onChange={e => setAssignForm(p => ({ ...p, title: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Срок (необязательно)</label>
+                <input
+                  type="date"
+                  value={assignForm.dueDate}
+                  onChange={e => setAssignForm(p => ({ ...p, dueDate: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400"
+                />
+              </div>
+              {genError && <p className="text-sm text-red-600 flex items-center gap-1.5"><AlertCircle className="w-4 h-4" />{genError}</p>}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setStage(2)}
+                  className="flex-1 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Назад к редактированию
+                </button>
+                <button
+                  onClick={handlePublish}
+                  disabled={!assignForm.classId || publishing}
+                  className="flex-1 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-xl text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  Опубликовать ученикам
+                </button>
+              </div>
+            </>
+          )}
+        </motion.div>
+      )}
+    </div>
+  )
+}
 
 function TestBuilderTab() {
   const [stage, setStage]                   = useState<1 | 2 | 3>(1)
@@ -1582,6 +1900,7 @@ export default function TeacherDashboard() {
           animate="visible"
         >
           {activeTab === 'classes'      && <ClassesTab userId={user.id} />}
+          {activeTab === 'ai-lesson'    && <AILessonTab />}
           {activeTab === 'test-builder' && <TestBuilderTab />}
           {activeTab === 'assignments'  && <AssignmentsTab />}
           {activeTab === 'progress'     && <ProgressTab />}

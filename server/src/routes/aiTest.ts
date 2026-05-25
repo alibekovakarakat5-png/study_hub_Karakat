@@ -11,7 +11,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { verifyToken, requireRole } from '../middleware/auth'
-import { generateTest } from '../lib/growthAI'
+import { generateTest, generateLesson } from '../lib/growthAI'
 import { weakTopicsToIds } from '../lib/topicMatcher'
 import { pickQuestionsFromContent } from '../lib/contentQuestionPicker'
 import { prisma } from '../lib/prisma'
@@ -114,6 +114,32 @@ router.post('/generate-test', verifyToken, requireRole('teacher', 'admin'), asyn
       weakTopicIds,
     },
   })
+})
+
+// ── POST /api/ai/generate-lesson ─────────────────────────────────────────────
+// Teacher describes a topic → AI generates one full lesson (theory + quiz).
+// The lesson is returned to the client only — nothing is stored. The teacher
+// reviews / edits, then publishes via POST /api/assignments with type='reading'.
+
+const GenerateLessonSchema = z.object({
+  topic:      z.string().min(3).max(200),
+  subject:    z.string().min(1),
+  difficulty: z.enum(['easy', 'medium', 'hard']).default('medium'),
+  quizCount:  z.number().int().min(3).max(10).default(5),
+})
+
+router.post('/generate-lesson', verifyToken, requireRole('teacher', 'admin'), async (req, res) => {
+  const parsed = GenerateLessonSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message ?? 'Неверные данные' }); return
+  }
+
+  try {
+    const { lesson } = await generateLesson(parsed.data)
+    res.json({ lesson })
+  } catch (e) {
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Ошибка генерации' })
+  }
 })
 
 export default router
