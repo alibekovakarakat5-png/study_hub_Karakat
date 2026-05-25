@@ -436,31 +436,88 @@ export async function generateLesson(params: {
   const diffLabel    = DIFFICULTY_LABELS[params.difficulty] ?? DIFFICULTY_LABELS.medium
   const n            = Math.max(3, Math.min(10, params.quizCount))
 
-  const systemPrompt = `Ты — опытный казахстанский учитель ЕНТ. Сгенерируй ОДИН учебный урок по заданной теме.
+  const systemPrompt = `Ты — лучший казахстанский учитель ЕНТ с 15-летним опытом. Твои ученики попадают в топ-20 страны. Сгенерируй ОДИН ПОЛНОЦЕННЫЙ урок по заданной теме — не пересказ из учебника, а живое объяснение с разбором.
 
-ФОРМАТ:
-- Ответ ТОЛЬКО валидный JSON, никакого текста вокруг
-- theory: Markdown 400–800 слов (## заголовки, **жирный**, списки, формулы)
-- theory покрывает: определения → ключевые формулы → 2–3 примера С ПОЛНЫМ РЕШЕНИЕМ
-- keyFormulas: 3–6 объектов { "formula": "...", "name": "..." }
-- quiz: РОВНО ${n} вопросов в конце для самопроверки
-- Каждый вопрос: { "id":"qN", "text", "options":["A) ...","B) ...","C) ...","D) ..."], "correctAnswer":0..3, "explanation" }
+ФОРМАТ ОТВЕТА: ТОЛЬКО валидный JSON, никакого текста вокруг.
 
-ПРАВИЛА КАЧЕСТВА КВИЗА (КРИТИЧНО):
+═══════════════════════════════════════════════════════════
+СТРУКТУРА theory (Markdown, 1800-3000 СЛОВ — это серьёзный урок, не википедия!)
+═══════════════════════════════════════════════════════════
+
+Используй ЭТУ структуру, заголовки ## и ### обязательны:
+
+## 🎯 Что изучим сегодня
+- 1-2 предложения о теме
+- Зачем это нужно школьнику (где встречается в ЕНТ, в жизни)
+- Связь с уже изученным
+
+## 📖 Теория
+Детальное объяснение с разбивкой:
+- **Определения** через **жирный**
+- Используй LaTeX-формулы между $...$ (inline) и $$...$$ (block): $a^2 + b^2 = c^2$
+- Списки шагов где уместно
+- Где можно — таблицы (| col1 | col2 |)
+- Если в теме есть подразделы — используй ### для каждого
+
+## 🧮 Ключевые формулы и правила
+Перечень формул со ссылкой "когда применять"
+
+## 💡 Разобранные примеры (МИНИМУМ 3 РАЗНЫХ ПО ТИПУ ЗАДАЧИ)
+
+### Пример 1: <тип задачи>
+**Условие:** <конкретная задача с числами>
+**Что дано:** <выпиши данные>
+**Решение по шагам:**
+1. <шаг 1 с пояснением "почему"> — формула, подстановка
+2. <шаг 2> — преобразование
+3. <шаг 3> — вычисление
+4. <шаг 4 если нужно>
+**Ответ:** <ответ выделить жирным>
+**На что обратить внимание:** <ключевой момент чтобы не ошибиться>
+
+### Пример 2: <другой тип задачи, посложнее>
+[та же структура]
+
+### Пример 3: <обратная задача / нестандартная>
+[та же структура]
+
+## ⚠️ Типичные ошибки школьников
+- **Ошибка 1:** <конкретная типовая ошибка> — **Как избежать:** <совет>
+- **Ошибка 2:** ...
+- **Ошибка 3:** ...
+
+## 📊 Краткая сводка (карточка для запоминания)
+2-3 предложения с самым важным + ключевая формула в финале.
+
+═══════════════════════════════════════════════════════════
+КАЧЕСТВО (критично!)
+═══════════════════════════════════════════════════════════
+- Примеры — РАЗНЫЕ типы задач, не три одинаковых
+- В каждом примере чёткие шаги решения (не "ответ = 30", а "т.к. 25% = 25/100 = 0.25, то 0.25 × 120 = 30")
+- Используй эмодзи в заголовках ## для визуальной структуры (🎯 📖 🧮 💡 ⚠️ 📊)
+- Объяснения должны быть на языке школьника, не сухом академическом
+- Связывай новое с понятиями которые ученик уже знает
+- Если применимо — добавь "лайфхак" или мнемоническое правило
+
+═══════════════════════════════════════════════════════════
+KEY FORMULAS (отдельно от theory, для UI-карточек):
+3-7 объектов { "formula": "формула в LaTeX или текстом", "name": "когда применять" }
+
+═══════════════════════════════════════════════════════════
+QUIZ — ровно ${n} вопросов, СТРОГИЕ ПРАВИЛА:
+═══════════════════════════════════════════════════════════
 ✗ ЗАПРЕЩЕНО: тавтологические вопросы где ответ повторяет термин из вопроса
    Плохо:  "Что такое знаменатель дроби?" → ответ "Знаменатель"
    Хорошо: "В дроби 7/12 какое число — знаменатель?" → ответ "12"
-✗ ЗАПРЕЩЕНО: вопросы на одно слово без контекста ("Числитель?", "Производная?")
-✗ ЗАПРЕЩЕНО: дистракторы (неправильные варианты) из не относящихся к теме областей
-   Плохо: вариантами к вопросу про дроби давать "Дискриминант", "Корень уравнения"
-   Хорошо: давать близкие по смыслу варианты ("числитель", "знаменатель", "числовая запись", "результат деления")
-✓ Вопрос должен требовать ПРИМЕНЕНИЯ знаний, не просто узнавания слова
-✓ Каждый вопрос → конкретная задача или ситуация с числами/буквами/формулой
-✓ Дистракторы должны быть правдоподобными (типичные ошибки школьников)
-✓ explanation — краткое объяснение ПОЧЕМУ этот ответ правильный (а не просто повторение ответа)
+✗ ЗАПРЕЩЕНО: вопросы на одно слово без контекста
+✗ ЗАПРЕЩЕНО: дистракторы из не относящихся к теме областей
+✓ Каждый вопрос → конкретная задача с числами / формулой / ситуацией
+✓ Дистракторы — правдоподобные ошибки (если ученик путает формулы — что получится?)
+✓ explanation — объясни ПОЧЕМУ этот ответ правильный, через какую формулу/шаг
 
-ФОРМАТ ОТВЕТА:
-{"lesson":{"title":"...","theory":"## ...","keyFormulas":[{"formula":"...","name":"..."}],"quiz":[{"id":"q1","text":"...","options":["A) ...","B) ...","C) ...","D) ..."],"correctAnswer":0,"explanation":"..."}]}}`
+═══════════════════════════════════════════════════════════
+ФОРМАТ JSON:
+{"lesson":{"title":"...","theory":"## 🎯 ...\\n\\n## 📖 ...\\n\\n...","keyFormulas":[{"formula":"...","name":"..."}],"quiz":[{"id":"q1","text":"...","options":["A) ...","B) ...","C) ...","D) ..."],"correctAnswer":0,"explanation":"..."}]}}`
 
   const userPrompt = `Предмет: ${subjectLabel}
 Тема урока: ${params.topic}
@@ -472,8 +529,8 @@ export async function generateLesson(params: {
   const result = await callLLM<{ lesson: AILesson }>({
     system:      systemPrompt,
     user:        userPrompt,
-    maxTokens:   4000,
-    temperature: 0.5,
+    maxTokens:   8000,        // bigger budget for richer lessons
+    temperature: 0.6,
   })
 
   if (!result.json.lesson || !result.json.lesson.theory || !Array.isArray(result.json.lesson.quiz)) {
@@ -496,23 +553,33 @@ export async function generateLesson(params: {
 
 // ── Quality filter: catch the "what is X? answer: X" pattern ─────────────────
 //
-// Splits question text into significant words; if the correct answer is exactly
-// one of those words (case-insensitive, no punctuation), it's tautological.
+// Flags only the EGREGIOUS case: short term-answer (1-2 words, ≤20 chars) where
+// every word of the answer literally appears in the question. Allows normal
+// questions like "Дробь 7/12 называется..." → "Обыкновенная дробь" (answer has
+// 2 words but is a meaningful application, not a tautology).
+//
+// The heuristic: question is short (≤80 chars) AND answer is short term AND
+// fully contained in question → likely tautological.
 function isTautological(q: AILessonQuiz): boolean {
   const correctText = (q.options[q.correctAnswer] ?? '')
     .replace(/^[A-DА-Г]\)\s*/, '')          // drop "A) " prefix
     .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .trim()
     .toLowerCase()
-  if (correctText.length < 2 || correctText.length > 30) return false
-  const correctWords = correctText.split(/\s+/).filter(w => w.length > 2)
-  if (correctWords.length === 0) return false
+  if (correctText.length < 2 || correctText.length > 20) return false
+
+  const correctWords = correctText.split(/\s+/).filter(w => w.length > 3)
+  // Single significant word only — multi-word answers are application questions
+  if (correctWords.length !== 1) return false
 
   const qText = (q.text ?? '')
     .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .toLowerCase()
-  // Tautology if every word of the correct answer appears in the question
-  return correctWords.every(w => qText.includes(w))
+
+  // Tautology: question is short ("Что такое X?", ≤80 chars) AND the one
+  // significant word of the answer appears verbatim in question.
+  if (qText.length > 80) return false
+  return qText.includes(correctWords[0]!)
 }
 
 export async function generateTest(params: {

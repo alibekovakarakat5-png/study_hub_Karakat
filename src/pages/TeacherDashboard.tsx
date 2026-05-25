@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { openWhatsAppShare, buildClassInviteMessage } from '@/lib/whatsapp'
+import LessonRenderer, { InlineMd } from '@/components/LessonRenderer'
 import { cn } from '@/lib/utils'
 import {
   classesApi, assignmentsApi, aiTestApi, aiLessonApi, coursesApi, smartAssignmentApi, scheduleApi,
@@ -452,6 +453,50 @@ function ClassesTab({ userId }: { userId: string }) {
 // → учитель просматривает / редактирует → публикует Никите (или классу).
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Toggleable Markdown editor — "Просмотр" by default (so teacher sees the
+// pretty rendered lesson), "Редактировать" reveals the raw textarea.
+function TheoryEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [mode, setMode] = useState<'preview' | 'edit'>('preview')
+  return (
+    <div className="mb-5">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Теория</p>
+        <div className="inline-flex bg-gray-100 rounded-lg p-0.5 text-xs">
+          <button
+            onClick={() => setMode('preview')}
+            className={cn(
+              'px-3 py-1 rounded-md font-medium transition-colors',
+              mode === 'preview' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            )}
+          >Просмотр</button>
+          <button
+            onClick={() => setMode('edit')}
+            className={cn(
+              'px-3 py-1 rounded-md font-medium transition-colors',
+              mode === 'edit' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            )}
+          >Редактировать</button>
+        </div>
+      </div>
+      {mode === 'preview' ? (
+        <div className="border border-gray-200 rounded-xl p-5 bg-gradient-to-br from-purple-50/30 to-blue-50/30 max-h-[600px] overflow-y-auto">
+          <LessonRenderer markdown={value} />
+        </div>
+      ) : (
+        <>
+          <textarea
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            rows={18}
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 resize-y"
+          />
+          <p className="text-xs text-gray-400 mt-1">Markdown: <code>**жирный**</code>, <code>## заголовок</code>, <code>- список</code>, <code>$a^2 + b^2$</code> для формул</p>
+        </>
+      )}
+    </div>
+  )
+}
+
 function AILessonTab() {
   const [stage, setStage]             = useState<1 | 2 | 3>(1)
   const [form, setForm]               = useState({
@@ -630,17 +675,11 @@ function AILessonTab() {
               </button>
             </div>
 
-            {/* Theory editor */}
-            <div className="mb-5">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Теория (можно редактировать)</p>
-              <textarea
-                value={lesson.theory}
-                onChange={e => setLesson({ ...lesson, theory: e.target.value })}
-                rows={14}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 resize-y"
-              />
-              <p className="text-xs text-gray-400 mt-1">Markdown: **жирный**, ## заголовок, - список</p>
-            </div>
+            {/* Theory: edit + live preview */}
+            <TheoryEditor
+              value={lesson.theory}
+              onChange={v => setLesson({ ...lesson, theory: v })}
+            />
 
             {/* Key formulas */}
             {lesson.keyFormulas && lesson.keyFormulas.length > 0 && (
@@ -663,18 +702,24 @@ function AILessonTab() {
               <div className="space-y-3">
                 {lesson.quiz.map((q, i) => (
                   <div key={q.id} className="border border-gray-200 rounded-xl p-3 bg-gray-50/50">
-                    <p className="text-sm font-medium text-gray-900 mb-2">{i + 1}. {q.text}</p>
+                    <div className="text-sm font-medium text-gray-900 mb-2">
+                      {i + 1}. <InlineMd>{q.text}</InlineMd>
+                    </div>
                     <div className="space-y-1">
                       {q.options.map((opt, oi) => (
                         <div key={oi} className={cn(
                           'text-xs px-2 py-1 rounded',
                           oi === q.correctAnswer ? 'bg-green-100 text-green-900 font-medium' : 'text-gray-600'
                         )}>
-                          {oi === q.correctAnswer && '✓ '} {opt}
+                          {oi === q.correctAnswer && '✓ '} <InlineMd>{opt}</InlineMd>
                         </div>
                       ))}
                     </div>
-                    {q.explanation && <p className="text-xs text-blue-700 mt-2 italic">💡 {q.explanation}</p>}
+                    {q.explanation && (
+                      <div className="text-xs text-blue-700 mt-2 italic">
+                        💡 <InlineMd>{q.explanation}</InlineMd>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

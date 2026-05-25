@@ -169,11 +169,13 @@ router.post('/generate-lesson', verifyToken, requireRole('teacher', 'admin'), as
       const ans = (q.options[q.correctAnswer] ?? '')
         .replace(/^[A-DА-Г]\)\s*/, '')
         .replace(/[^\p{L}\p{N}\s]/gu, ' ')
-        .toLowerCase()
-        .trim()
+        .toLowerCase().trim()
+      if (ans.length < 2 || ans.length > 20) continue
+      const ansWords = ans.split(/\s+/).filter(w => w.length > 3)
+      if (ansWords.length !== 1) continue
       const qt = q.text.replace(/[^\p{L}\p{N}\s]/gu, ' ').toLowerCase()
-      const ansWords = ans.split(/\s+/).filter(w => w.length > 2)
-      if (ansWords.length > 0 && ansWords.every(w => qt.includes(w))) return true
+      if (qt.length > 80) continue
+      if (qt.includes(ansWords[0]!)) return true
     }
     return false
   }
