@@ -337,6 +337,10 @@ function CourseModal({
       navigate('/courses/english-ent')
       return
     }
+    if (course.id === 'course-13') {
+      navigate('/courses/math-literacy-ent')
+      return
+    }
     // DB course: navigate to first lesson, enroll in background
     if (course._dbCourseId) {
       setEnrolling(true)

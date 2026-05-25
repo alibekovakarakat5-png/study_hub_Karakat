@@ -43,6 +43,7 @@ const PhysicsEntCourse = lazy(() => import('@/pages/PhysicsEntCourse'))
 const BiologyEntCourse = lazy(() => import('@/pages/BiologyEntCourse'))
 const ChemistryEntCourse = lazy(() => import('@/pages/ChemistryEntCourse'))
 const EnglishEntCourse = lazy(() => import('@/pages/EnglishEntCourse'))
+const MathLiteracyEntCourse = lazy(() => import('@/pages/MathLiteracyEntCourse'))
 const StartupLab = lazy(() => import('@/pages/StartupLab'))
 const EntLab = lazy(() => import('@/pages/EntLab'))
 const IeltsLab = lazy(() => import('@/pages/IeltsLab'))
@@ -148,6 +149,7 @@ export default function App() {
           <Route path="/courses/biology-ent" element={<ProtectedRoute><BiologyEntCourse /></ProtectedRoute>} />
           <Route path="/courses/chemistry-ent" element={<ProtectedRoute><ChemistryEntCourse /></ProtectedRoute>} />
           <Route path="/courses/english-ent" element={<ProtectedRoute><EnglishEntCourse /></ProtectedRoute>} />
+          <Route path="/courses/math-literacy-ent" element={<ProtectedRoute><MathLiteracyEntCourse /></ProtectedRoute>} />
           <Route path="/startup-lab" element={<ProtectedRoute><StartupLab /></ProtectedRoute>} />
           {/* ── Lab landing pages (public, entry points) ── */}
           <Route path="/ent" element={<EntLab />} />
@@ -168,7 +170,7 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
-      <RobotWidget />
+      {/* <RobotWidget /> — temporarily disabled */}
     </BrowserRouter>
   )
 }
