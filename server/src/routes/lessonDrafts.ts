@@ -28,7 +28,7 @@ const LessonShape = z.object({
 
 const CreateSchema = z.object({
   title:      z.string().min(1).max(200),
-  topic:      z.string().min(1).max(300),
+  topic:      z.string().min(1).max(1000),    // allow detailed multi-section topics
   subject:    z.string().min(1).max(50),
   difficulty: z.enum(['easy', 'medium', 'hard']).default('medium'),
   lesson:     LessonShape,

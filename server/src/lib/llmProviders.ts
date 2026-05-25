@@ -1,8 +1,9 @@
 // ── Multi-provider LLM router with automatic fallback ────────────────────────
 //
-//   Primary  : Anthropic Claude (claude-haiku-4-5)
-//   Fallback : Google Gemini    (gemini-2.0-flash)
-//   Last     : Groq Llama       (existing GROQ_MODEL)
+//   Primary  : Claude Code CLI (uses user's Claude Code subscription via stdin)
+//   Then     : Anthropic API   (claude-haiku-4-5)
+//   Then     : Google Gemini   (gemini-2.0-flash)
+//   Last     : Groq Llama      (existing GROQ_MODEL)
 //
 // Each provider call returns a parsed JSON object. On failure (no key, API
 // error, malformed JSON), we move to the next provider. The caller gets
@@ -10,7 +11,10 @@
 // surface that to teachers.
 
 import Anthropic from '@anthropic-ai/sdk'
+import { spawn } from 'child_process'
 
+const CLAUDE_CLI_BIN    = process.env.CLAUDE_CLI ?? 'claude'
+const CLAUDE_CLI_ENABLED = process.env.CLAUDE_CLI_ENABLED !== 'false'  // on by default
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
 const GEMINI_API_KEY    = process.env.GEMINI_API_KEY
 const GROQ_API_KEY      = process.env.GROQ_API_KEY
@@ -21,7 +25,7 @@ const GEMINI_URL      = (model: string) => `https://generativelanguage.googleapi
 const GROQ_URL        = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL      = 'llama-3.3-70b-versatile'
 
-export type Provider = 'anthropic' | 'gemini' | 'groq'
+export type Provider = 'claude-cli' | 'anthropic' | 'gemini' | 'groq'
 
 export interface LLMCallOptions {
   system:      string
@@ -52,6 +56,45 @@ function tryParse<T>(raw: string): T {
 }
 
 // ── Provider implementations ─────────────────────────────────────────────────
+
+// Claude Code CLI — invokes the local `claude` binary which uses the user's
+// own Claude Code subscription (no API key needed in env). Sends the prompt
+// via stdin and reads JSON from stdout. Slower per request (~3-8s overhead
+// for process spawn + auth) than direct API but doesn't need a paid key.
+//
+// Modes:
+//   `claude -p "<prompt>"`  → headless one-shot; prints answer to stdout.
+//   `claude -p --output-format json`  → wraps with metadata. We use plain
+//                                       text to keep parsing simple.
+async function callClaudeCli<T>(opts: LLMCallOptions): Promise<T> {
+  if (!CLAUDE_CLI_ENABLED) throw new Error('CLAUDE_CLI disabled by env')
+
+  // Merge system + user into a single prompt — Claude Code CLI uses one stdin.
+  const combined = `${opts.system}\n\n──────────\n\n${opts.user}\n\nReturn ONLY valid JSON, no commentary.`
+
+  const stdout: Buffer[] = []
+  const stderr: Buffer[] = []
+
+  await new Promise<void>((resolve, reject) => {
+    const proc = spawn(CLAUDE_CLI_BIN, ['-p', '--output-format', 'text'], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      shell: process.platform === 'win32',  // .cmd shim on Windows
+    })
+    proc.stdout.on('data', d => stdout.push(d))
+    proc.stderr.on('data', d => stderr.push(d))
+    proc.on('error', reject)
+    proc.on('close', code => {
+      if (code === 0) resolve()
+      else reject(new Error(`claude CLI exited ${code}: ${Buffer.concat(stderr).toString().slice(0, 400)}`))
+    })
+    proc.stdin.write(combined)
+    proc.stdin.end()
+  })
+
+  const raw = Buffer.concat(stdout).toString().trim()
+  if (!raw) throw new Error('Claude CLI returned empty stdout')
+  return opts.parseJson === false ? (raw as unknown as T) : tryParse<T>(raw)
+}
 
 async function callAnthropic<T>(opts: LLMCallOptions): Promise<T> {
   if (!ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY not set')
@@ -129,9 +172,10 @@ async function callGroq<T>(opts: LLMCallOptions): Promise<T> {
 // ── Public dispatcher with fallback chain ────────────────────────────────────
 
 const CHAIN: Array<{ name: Provider; call: <T>(o: LLMCallOptions) => Promise<T> }> = [
-  { name: 'anthropic', call: callAnthropic },
-  { name: 'gemini',    call: callGemini    },
-  { name: 'groq',      call: callGroq      },
+  { name: 'claude-cli', call: callClaudeCli },
+  { name: 'anthropic',  call: callAnthropic },
+  { name: 'gemini',     call: callGemini    },
+  { name: 'groq',       call: callGroq      },
 ]
 
 export async function callLLM<T = unknown>(opts: LLMCallOptions): Promise<LLMCallResult<T>> {
@@ -153,8 +197,9 @@ export async function callLLM<T = unknown>(opts: LLMCallOptions): Promise<LLMCal
 
 export function providerStatus() {
   return {
-    anthropic: !!ANTHROPIC_API_KEY,
-    gemini:    !!GEMINI_API_KEY,
-    groq:      !!GROQ_API_KEY,
+    'claude-cli': CLAUDE_CLI_ENABLED,
+    anthropic:    !!ANTHROPIC_API_KEY,
+    gemini:       !!GEMINI_API_KEY,
+    groq:         !!GROQ_API_KEY,
   }
 }
