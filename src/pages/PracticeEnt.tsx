@@ -31,6 +31,9 @@ import {
   ENT_PROFILE_SUBJECT_PAIRS,
   ENT_TOTAL_MINUTES,
   ENT_TOTAL_QUESTIONS,
+  entQuestionText,
+  entQuestionOptions,
+  entQuestionExplanation,
 } from '@/types/practiceEnt'
 import type { EntBlock, EntBlockResult } from '@/types/practiceEnt'
 import ShareResultCard from '@/components/share/ShareResultCard'
@@ -213,6 +216,7 @@ function ExamPhase() {
     exam, answers, currentBlockIndex, currentQuestionIndex,
     timeRemainingSeconds, tick, setAnswer, toggleFlag, nextQuestion, prevQuestion,
     navigateTo, finishExam, profileSubject1, profileSubject2,
+    examLang, setExamLang,
   } = usePracticeEntStore()
 
   // Timer
@@ -260,9 +264,23 @@ function ExamPhase() {
               Вопрос {currentQuestionIndex + 1}/{currentBlock.questions.length}
             </span>
           </div>
-          <div className={`flex items-center gap-2 rounded-lg px-3 py-1 text-sm font-mono font-bold ${isUrgent ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-gray-100 text-gray-700'}`}>
-            <Clock className="h-4 w-4" />
-            {formatTime(timeRemainingSeconds)}
+          <div className="flex items-center gap-3">
+            {/* Язык вопросов RU/KK */}
+            <div className="inline-flex rounded-lg bg-gray-100 p-0.5 text-xs font-semibold">
+              {(['ru', 'kk'] as const).map(l => (
+                <button
+                  key={l}
+                  onClick={() => setExamLang(l)}
+                  className={`px-2.5 py-1 rounded-md transition-colors ${examLang === l ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                >
+                  {l === 'ru' ? 'РУС' : 'ҚАЗ'}
+                </button>
+              ))}
+            </div>
+            <div className={`flex items-center gap-2 rounded-lg px-3 py-1 text-sm font-mono font-bold ${isUrgent ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-gray-100 text-gray-700'}`}>
+              <Clock className="h-4 w-4" />
+              {formatTime(timeRemainingSeconds)}
+            </div>
           </div>
         </div>
 
@@ -287,10 +305,10 @@ function ExamPhase() {
               </button>
             </div>
 
-            <p className="mb-6 text-lg leading-relaxed text-gray-900 whitespace-pre-line">{currentQuestion.text}</p>
+            <p className="mb-6 text-lg leading-relaxed text-gray-900 whitespace-pre-line">{entQuestionText(currentQuestion, examLang)}</p>
 
             <div className="space-y-3">
-              {currentQuestion.options.map((opt, i) => {
+              {entQuestionOptions(currentQuestion, examLang).map((opt, i) => {
                 const letter = String.fromCharCode(65 + i)
                 const isSelected = currentAnswer.selectedAnswer === i
                 return (
@@ -594,7 +612,7 @@ function BlockResultCard({ block, blockIndex, s1, s2, onReview }: { block: EntBl
 // ── Review Phase ────────────────────────────────────────────────────────────
 
 function ReviewPhase() {
-  const { exam, answers, currentBlockIndex, currentQuestionIndex, navigateTo, setPhase, profileSubject1, profileSubject2 } = usePracticeEntStore()
+  const { exam, answers, currentBlockIndex, currentQuestionIndex, navigateTo, setPhase, profileSubject1, profileSubject2, examLang } = usePracticeEntStore()
 
   if (!exam) return null
 
@@ -636,10 +654,10 @@ function ReviewPhase() {
 
       {/* Question with answer */}
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
-        <p className="mb-6 text-lg leading-relaxed text-gray-900 whitespace-pre-line">{question.text}</p>
+        <p className="mb-6 text-lg leading-relaxed text-gray-900 whitespace-pre-line">{entQuestionText(question, examLang)}</p>
 
         <div className="space-y-3">
-          {question.options.map((opt, i) => {
+          {entQuestionOptions(question, examLang).map((opt, i) => {
             const letter = String.fromCharCode(65 + i)
             const isUserAnswer = answer.selectedAnswer === i
             const isCorrectAnswer = question.correctAnswer === i
@@ -666,7 +684,7 @@ function ReviewPhase() {
           <div className="mb-1 text-sm font-semibold text-gray-700">
             {isCorrect ? 'Правильно!' : wasAnswered ? 'Неправильно' : 'Без ответа'}
           </div>
-          <p className="text-sm text-gray-600">{question.explanation}</p>
+          <p className="text-sm text-gray-600">{entQuestionExplanation(question, examLang)}</p>
         </div>
       </div>
 
@@ -686,7 +704,7 @@ function ReviewPhase() {
 // ── Errors Phase — only wrong / unanswered questions ────────────────────────
 
 function ErrorsPhase() {
-  const { exam, answers, currentBlockIndex, currentQuestionIndex, navigateTo, setPhase, profileSubject1, profileSubject2 } = usePracticeEntStore()
+  const { exam, answers, currentBlockIndex, currentQuestionIndex, navigateTo, setPhase, profileSubject1, profileSubject2, examLang } = usePracticeEntStore()
 
   if (!exam) return null
 
@@ -771,10 +789,10 @@ function ErrorsPhase() {
           transition={{ duration: 0.2 }}
           className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
         >
-          <p className="mb-6 text-lg leading-relaxed text-gray-900 whitespace-pre-line">{question.text}</p>
+          <p className="mb-6 text-lg leading-relaxed text-gray-900 whitespace-pre-line">{entQuestionText(question, examLang)}</p>
 
           <div className="space-y-3">
-            {question.options.map((opt, i) => {
+            {entQuestionOptions(question, examLang).map((opt, i) => {
               const letter = String.fromCharCode(65 + i)
               let classes = 'border-gray-200 bg-white'
               if (isCorrectAnswer(i)) classes = 'border-emerald-500 bg-emerald-50'
@@ -796,7 +814,7 @@ function ErrorsPhase() {
           {/* Explanation */}
           <div className="mt-4 rounded-lg bg-amber-50 p-4">
             <div className="mb-1 text-sm font-semibold text-amber-800">Объяснение</div>
-            <p className="text-sm text-gray-700">{question.explanation}</p>
+            <p className="text-sm text-gray-700">{entQuestionExplanation(question, examLang)}</p>
           </div>
         </motion.div>
       </AnimatePresence>

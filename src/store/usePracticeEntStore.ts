@@ -8,6 +8,7 @@ import type {
   EntBlockResult,
   EntSessionPhase,
   EntQuestion,
+  EntLang,
 } from '@/types/practiceEnt'
 import { ENT_BLOCK_QUESTION_COUNT, ENT_TOTAL_MINUTES } from '@/types/practiceEnt'
 import { examVariants } from '@/data/practiceEnt'
@@ -47,6 +48,7 @@ interface PracticeEntState {
   selectedVariantId: string | null
   profileSubject1: Subject | null
   profileSubject2: Subject | null
+  examLang: EntLang                   // язык вопросов: ru | kk
 
   // ── Active exam
   exam: AssembledExam | null
@@ -63,6 +65,7 @@ interface PracticeEntState {
 
   // ── Actions
   setPhase: (phase: EntSessionPhase) => void
+  setExamLang: (lang: EntLang) => void
   selectVariant: (variantId: string) => void
   setProfileSubjects: (s1: Subject, s2: Subject) => void
   startExam: () => void
@@ -88,6 +91,7 @@ export const usePracticeEntStore = create<PracticeEntState>()(
       selectedVariantId: null,
       profileSubject1: null,
       profileSubject2: null,
+      examLang: 'ru',
       exam: null,
       answers: {},
       currentBlockIndex: 0,
@@ -100,6 +104,7 @@ export const usePracticeEntStore = create<PracticeEntState>()(
 
       // ── Actions
       setPhase: (phase) => set({ phase }),
+      setExamLang: (examLang) => set({ examLang }),
 
       selectVariant: (variantId) => set({ selectedVariantId: variantId }),
 

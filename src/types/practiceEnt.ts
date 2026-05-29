@@ -53,6 +53,25 @@ export interface EntQuestion {
   explanation: string
   topic: string
   difficulty: 'easy' | 'medium' | 'hard'
+  // ── Kazakh versions (optional) — ЕНТ is taken in RU or KK. When present and
+  //    the student picks KK, these are shown instead; otherwise we fall back
+  //    to the Russian text. optionsKk must align 1:1 with options.
+  textKk?: string
+  optionsKk?: string[]
+  explanationKk?: string
+}
+
+export type EntLang = 'ru' | 'kk'
+
+// Language-aware accessors with RU fallback.
+export function entQuestionText(q: EntQuestion, lang: EntLang): string {
+  return lang === 'kk' && q.textKk ? q.textKk : q.text
+}
+export function entQuestionOptions(q: EntQuestion, lang: EntLang): string[] {
+  return lang === 'kk' && q.optionsKk && q.optionsKk.length === q.options.length ? q.optionsKk : q.options
+}
+export function entQuestionExplanation(q: EntQuestion, lang: EntLang): string {
+  return lang === 'kk' && q.explanationKk ? q.explanationKk : q.explanation
 }
 
 // ── Exam Variant ────────────────────────────────────────────────────────────
