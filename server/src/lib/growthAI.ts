@@ -429,12 +429,14 @@ export async function generateLesson(params: {
   subject: string
   difficulty: 'easy' | 'medium' | 'hard'
   quizCount: number
+  lang?: 'ru' | 'kk'
 }): Promise<{ lesson: AILesson; provider: string }> {
   const { callLLM } = await import('./llmProviders')
 
   const subjectLabel = SUBJECT_LABELS[params.subject] ?? params.subject
   const diffLabel    = DIFFICULTY_LABELS[params.difficulty] ?? DIFFICULTY_LABELS.medium
   const n            = Math.max(3, Math.min(10, params.quizCount))
+  const lang         = params.lang ?? 'ru'
 
   const systemPrompt = `Ты — лучший казахстанский учитель ЕНТ с 15-летним опытом. Твои ученики попадают в топ-20 страны. Сгенерируй ОДИН ПОЛНОЦЕННЫЙ урок по заданной теме — не пересказ из учебника, а живое объяснение с разбором.
 
@@ -533,12 +535,17 @@ QUIZ — ровно ${n} вопросов, СТРОГИЕ ПРАВИЛА:
 ФОРМАТ JSON:
 {"lesson":{"title":"...","theory":"## 🎯 ...\\n\\n## 📖 ...\\n\\n...","keyFormulas":[{"formula":"...","name":"..."}],"quiz":[{"id":"q1","text":"...","options":["A) ...","B) ...","C) ...","D) ..."],"correctAnswer":0,"explanation":"..."}]}}`
 
+  const langInstruction = lang === 'kk'
+    ? `\n\n⚡ ЯЗЫК: Сгенерируй урок ПОЛНОСТЬЮ НА КАЗАХСКОМ ЯЗЫКЕ (қазақ тілінде).
+ВСЁ на казахском: title, theory (включая заголовки разделов — «🎯 Бүгін нені үйренеміз», «📖 Теория», «🧮 Негізгі формулалар», «💡 Талданған мысалдар», «⚠️ Оқушылардың типтік қателері», «📊 Қысқаша қорытынды»), keyFormulas.name, quiz (text, options, explanation).
+Используй общепринятую казахскую научную/математическую терминологию (мысалы: бөлшек, бөлгіш, алым, теңдеу, дискриминант, түбір). Формулы и числа оставляй в LaTeX/цифрах. НЕ смешивай с русским.`
+    : ''
   const userPrompt = `Предмет: ${subjectLabel}
 Тема урока: ${params.topic}
 Уровень сложности: ${diffLabel}
 Вопросов для самопроверки: ${n}
 
-Сгенерируй один полный урок. Только JSON. Помни правила качества квиза.`
+Сгенерируй один полный урок. Только JSON. Помни правила качества квиза.${langInstruction}`
 
   const result = await callLLM<{ lesson: AILesson }>({
     system:      systemPrompt,

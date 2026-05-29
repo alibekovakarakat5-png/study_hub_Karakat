@@ -144,6 +144,7 @@ const GenerateLessonSchema = z.object({
   subject:    z.string().min(1),
   difficulty: z.enum(['easy', 'medium', 'hard']).default('medium'),
   quizCount:  z.number().int().min(3).max(10).default(5),
+  lang:       z.enum(['ru', 'kk']).default('ru'),
   forceFresh: z.boolean().optional().default(false),
 })
 
@@ -154,8 +155,9 @@ router.post('/generate-lesson', verifyToken, requireRole('teacher', 'admin'), as
   }
 
   const userId = String(req.user!.userId)
-  const { topic, subject, difficulty, quizCount, forceFresh } = parsed.data
-  const topicKey = normalizeTopic(topic)
+  const { topic, subject, difficulty, quizCount, lang, forceFresh } = parsed.data
+  // Fold language into the cache key so RU and KK versions don't collide.
+  const topicKey = (lang === 'kk' ? 'kk:' : '') + normalizeTopic(topic)
 
   // Lightweight tautology check for cached entries (cache pre-validation).
   // The full filter lives in growthAI.ts; we just need a quick rejection here.
@@ -210,7 +212,7 @@ router.post('/generate-lesson', verifyToken, requireRole('teacher', 'admin'), as
 
   // ── 2. Generate via provider chain (Anthropic → Gemini → Groq) ───────────
   try {
-    const { lesson, provider } = await generateLesson({ topic, subject, difficulty, quizCount })
+    const { lesson, provider } = await generateLesson({ topic, subject, difficulty, quizCount, lang })
 
     // ── 3. Cache (best-effort — don't fail request if cache write breaks) ──
     if (topicKey.length > 0) {
