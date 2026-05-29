@@ -894,6 +894,24 @@ export interface ChildOverview {
   }
 }
 
+// ── Student analytics ──────────────────────────────────────────────────────────
+
+export interface StudentAnalytics {
+  timeline: Array<{ date: string; label: string; percentage: number; type: 'diagnostic' | 'ent' }>
+  subjectAverages: Array<{ subject: string; percentage: number }>
+  activity: {
+    diagnosticsCount: number
+    entCount: number
+    submissionsCount: number
+    avgAssignmentScore: number | null
+    bestEnt: number | null
+  }
+}
+
+export const analyticsApi = {
+  me: () => api.get<StudentAnalytics>('/users/me/analytics'),
+}
+
 export const parentLinkApi = {
   // Student side: generate a one-time code to give to the parent
   generate: () =>

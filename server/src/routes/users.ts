@@ -106,6 +106,81 @@ router.delete('/me/telegram-link', verifyToken, async (req, res) => {
   res.json({ ok: true })
 })
 
+// ── GET /api/users/me/analytics — student progress over time ──────────────────
+//
+// Combines diagnostic sessions + ENT mock attempts into one score timeline,
+// plus latest per-subject averages and assignment activity. Powers the
+// student's "Аналитика прогресса" view.
+
+router.get('/me/analytics', verifyToken, async (req, res) => {
+  const userId = String(req.user!.userId)
+
+  const [diagnostics, entResults, submissions] = await Promise.all([
+    prisma.diagnosticResult.findMany({ where: { userId }, orderBy: { takenAt: 'asc' } }),
+    prisma.entResult.findMany({ where: { userId }, orderBy: { takenAt: 'asc' } }),
+    prisma.assignmentSubmission.findMany({
+      where: { studentId: userId },
+      orderBy: { submittedAt: 'asc' },
+      select: { score: true, submittedAt: true, assignment: { select: { title: true } } },
+    }),
+  ])
+
+  // Group diagnostic rows into sessions (rows within 90s of each other), then
+  // compute an overall % per session.
+  type TimelinePoint = { date: string; label: string; percentage: number; type: 'diagnostic' | 'ent' }
+  const timeline: TimelinePoint[] = []
+
+  let i = 0
+  while (i < diagnostics.length) {
+    const start = diagnostics[i]!.takenAt.getTime()
+    const session = [diagnostics[i]!]
+    let j = i + 1
+    while (j < diagnostics.length && diagnostics[j]!.takenAt.getTime() - start < 90_000) {
+      session.push(diagnostics[j]!); j++
+    }
+    const totScore = session.reduce((s, d) => s + (((d.scores as Record<string, unknown>).score as number) ?? 0), 0)
+    const totMax   = session.reduce((s, d) => s + (((d.scores as Record<string, unknown>).maxScore as number) ?? 0), 0)
+    timeline.push({
+      date:       session[0]!.takenAt.toISOString(),
+      label:      'Диагностика',
+      percentage: totMax > 0 ? Math.round((totScore / totMax) * 100) : 0,
+      type:       'diagnostic',
+    })
+    i = j
+  }
+  for (const e of entResults) {
+    timeline.push({ date: e.takenAt.toISOString(), label: 'Пробный ЕНТ', percentage: Math.round(e.percentage), type: 'ent' })
+  }
+  timeline.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
+  // Latest per-subject averages (from the most recent diagnostic session)
+  let subjectAverages: Array<{ subject: string; percentage: number }> = []
+  if (diagnostics.length > 0) {
+    const newest = diagnostics[diagnostics.length - 1]!.takenAt.getTime()
+    const lastSession = diagnostics.filter(d => Math.abs(d.takenAt.getTime() - newest) < 90_000)
+    subjectAverages = lastSession.map(d => ({
+      subject:    d.subject,
+      percentage: Math.round(((d.scores as Record<string, unknown>).percentage as number) ?? 0),
+    }))
+  }
+
+  // Assignment activity
+  const scored = submissions.map(s => s.score).filter((s): s is number => s !== null)
+  const avgAssignmentScore = scored.length ? Math.round(scored.reduce((a, b) => a + b, 0) / scored.length) : null
+
+  res.json({
+    timeline,
+    subjectAverages,
+    activity: {
+      diagnosticsCount: timeline.filter(t => t.type === 'diagnostic').length,
+      entCount:         entResults.length,
+      submissionsCount: submissions.length,
+      avgAssignmentScore,
+      bestEnt:          entResults.length ? Math.max(...entResults.map(e => Math.round(e.percentage))) : null,
+    },
+  })
+})
+
 // ── POST /api/users/me/parent-link — generate code for parent to link via Telegram
 router.post('/me/parent-link', verifyToken, async (req, res) => {
   const userId = req.user!.userId

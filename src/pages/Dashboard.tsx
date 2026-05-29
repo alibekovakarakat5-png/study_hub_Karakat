@@ -52,6 +52,7 @@ import {
 } from '@/lib/utils'
 import NotificationDropdown from '@/components/NotificationDropdown'
 import RecommendationsWidget from '@/components/RecommendationsWidget'
+import ProgressAnalytics from '@/components/dashboard/ProgressAnalytics'
 import Sidebar from '@/components/dashboard/Sidebar'
 import LessonRenderer, { InlineMd } from '@/components/LessonRenderer'
 import { useTranslation } from 'react-i18next'
@@ -1355,6 +1356,11 @@ export default function Dashboard() {
             {/* Class Assignments (from teacher) */}
             <motion.div variants={cardVariants} className="sm:col-span-2 xl:col-span-12">
               <ClassAssignmentsSection />
+            </motion.div>
+
+            {/* Progress analytics — score over time */}
+            <motion.div variants={cardVariants} className="sm:col-span-2 xl:col-span-12">
+              <ProgressAnalytics />
             </motion.div>
 
             {/* Smart Recommendations */}
