@@ -15,11 +15,15 @@ import { spawn } from 'child_process'
 
 const CLAUDE_CLI_BIN    = process.env.CLAUDE_CLI ?? 'claude'
 const CLAUDE_CLI_ENABLED = process.env.CLAUDE_CLI_ENABLED !== 'false'  // on by default
+// Model for the Claude Code CLI — 'opus' uses the latest Opus on the account
+// (highest quality). Override with CLAUDE_CLI_MODEL=sonnet for faster/cheaper.
+const CLAUDE_CLI_MODEL  = process.env.CLAUDE_CLI_MODEL ?? 'claude-opus-4-8'
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
 const GEMINI_API_KEY    = process.env.GEMINI_API_KEY
 const GROQ_API_KEY      = process.env.GROQ_API_KEY
 
-const ANTHROPIC_MODEL = 'claude-haiku-4-5'
+// Direct-API model (only used if ANTHROPIC_API_KEY is set). Latest Opus.
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-opus-4-6'
 const GEMINI_MODEL    = 'gemini-2.0-flash'
 const GEMINI_URL      = (model: string) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`
 const GROQ_URL        = 'https://api.groq.com/openai/v1/chat/completions'
@@ -49,10 +53,20 @@ function stripFences(s: string): string {
 
 function tryParse<T>(raw: string): T {
   let cleaned = stripFences(raw)
-  // Tolerate a leading explanation line before the JSON body
   const firstBrace = cleaned.indexOf('{')
   if (firstBrace > 0) cleaned = cleaned.slice(firstBrace)
-  return JSON.parse(cleaned) as T
+  const lastBrace = cleaned.lastIndexOf('}')
+  if (lastBrace !== -1 && lastBrace < cleaned.length - 1) cleaned = cleaned.slice(0, lastBrace + 1)
+  try {
+    return JSON.parse(cleaned) as T
+  } catch (e) {
+    // Opus sometimes emits invalid control chars; strip them (keep tab/newline/CR) and retry once.
+    const sanitized = Array.from(cleaned).filter(ch => {
+      const code = ch.charCodeAt(0)
+      return code >= 32 || code === 9 || code === 10 || code === 13
+    }).join('')
+    try { return JSON.parse(sanitized) as T } catch { throw e }
+  }
 }
 
 // ── Provider implementations ─────────────────────────────────────────────────
@@ -76,7 +90,7 @@ async function callClaudeCli<T>(opts: LLMCallOptions): Promise<T> {
   const stderr: Buffer[] = []
 
   await new Promise<void>((resolve, reject) => {
-    const proc = spawn(CLAUDE_CLI_BIN, ['-p', '--output-format', 'text'], {
+    const proc = spawn(CLAUDE_CLI_BIN, ['-p', '--model', CLAUDE_CLI_MODEL, '--output-format', 'text'], {
       stdio: ['pipe', 'pipe', 'pipe'],
       shell: process.platform === 'win32',  // .cmd shim on Windows
     })

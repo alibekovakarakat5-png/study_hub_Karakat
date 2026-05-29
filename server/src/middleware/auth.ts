@@ -31,13 +31,18 @@ export function signToken(payload: JwtPayload): string {
 // ── Middleware ────────────────────────────────────────────────────────────────
 
 export function verifyToken(req: Request, res: Response, next: NextFunction): void {
+  // Token normally comes in the Authorization header. For links opened directly
+  // in a new browser tab (e.g. parent/center report HTML), we also accept it as
+  // a ?token= query param since the browser can't set headers on a plain link.
   const header = req.headers.authorization
-  if (!header?.startsWith('Bearer ')) {
+  const queryToken = typeof req.query['token'] === 'string' ? req.query['token'] : null
+  const token = header?.startsWith('Bearer ') ? header.slice(7) : queryToken
+
+  if (!token) {
     res.status(401).json({ error: 'Требуется авторизация' })
     return
   }
 
-  const token = header.slice(7)
   try {
     const payload = jwt.verify(token, JWT_SECRET) as JwtPayload
     req.user = payload
