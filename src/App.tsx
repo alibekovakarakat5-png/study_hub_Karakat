@@ -164,7 +164,7 @@ export default function App() {
           <Route path="/support" element={<Support />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/for-schools" element={<ForSchools />} />
-          <Route path="/center" element={<ProtectedRoute><CenterDashboard /></ProtectedRoute>} />
+          <Route path="/center" element={<TeacherRoute><CenterDashboard /></TeacherRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>

@@ -10,7 +10,7 @@ import {
   GraduationCap, CheckCircle2, Banknote, BarChart3, Eye, Layers,
   Copy, ClipboardList, FlaskConical, ChevronRight, X, AlertCircle,
   Loader2, Check, Clock, Brain, UserPlus, FileText, LayoutGrid,
-  Sparkles, Share2,
+  Sparkles, Share2, Building2,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { openWhatsAppShare, buildClassInviteMessage } from '@/lib/whatsapp'
@@ -2075,6 +2075,13 @@ export default function TeacherDashboard() {
           <div className="flex items-center gap-6 text-sm text-gray-500">
             <span className="flex items-center gap-1.5"><Award className="w-4 h-4 text-amber-500" />Преподаватель</span>
             <span className="flex items-center gap-1.5"><Layers className="w-4 h-4 text-blue-500" />StudyHub Platform</span>
+            <button
+              onClick={() => navigate('/center')}
+              className="flex items-center gap-1.5 text-blue-600 hover:text-blue-700 font-medium transition-colors ml-auto"
+              title="Панель учебного центра — аналитика, учителя, ученики"
+            >
+              <Building2 className="w-4 h-4" /> Мой центр
+            </button>
           </div>
         </div>
       </div>
