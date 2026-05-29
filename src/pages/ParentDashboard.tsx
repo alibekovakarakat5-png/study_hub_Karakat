@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -45,7 +45,8 @@ import {
 import { useStore } from '@/store/useStore'
 import { useCuratorStore } from '@/store/useCuratorStore'
 import { usePracticeEntStore } from '@/store/usePracticeEntStore'
-import { SUBJECT_NAMES, SUBJECT_COLORS, type SubjectScore, type Subject } from '@/types'
+import { parentLinkApi, type ChildOverview } from '@/lib/api'
+import { SUBJECT_NAMES, SUBJECT_COLORS, type SubjectScore, type Subject, type StudyPlan } from '@/types'
 import { cn, getGreeting, minutesToHumanReadable, getScoreBgColor, formatDate } from '@/lib/utils'
 import Card, { CardBody, CardHeader } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
@@ -79,11 +80,16 @@ const scaleIn = {
   },
 } satisfies import('framer-motion').Variants
 
-// ── Mock weekly activity data ───────────────────────────────────────────────
+// ── Weekly activity data ─────────────────────────────────────────────────────
+//
+// Until the backend exposes a per-child activity feed, the chart shows zero
+// for every day of the week. The empty-state message tells the parent the
+// child hasn't logged any sessions yet — better than fabricating numbers
+// that look like real data.
 
 const DAYS_OF_WEEK = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
-const STUDY_MINUTES_DATA = [45, 60, 30, 90, 75, 120, 55]
-const TASKS_COMPLETED_DATA = [3, 4, 2, 6, 5, 8, 4]
+const STUDY_MINUTES_DATA = [0, 0, 0, 0, 0, 0, 0]
+const TASKS_COMPLETED_DATA = [0, 0, 0, 0, 0, 0, 0]
 
 const weeklyActivityData = DAYS_OF_WEEK.map((day, i) => ({
   day,
@@ -232,7 +238,6 @@ function getDaysUntilEnt(): number {
 export default function ParentDashboard() {
   const navigate = useNavigate()
   const user = useStore((s) => s.user)
-  const childData = useStore((s) => s.childData)
   const logout = useStore((s) => s.logout)
 
   // Curator & ENT data (shared localStorage)
@@ -240,11 +245,83 @@ export default function ParentDashboard() {
   const moduleProgress = useCuratorStore((s) => s.moduleProgress)
   const entHistory = usePracticeEntStore((s) => s.history)
 
-  // Derived data
-  const diagnosticResult = childData?.diagnosticResult ?? null
-  const studyPlan = childData?.studyPlan ?? null
-  const weeklyReport = childData?.weeklyReport ?? null
-  const child = childData?.user ?? null
+  // ── Real child data from the API ──────────────────────────────────────────
+  const [loading, setLoading]       = useState(true)
+  const [overview, setOverview]     = useState<ChildOverview | null>(null)
+  const [linkCode, setLinkCode]     = useState('')
+  const [linking, setLinking]       = useState(false)
+  const [linkError, setLinkError]   = useState('')
+
+  const loadChild = useCallback(async () => {
+    if (!user) { setLoading(false); return }
+    try {
+      const { children } = await parentLinkApi.myChildren(user.id)
+      if (children.length > 0) {
+        const ov = await parentLinkApi.childOverview(children[0]!.id)
+        setOverview(ov)
+      } else {
+        setOverview(null)
+      }
+    } catch { /* keep empty state */ }
+    setLoading(false)
+  }, [user])
+
+  useEffect(() => { void loadChild() }, [loadChild])
+
+  async function handleLink() {
+    const code = linkCode.trim()
+    if (code.length < 4) { setLinkError('Введите код от ребёнка'); return }
+    setLinking(true); setLinkError('')
+    try {
+      await parentLinkApi.linkChild(code)
+      setLinkCode('')
+      setLoading(true)
+      await loadChild()
+    } catch (e) {
+      setLinkError(e instanceof Error ? e.message : 'Не удалось привязать')
+    }
+    setLinking(false)
+  }
+
+  // ── Map API overview → the shapes the render expects ──────────────────────
+  const child = overview ? {
+    name:              overview.child.name,
+    grade:             overview.child.grade ?? 11,
+    city:              overview.child.city ?? '',
+    streak:            overview.child.streak,
+    totalStudyMinutes: overview.child.totalStudyMinutes,
+    lastActiveDate:    overview.child.lastActiveDate ?? new Date().toISOString(),
+  } : null
+
+  const diagnosticResult = overview?.latestDiagnostic ? (() => {
+    const subjects = overview.latestDiagnostic.subjects as unknown as SubjectScore[]
+    const overallScore = subjects.reduce((s, x) => s + (x.score ?? 0), 0)
+    const maxScore     = subjects.reduce((s, x) => s + (x.maxScore ?? 0), 0)
+    return {
+      date: overview.latestDiagnostic.takenAt,
+      subjects,
+      overallScore,
+      maxScore,
+      percentile: maxScore > 0 ? Math.round((overallScore / maxScore) * 100) : 0,
+    }
+  })() : null
+
+  // Study plan from a parent view isn't fetched yet — block stays hidden.
+  // IIFE return type prevents CFA from narrowing to the `null` literal.
+  const studyPlan = ((): StudyPlan | null => null)()
+
+  type ParentWeeklyReport = {
+    studyMinutes: number
+    tasksCompleted: number
+    streak: number
+    prevDiagnosticScore?: number
+    subjectTrends?: { subject: string; prevScore: number; currentScore: number }[]
+  }
+  const weeklyReport: ParentWeeklyReport | null = overview ? {
+    studyMinutes:   overview.child.totalStudyMinutes,
+    tasksCompleted: overview.activity.submissionsCount,
+    streak:         overview.child.streak,
+  } : null
 
   const daysUntilEnt = getDaysUntilEnt()
 
@@ -347,6 +424,68 @@ export default function ParentDashboard() {
             </Button>
           </CardBody>
         </Card>
+      </div>
+    )
+  }
+
+  // ── Loading ───────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+          <p className="text-sm text-gray-500">Загружаем данные ребёнка…</p>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Empty state: no child linked yet → show link-by-code form ──────────────
+  if (!overview) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20">
+        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-gray-200/60">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center">
+                  <GraduationCap className="w-5 h-5 text-white" />
+                </div>
+                <h1 className="text-lg font-bold text-gray-900">Study Hub <span className="text-gray-400 font-normal">— Панель родителя</span></h1>
+              </div>
+              <Button variant="ghost" size="sm" icon={<LogOut className="w-4 h-4" />} onClick={handleLogout}>
+                <span className="hidden sm:inline">Выйти</span>
+              </Button>
+            </div>
+          </div>
+        </header>
+        <main className="max-w-lg mx-auto px-4 py-12 sm:py-20">
+          <Card variant="glass" className="p-8 text-center">
+            <CardBody>
+              <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center mx-auto mb-5">
+                <GraduationCap className="w-8 h-8 text-blue-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Привяжите аккаунт ребёнка</h2>
+              <p className="text-gray-500 mb-6 leading-relaxed">
+                Попросите ребёнка открыть <span className="font-medium text-gray-700">Настройки → Код для родителя</span> в своём аккаунте и продиктуйте вам 6-значный код.
+              </p>
+              <input
+                value={linkCode}
+                onChange={(e) => setLinkCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
+                inputMode="numeric"
+                className="w-full text-center text-2xl font-mono tracking-[0.5em] px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 mb-3"
+              />
+              {linkError && <p className="text-sm text-red-600 mb-3 flex items-center justify-center gap-1.5"><AlertTriangle className="w-4 h-4" />{linkError}</p>}
+              <Button onClick={() => void handleLink()} disabled={linking || linkCode.length < 4} fullWidth>
+                {linking ? 'Привязываем…' : 'Привязать ребёнка'}
+              </Button>
+              <p className="text-xs text-gray-400 mt-4">
+                После привязки вы увидите реальный прогресс: диагностику, баллы по предметам, пробные ЕНТ и активность.
+              </p>
+            </CardBody>
+          </Card>
+        </main>
       </div>
     )
   }
@@ -586,7 +725,9 @@ export default function ParentDashboard() {
                       <h3 className="font-bold text-gray-900">Время занятий</h3>
                     </div>
                     <Badge color="blue" size="sm">
-                      {minutesToHumanReadable(totalStudyMinutesWeek)} за неделю
+                      {totalStudyMinutesWeek > 0
+                        ? `${minutesToHumanReadable(totalStudyMinutesWeek)} за неделю`
+                        : 'Нет данных'}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -638,7 +779,7 @@ export default function ParentDashboard() {
                       <h3 className="font-bold text-gray-900">Задания выполнены</h3>
                     </div>
                     <Badge color="purple" size="sm">
-                      {totalTasksWeek} заданий за неделю
+                      {totalTasksWeek > 0 ? `${totalTasksWeek} заданий за неделю` : 'Нет данных'}
                     </Badge>
                   </div>
                 </CardHeader>

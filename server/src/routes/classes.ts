@@ -166,7 +166,42 @@ router.get('/:id', verifyToken, async (req, res) => {
     res.status(403).json({ error: 'Нет доступа к этому классу' }); return
   }
 
-  res.json({ class: cls })
+  // For the teacher/owner: compute per-student progress (submitted/total + avg score).
+  // Lets the Прогресс tab show real "сдано N/M" and flag laggards.
+  let progress: Array<{
+    studentId: string
+    submitted: number
+    total: number
+    avgScore: number | null
+  }> | undefined
+
+  if (isOwner) {
+    const assignmentIds = cls.assignments.map(a => a.id)
+    const totalAssignments = assignmentIds.length
+
+    const subs = assignmentIds.length
+      ? await prisma.assignmentSubmission.findMany({
+          where:  { assignmentId: { in: assignmentIds } },
+          select: { studentId: true, score: true },
+        })
+      : []
+
+    progress = cls.members.map((m: { studentId: string }) => {
+      const mine = subs.filter(s => s.studentId === m.studentId)
+      const scored = mine.map(s => s.score).filter((s): s is number => s !== null)
+      const avgScore = scored.length
+        ? Math.round(scored.reduce((a, b) => a + b, 0) / scored.length)
+        : null
+      return {
+        studentId: m.studentId,
+        submitted: mine.length,
+        total:     totalAssignments,
+        avgScore,
+      }
+    })
+  }
+
+  res.json({ class: cls, progress })
 })
 
 // ── DELETE /api/classes/:id ───────────────────────────────────────────────────

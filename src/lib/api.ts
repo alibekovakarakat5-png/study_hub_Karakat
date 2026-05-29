@@ -564,11 +564,19 @@ export interface AssignmentStats {
   avgScore: number | null
 }
 
+// Per-student progress for the teacher's class detail view
+export interface ClassProgressEntry {
+  studentId: string
+  submitted:  number
+  total:      number
+  avgScore:   number | null
+}
+
 // ── Classes API ────────────────────────────────────────────────────────────────
 
 export const classesApi = {
   list:         ()                          => api.get<{ classes: DBClass[] }>('/classes'),
-  get:          (id: string)               => api.get<{ class: DBClass }>(`/classes/${id}`),
+  get:          (id: string)               => api.get<{ class: DBClass; progress?: ClassProgressEntry[] }>(`/classes/${id}`),
   create:       (body: { name: string; subject: string; description?: string }) =>
                   api.post<{ class: DBClass }>('/classes', body),
   join:         (inviteCode: string)       => api.post<{ ok: true; class: DBClass }>('/classes/join', { inviteCode }),
@@ -871,7 +879,32 @@ export const smartAssignmentApi = {
 
 // ── Parent Link API ───────────────────────────────────────────────────────────
 
+export interface ChildOverview {
+  child: {
+    id: string; name: string; email: string; grade: number | null; city: string | null
+    streak: number; totalStudyMinutes: number; lastActiveDate: string | null
+    isPremium: boolean
+  }
+  latestDiagnostic: { takenAt: string; subjects: Array<Record<string, unknown>> } | null
+  entResults: Array<{ id: string; totalScore: number; percentage: number; takenAt: string }>
+  activity: {
+    submissionsCount: number
+    avgAssignmentScore: number | null
+    recentSubmissions: Array<{ title: string; score: number | null; submittedAt: string }>
+  }
+}
+
 export const parentLinkApi = {
+  // Student side: generate a one-time code to give to the parent
   generate: () =>
     api.post<{ code: string; instruction: string; botUrl: string }>('/users/me/parent-link', {}),
+  // Parent side: link a child by their code
+  linkChild: (code: string) =>
+    api.post<{ ok: boolean; child: { id: string; name: string; email: string; grade: number | null; city: string | null } }>('/users/link-child', { code }),
+  // Parent side: list my children
+  myChildren: (parentId: string) =>
+    api.get<{ children: Array<{ id: string; name: string; email: string; grade: number | null; city: string | null; streak: number; totalStudyMinutes: number }> }>(`/users/${parentId}/children`),
+  // Parent side: full snapshot of one child
+  childOverview: (childId: string) =>
+    api.get<ChildOverview>(`/users/child/${childId}/overview`),
 }

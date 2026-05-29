@@ -26,48 +26,23 @@ export interface PlatformStats {
   topUniversities: { name: string; applicants: number }[]
 }
 
+// Platform-wide aggregate stats. Real values come from /api/admin/stats
+// (see Admin.tsx). This zeroed-out export is kept only as a typing fallback
+// for any consumer that imports it before the API responds — never display
+// these numbers in the UI as if they were real.
 export const PLATFORM_STATS: PlatformStats = {
-  totalUsers: 15842,
-  activeToday: 3291,
-  premiumUsers: 2106,
-  totalRevenue: '10 523 940 ₸',
-  avgScore: 67.4,
-  testsCompleted: 48210,
-  plansCreated: 9847,
-  retentionRate: 72.3,
-  registrationsByDay: [
-    { date: '04.02', count: 142 },
-    { date: '05.02', count: 189 },
-    { date: '06.02', count: 156 },
-    { date: '07.02', count: 201 },
-    { date: '08.02', count: 234 },
-    { date: '09.02', count: 178 },
-    { date: '10.02', count: 267 },
-  ],
-  usersByCity: [
-    { city: 'Алматы', count: 5420 },
-    { city: 'Астана', count: 4130 },
-    { city: 'Шымкент', count: 1890 },
-    { city: 'Караганда', count: 1340 },
-    { city: 'Актобе', count: 980 },
-    { city: 'Другие', count: 2082 },
-  ],
-  revenueByMonth: [
-    { month: 'Сен', amount: 620000 },
-    { month: 'Окт', amount: 890000 },
-    { month: 'Ноя', amount: 1240000 },
-    { month: 'Дек', amount: 1580000 },
-    { month: 'Янв', amount: 2340000 },
-    { month: 'Фев', amount: 3853940 },
-  ],
-  topUniversities: [
-    { name: 'Назарбаев Университет', applicants: 3240 },
-    { name: 'КазНУ им. аль-Фараби', applicants: 2890 },
-    { name: 'КБТУ', applicants: 1950 },
-    { name: 'КазНТУ Сатпаева', applicants: 1720 },
-    { name: 'ЕНУ Гумилёва', applicants: 1560 },
-    { name: 'KIMEP', applicants: 1230 },
-  ],
+  totalUsers: 0,
+  activeToday: 0,
+  premiumUsers: 0,
+  totalRevenue: '—',
+  avgScore: 0,
+  testsCompleted: 0,
+  plansCreated: 0,
+  retentionRate: 0,
+  registrationsByDay: [],
+  usersByCity: [],
+  revenueByMonth: [],
+  topUniversities: [],
 }
 
 // ── Store ────────────────────────────────────────────────────────────────────
@@ -174,48 +149,8 @@ export const useStore = create<AppState>()(
         )
         setToken(token)
         set({ user, isAuthenticated: true })
-
-        // If registering as parent, stub childData so the parent dashboard works
-        if (data.role === 'parent') {
-          const childUser: User = {
-            id: generateId(),
-            name: 'Ученик',
-            email: data.childEmail || '',
-            role: 'student',
-            grade: 11,
-            city: data.city || 'Алматы',
-            isPremium: false,
-            createdAt: new Date().toISOString(),
-            parentId: user.id,
-            streak: 5,
-            totalStudyMinutes: 840,
-            lastActiveDate: new Date().toISOString(),
-          }
-
-          const mockDiagnostic: DiagnosticResult = {
-            id: generateId(),
-            userId: childUser.id,
-            date: new Date().toISOString(),
-            subjects: [
-              { subject: 'math', score: 18, maxScore: 25, percentage: 72, level: 'medium', weakTopics: ['Логарифмы', 'Тригонометрия'], strongTopics: ['Алгебра'] },
-              { subject: 'physics', score: 15, maxScore: 20, percentage: 75, level: 'high', weakTopics: ['Оптика'], strongTopics: ['Механика', 'Электричество'] },
-              { subject: 'informatics', score: 14, maxScore: 15, percentage: 93, level: 'high', weakTopics: [], strongTopics: ['Алгоритмы', 'Программирование'] },
-            ],
-            overallScore: 47,
-            maxScore: 60,
-            percentile: 68,
-            predictedUniversities: [],
-          }
-
-          set({
-            childData: {
-              user: childUser,
-              diagnosticResult: mockDiagnostic,
-              studyPlan: null,
-              weeklyReport: { studyMinutes: 840, tasksCompleted: 23, streak: 5 },
-            },
-          })
-        }
+        // Parents start with NO linked child — they link a real student via
+        // the 6-digit code in ParentDashboard. No fabricated data.
       },
 
       logout: () => {

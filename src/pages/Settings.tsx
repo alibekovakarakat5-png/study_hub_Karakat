@@ -41,6 +41,30 @@ export default function Settings() {
     }
   }
 
+  // ── Parent link code (student → parent) ──────────────────────────────────────
+  const [parentCode, setParentCode]       = useState<string | null>(null)
+  const [parentLoading, setParentLoading] = useState(false)
+  const [parentCopied, setParentCopied]   = useState(false)
+
+  async function generateParentCode() {
+    setParentLoading(true)
+    try {
+      const res = await api.post<{ code: string }>('/users/me/parent-link', {})
+      setParentCode(res.code)
+    } catch (err) {
+      setTgStatus({ type: 'error', msg: (err as Error).message })
+    } finally {
+      setParentLoading(false)
+    }
+  }
+
+  function copyParentCode() {
+    if (!parentCode) return
+    navigator.clipboard.writeText(parentCode)
+    setParentCopied(true)
+    setTimeout(() => setParentCopied(false), 2000)
+  }
+
   async function unlinkTelegram() {
     try {
       await api.del('/users/me/telegram-link')
@@ -410,6 +434,65 @@ export default function Settings() {
             )}
           </div>
         </section>
+
+        {/* Parent link code — students only */}
+        {user?.role === 'student' && (
+          <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
+              <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+                <Users className="w-4 h-4 text-purple-600" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-slate-800">Код для родителя</h2>
+                <p className="text-xs text-slate-500">Дайте код родителю, чтобы он видел ваш прогресс</p>
+              </div>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {!parentCode ? (
+                <>
+                  <p className="text-sm text-slate-600">
+                    Сгенерируйте 6-значный код и продиктуйте его родителю. В своём аккаунте «Родитель» он введёт код и сможет следить за вашей подготовкой к ЕНТ.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={generateParentCode}
+                    disabled={parentLoading}
+                    className="w-full rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white font-semibold py-2.5 text-sm transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Users className="w-4 h-4" />
+                    {parentLoading ? 'Генерируем…' : 'Сгенерировать код'}
+                  </button>
+                </>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-slate-600">Продиктуйте этот код родителю:</p>
+                  <div className="flex items-center justify-center gap-3">
+                    <code className="text-3xl font-bold tracking-[0.4em] text-slate-800 bg-purple-50 rounded-xl px-6 py-3 border border-purple-200 select-all">
+                      {parentCode}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={copyParentCode}
+                      className="shrink-0 p-2.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 transition-colors"
+                      title="Скопировать"
+                    >
+                      {parentCopied ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5 text-slate-500" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-400 text-center">Код одноразовый — после привязки перестанет действовать.</p>
+                  <button
+                    type="button"
+                    onClick={() => setParentCode(null)}
+                    className="text-xs text-slate-400 hover:text-slate-600 underline w-full text-center"
+                  >
+                    Скрыть
+                  </button>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
 
         {/* Referral section */}
         {referral && (

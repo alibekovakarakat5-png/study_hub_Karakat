@@ -24,6 +24,7 @@ import {
   type ClassAnalysis, type ClassScheduleItem,
   type StudentPreviewResponse,
   type LessonDraftMeta,
+  type ClassProgressEntry,
 } from '@/lib/api'
 
 // ── Animation variants ────────────────────────────────────────────────────────
@@ -1462,6 +1463,7 @@ function ProgressTab() {
   const [classes, setClasses]       = useState<DBClass[]>([])
   const [selectedId, setSelectedId] = useState('')
   const [detail, setDetail]         = useState<DBClass | null>(null)
+  const [progress, setProgress]     = useState<ClassProgressEntry[]>([])
   const [loading, setLoading]       = useState(true)
 
   useEffect(() => {
@@ -1471,7 +1473,7 @@ function ProgressTab() {
 
   useEffect(() => {
     if (!selectedId) return
-    classesApi.get(selectedId).then(r => setDetail(r.class)).catch(() => {})
+    classesApi.get(selectedId).then(r => { setDetail(r.class); setProgress(r.progress ?? []) }).catch(() => {})
   }, [selectedId])
 
   if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>
@@ -1507,31 +1509,55 @@ function ProgressTab() {
                 <tr>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Ученик</th>
                   <th className="text-center px-4 py-3 font-semibold text-gray-600 hidden sm:table-cell">Сдано</th>
+                  <th className="text-center px-4 py-3 font-semibold text-gray-600">Ср. балл</th>
                   <th className="text-right px-4 py-3 font-semibold text-gray-600 hidden md:table-cell">Вступил</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {detail.members?.map(m => (
-                  <tr key={m.id} className="hover:bg-gray-50/50 transition-colors">
+                {detail.members?.map(m => {
+                  const p = progress.find(x => x.studentId === m.student.id)
+                  const submitted = p?.submitted ?? 0
+                  const total = p?.total ?? (detail.assignments?.length ?? 0)
+                  const avg = p?.avgScore ?? null
+                  // Laggard signal: no work done, or low average
+                  const scoreColor =
+                    avg === null ? 'bg-gray-100 text-gray-400' :
+                    avg < 40     ? 'bg-red-100 text-red-700' :
+                    avg < 70     ? 'bg-amber-100 text-amber-700' :
+                                   'bg-green-100 text-green-700'
+                  const isLagging = total > 0 && submitted === 0
+                  return (
+                  <tr key={m.id} className={cn('hover:bg-gray-50/50 transition-colors', isLagging && 'bg-red-50/30')}>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
                         <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
                           {m.student.name.charAt(0)}
                         </div>
                         <div>
-                          <p className="font-medium text-gray-800">{m.student.name}</p>
+                          <p className="font-medium text-gray-800 flex items-center gap-1.5">
+                            {m.student.name}
+                            {isLagging && <span title="Не приступал к заданиям"><AlertCircle className="w-3.5 h-3.5 text-red-500" /></span>}
+                          </p>
                           <p className="text-xs text-gray-400">{m.student.email}</p>
                         </div>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-center hidden sm:table-cell">
-                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">— / {detail.assignments?.length ?? 0}</span>
+                      <span className={cn('text-xs px-2 py-0.5 rounded-full',
+                        submitted === total && total > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                      )}>{submitted} / {total}</span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full', scoreColor)}>
+                        {avg === null ? '—' : `${avg}%`}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-right hidden md:table-cell text-gray-400 text-xs">
                       {new Date(m.joinedAt).toLocaleDateString('ru-RU')}
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           )}
