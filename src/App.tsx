@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Suspense, lazy } from 'react'
 import { useStore } from '@/store/useStore'
 import RobotWidget from '@/components/robot/RobotWidget'
+import ComingSoon from '@/components/ComingSoon'
 
 // ── Lazy-loaded pages ────────────────────────────────────────────────────────
 const Landing = lazy(() => import('@/pages/Landing'))
@@ -16,13 +17,10 @@ const Admin = lazy(() => import('@/pages/Admin'))
 const Pricing = lazy(() => import('@/pages/Pricing'))
 const Courses = lazy(() => import('@/pages/Courses'))
 const TeacherDashboard = lazy(() => import('@/pages/TeacherDashboard'))
-const EmployerDashboard = lazy(() => import('@/pages/EmployerDashboard'))
 const PublicProfile = lazy(() => import('@/pages/PublicProfile'))
 const Onboarding = lazy(() => import('@/pages/Onboarding'))
 const CareerOrientation = lazy(() => import('@/pages/CareerOrientation'))
-const CareerTracker = lazy(() => import('@/pages/CareerTracker'))
 const Admission = lazy(() => import('@/pages/Admission'))
-const Internships = lazy(() => import('@/pages/Internships'))
 const Support = lazy(() => import('@/pages/Support'))
 const Curator = lazy(() => import('@/pages/Curator'))
 const PracticeEnt = lazy(() => import('@/pages/PracticeEnt'))
@@ -126,12 +124,12 @@ export default function App() {
           <Route path="/parent" element={<ParentRoute><ParentDashboard /></ParentRoute>} />
           <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
           <Route path="/teacher" element={<TeacherRoute><TeacherDashboard /></TeacherRoute>} />
-          <Route path="/employer" element={<EmployerRoute><EmployerDashboard /></EmployerRoute>} />
+          <Route path="/employer" element={<EmployerRoute><ComingSoon title="Кабинет работодателя" description="Раздел для компаний — поиск кандидатов из выпускников и публикация вакансий — скоро." planned={['Профили кандидатов с навыками и портфолио', 'Публикация вакансий и стажировок', 'Аналитика откликов']} /></EmployerRoute>} />
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           <Route path="/career-orientation" element={<ProtectedRoute><CareerOrientation /></ProtectedRoute>} />
-          <Route path="/career-tracker" element={<ProtectedRoute><CareerTracker /></ProtectedRoute>} />
+          <Route path="/career-tracker" element={<ProtectedRoute><ComingSoon title="Карьерный трекер" description="Резюме, навыки и подготовка к собеседованиям — в разработке." planned={['Конструктор резюме', 'Карта навыков и пробелов', 'Тренажёр собеседований']} /></ProtectedRoute>} />
           <Route path="/admission" element={<ProtectedRoute><Admission /></ProtectedRoute>} />
-          <Route path="/internships" element={<ProtectedRoute><Internships /></ProtectedRoute>} />
+          <Route path="/internships" element={<ProtectedRoute><ComingSoon title="Стажировки" description="Каталог стажировок и подача заявок — скоро." planned={['Каталог стажировок от партнёров', 'Подача заявок в один клик', 'Отслеживание статусов']} /></ProtectedRoute>} />
           <Route path="/curator" element={<ProtectedRoute><Curator /></ProtectedRoute>} />
           <Route path="/practice-ent" element={<ProtectedRoute><PracticeEnt /></ProtectedRoute>} />
           <Route path="/daily-challenge" element={<ProtectedRoute><DailyChallenge /></ProtectedRoute>} />
