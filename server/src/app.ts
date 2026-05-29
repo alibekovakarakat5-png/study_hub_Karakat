@@ -72,8 +72,28 @@ app.use(globalLimiter)
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 
+// ── CORS — allow multiple frontends (Vercel + Railway + localhost) ───────────
+// FRONTEND_URL may be a comma-separated list. We also always allow localhost,
+// the known prod domains, and any *.vercel.app preview deployment.
+const envOrigins = (process.env.FRONTEND_URL ?? '')
+  .split(',').map(s => s.trim()).filter(Boolean)
+const STATIC_ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:4173',
+  'https://studyhubkz.up.railway.app',
+  'https://study-hub-karakat.vercel.app',
+]
+const ALLOWED_ORIGINS = [...new Set([...envOrigins, ...STATIC_ALLOWED_ORIGINS])]
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL ?? 'http://localhost:5173',
+  origin: (origin, cb) => {
+    // No origin = same-origin request, curl, or mobile app — allow.
+    if (!origin) return cb(null, true)
+    let host = ''
+    try { host = new URL(origin).hostname } catch { /* malformed */ }
+    const ok = ALLOWED_ORIGINS.includes(origin) || host.endsWith('.vercel.app')
+    cb(null, ok)
+  },
   credentials: true,
 }))
 
