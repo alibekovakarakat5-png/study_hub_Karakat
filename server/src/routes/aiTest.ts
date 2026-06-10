@@ -11,7 +11,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { verifyToken, requireRole } from '../middleware/auth'
-import { generateTest, generateLesson } from '../lib/growthAI'
+import { generateTest, generateLesson, isTautologicalQuestion } from '../lib/growthAI'
 import { weakTopicsToIds } from '../lib/topicMatcher'
 import { pickQuestionsFromContent } from '../lib/contentQuestionPicker'
 import { prisma } from '../lib/prisma'
@@ -159,27 +159,22 @@ router.post('/generate-lesson', verifyToken, requireRole('teacher', 'admin'), as
   // Fold language into the cache key so RU and KK versions don't collide.
   const topicKey = (lang === 'kk' ? 'kk:' : '') + normalizeTopic(topic)
 
-  // Lightweight tautology check for cached entries (cache pre-validation).
-  // The full filter lives in growthAI.ts; we just need a quick rejection here.
+  // Cache pre-validation. Reuses the SAME whole-word helper as generation
+  // (single source of truth in growthAI.ts) and mirrors the generation-side
+  // safety floor: an entry is "bad" only when MORE THAN HALF its questions are
+  // tautological. This stops the cache from thrashing over one weak question —
+  // critical for Kazakh, where the heuristic is noisier.
   function looksTautological(lesson: unknown): boolean {
     type Q = { text?: string; options?: string[]; correctAnswer?: number }
     type L = { quiz?: Q[] }
     const l = lesson as L
-    if (!Array.isArray(l?.quiz)) return false
+    if (!Array.isArray(l?.quiz) || l.quiz.length === 0) return false
+    let bad = 0
     for (const q of l.quiz) {
       if (!q.text || !Array.isArray(q.options) || typeof q.correctAnswer !== 'number') continue
-      const ans = (q.options[q.correctAnswer] ?? '')
-        .replace(/^[A-DА-Г]\)\s*/, '')
-        .replace(/[^\p{L}\p{N}\s]/gu, ' ')
-        .toLowerCase().trim()
-      if (ans.length < 2 || ans.length > 20) continue
-      const ansWords = ans.split(/\s+/).filter(w => w.length > 3)
-      if (ansWords.length !== 1) continue
-      const qt = q.text.replace(/[^\p{L}\p{N}\s]/gu, ' ').toLowerCase()
-      if (qt.length > 80) continue
-      if (qt.includes(ansWords[0]!)) return true
+      if (isTautologicalQuestion(q.text, q.options, q.correctAnswer)) bad++
     }
-    return false
+    return bad > Math.floor(l.quiz.length / 2)
   }
 
   // ── 1. Try cache (drop entries that fail quality check) ──────────────────
@@ -225,11 +220,12 @@ router.post('/generate-lesson', verifyToken, requireRole('teacher', 'admin'), as
             lesson:        lesson as unknown as object,
             createdBy:     userId,
           },
-          update: {
-            // If two teachers raced — keep first, just bump hit
-            hitCount:  { increment: 1 },
-            lastHitAt: new Date(),
-          },
+          update: forceFresh
+            // Forced regen → replace the stored lesson (this is how a stale or
+            // low-quality entry gets healed without a manual cache wipe).
+            ? { lesson: lesson as unknown as object, topicOriginal: topic, lastHitAt: new Date() }
+            // Normal race (two teachers at once) → keep first, just bump the hit.
+            : { hitCount: { increment: 1 }, lastHitAt: new Date() },
         })
       } catch { /* swallow — cache is non-critical */ }
     }

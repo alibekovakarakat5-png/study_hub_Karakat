@@ -561,9 +561,16 @@ QUIZ — ровно ${n} вопросов, СТРОГИЕ ПРАВИЛА:
   // ── Quality validation: detect tautological questions ────────────────────
   const lesson = result.json.lesson
   const filteredQuiz = lesson.quiz.filter(q => !isTautological(q))
-  if (filteredQuiz.length < lesson.quiz.length) {
-    console.warn(`[generateLesson] Filtered ${lesson.quiz.length - filteredQuiz.length} tautological question(s)`)
+  const removed = lesson.quiz.length - filteredQuiz.length
+  // Safety floor: the tautology heuristic is approximate (and noisier for Kazakh).
+  // Only trust it when it strips at most half the quiz. A near-total wipeout means
+  // the filter misfired — the system prompt already forbids tautologies — so we
+  // keep the original set rather than shipping a one-question lesson.
+  if (removed > 0 && filteredQuiz.length >= Math.ceil(lesson.quiz.length / 2)) {
+    console.warn(`[generateLesson] Filtered ${removed} tautological question(s)`)
     lesson.quiz = filteredQuiz
+  } else if (removed > 0) {
+    console.warn(`[generateLesson] Tautology filter flagged ${removed}/${lesson.quiz.length} (>half) — keeping original, treating as false positive`)
   }
   if (lesson.quiz.length === 0) {
     throw new Error('AI сгенерировал только тавтологические вопросы — попробуйте ещё раз')
@@ -574,15 +581,31 @@ QUIZ — ровно ${n} вопросов, СТРОГИЕ ПРАВИЛА:
 
 // ── Quality filter: catch the "what is X? answer: X" pattern ─────────────────
 //
-// Flags only the EGREGIOUS case: short term-answer (1-2 words, ≤20 chars) where
-// every word of the answer literally appears in the question. Allows normal
-// questions like "Дробь 7/12 называется..." → "Обыкновенная дробь" (answer has
-// 2 words but is a meaningful application, not a tautology).
+// Flags only the EGREGIOUS tautology: a short single-WORD term answer whose word
+// appears AS A WHOLE WORD in a short question ("Бөлгіш дегеніміз не?" → "Бөлгіш").
 //
-// The heuristic: question is short (≤80 chars) AND answer is short term AND
-// fully contained in question → likely tautological.
-function isTautological(q: AILessonQuiz): boolean {
-  const correctText = (q.options[q.correctAnswer] ?? '')
+// Two rules keep it from eating good quizzes:
+//
+// 1. MATH/FORMULA ANSWERS ARE NEVER TAUTOLOGIES. If the answer carries LaTeX or
+//    math ($…$, \dfrac, \cdot, …) it's an *application* question, so bail out.
+//    This was the actual bug that gutted the Kazakh fractions quiz: the answer
+//    "$\dfrac{3}{4}$" and the question both contain LaTeX, and after stripping
+//    punctuation the command "\dfrac" survived as the bare word "dfrac" on BOTH
+//    sides — so 5 of 6 perfect numeric problems were mis-flagged as tautologies.
+//
+// 2. WHOLE-WORD, NEVER SUBSTRING. Kazakh is agglutinative: a root like "бөлгіш"
+//    (denominator) lives inside suffixed forms — "бөлгішті", "бөлгішке" — which
+//    are legitimate usage questions, not definitions. Word-set membership keeps
+//    real definitions flagged while letting inflected usage through.
+//
+// Exported so the cache pre-check in aiTest.ts shares ONE source of truth.
+export function isTautologicalQuestion(text: string, options: string[], correctAnswer: number): boolean {
+  const rawAnswer = options[correctAnswer] ?? ''
+
+  // Rule 1 — math/formula answers are applications, never term tautologies.
+  if (/[$\\]/.test(rawAnswer)) return false
+
+  const correctText = rawAnswer
     .replace(/^[A-DА-Г]\)\s*/, '')          // drop "A) " prefix
     .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .trim()
@@ -593,14 +616,19 @@ function isTautological(q: AILessonQuiz): boolean {
   // Single significant word only — multi-word answers are application questions
   if (correctWords.length !== 1) return false
 
-  const qText = (q.text ?? '')
+  // Strip LaTeX commands (\dfrac, \cdot, …) from the question before tokenizing,
+  // then keep only the WHOLE-WORD check (Rule 2).
+  const qNorm = (text ?? '')
+    .replace(/\\[a-zA-Z]+/g, ' ')
     .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .toLowerCase()
+  if (qNorm.length > 80) return false
+  const qWords = new Set(qNorm.split(/\s+/).filter(Boolean))
+  return qWords.has(correctWords[0]!)
+}
 
-  // Tautology: question is short ("Что такое X?", ≤80 chars) AND the one
-  // significant word of the answer appears verbatim in question.
-  if (qText.length > 80) return false
-  return qText.includes(correctWords[0]!)
+function isTautological(q: AILessonQuiz): boolean {
+  return isTautologicalQuestion(q.text, q.options, q.correctAnswer)
 }
 
 export async function generateTest(params: {
