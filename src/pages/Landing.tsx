@@ -445,16 +445,17 @@ function LiveStatsBar() {
   const { ref, inView } = useSectionInView(0.5);
   const { t } = useTranslation();
 
-  const diagnostics = useCounter(1500, inView);
-  const students = useCounter(500, inView);
-  const plans = useCounter(200, inView);
-  const social = useCounter(20, inView);
+  // Real capability stats — no fabricated usage/traction numbers.
+  const lessons   = useCounter(60, inView);
+  const subjects  = useCounter(7, inView);
+  const questions = useCounter(120, inView);
+  const langs     = useCounter(2, inView);
 
   const stats = [
-    { value: `${diagnostics.toLocaleString()}+`, label: t('landing.stat_diagnostics') },
-    { value: `${students}+`, label: t('landing.stat_students') },
-    { value: `${plans}+`, label: t('landing.stat_plans') },
-    { value: `${social}%`, label: t('landing.stat_social') },
+    { value: `${lessons}+`,  label: t('landing.stat_diagnostics') },
+    { value: `${subjects}`,  label: t('landing.stat_students') },
+    { value: `${questions}`, label: t('landing.stat_plans') },
+    { value: `${langs}`,     label: t('landing.stat_social') },
   ];
 
   return (

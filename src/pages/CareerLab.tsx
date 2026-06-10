@@ -16,7 +16,7 @@ const config: LabConfig = {
   heroEmoji: '💼',
   SectionIcon: Briefcase,
   stats: [
-    { value: '50+', label: 'карьерных треков' },
+    { value: 'AI-тест', label: 'профориентация за 12 вопросов' },
     { value: 'Portfolio', label: 'публичная страница-резюме' },
     { value: 'AI', label: 'карьерный советник' },
     { value: 'бесплатно', label: 'базовый план' },

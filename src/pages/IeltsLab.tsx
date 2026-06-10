@@ -16,9 +16,9 @@ const config: LabConfig = {
   heroEmoji: '🌍',
   SectionIcon: Globe,
   stats: [
-    { value: '7.0+', label: 'средний Band наших студентов' },
     { value: '4 навыка', label: 'Listening, Reading, Writing, Speaking' },
-    { value: '150+', label: 'зарубежных университетов в базе' },
+    { value: '8 разделов', label: 'полная подготовка к IELTS' },
+    { value: 'AI', label: 'персональный план' },
     { value: 'бесплатно', label: 'базовая подготовка' },
   ],
   pains: [

@@ -314,9 +314,9 @@ export default function ForSchools() {
             transition={{ duration: 0.6, delay: 0.5 }}
             className="grid grid-cols-3 gap-8 max-w-lg mx-auto border-t border-white/10 pt-10"
           >
-            <StatCounter value={500}   suffix="+"  label="учителей" />
-            <StatCounter value={10000} suffix="+"  label="учеников" />
-            <StatCounter value={30}    suffix=" с" label="AI-тест" />
+            <StatCounter value={60}  suffix="+"  label="готовых уроков · рус/каз" />
+            <StatCounter value={120} suffix=""   label="вопросов пробного ЕНТ" />
+            <StatCounter value={30}  suffix=" с" label="AI создаёт тест" />
           </motion.div>
         </div>
       </section>
@@ -457,7 +457,7 @@ export default function ForSchools() {
               <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
                 <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
                   <TrendingUp size={18} className="text-indigo-400" />
-                  Прогресс учеников с доказательствами
+                  Лента активности учеников
                 </h3>
                 <div className="space-y-3">
                   {[
@@ -481,7 +481,7 @@ export default function ForSchools() {
                   ))}
                 </div>
                 <div className="mt-3 pt-3 border-t border-white/5">
-                  <p className="text-slate-500 text-xs">Вы видите это в реальном времени в дашборде центра</p>
+                  <p className="text-slate-500 text-xs">Так выглядит лента активности в дашборде центра</p>
                 </div>
               </div>
             </motion.div>

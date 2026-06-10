@@ -16,9 +16,9 @@ const config: LabConfig = {
   heroEmoji: '🎯',
   SectionIcon: Target,
   stats: [
-    { value: '120+', label: 'средний балл наших учеников' },
+    { value: 'AI 24/7', label: 'наставник Skylla' },
     { value: '7 предметов', label: 'полное покрытие ЕНТ' },
-    { value: '500+', label: 'тренировочных вопросов' },
+    { value: '120', label: 'вопросов в пробном ЕНТ' },
     { value: 'бесплатно', label: 'диагностика и план' },
   ],
   pains: [

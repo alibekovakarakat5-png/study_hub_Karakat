@@ -175,7 +175,6 @@ export default function Support() {
             className="mt-10 flex flex-wrap justify-center gap-6"
           >
             {[
-              { value: '200+', label: t('support.stat1_label') },
               { value: '100%', label: t('support.stat2_label') },
               { value: '0 ₸', label: t('support.stat3_label') },
             ].map((s) => (
