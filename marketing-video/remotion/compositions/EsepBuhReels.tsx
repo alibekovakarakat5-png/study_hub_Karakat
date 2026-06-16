@@ -80,11 +80,13 @@ const Background: React.FC = () => {
 };
 
 const Logo: React.FC<{ size?: number }> = ({ size = 64 }) => (
-  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-    <div style={{ width: size, height: size, borderRadius: size * 0.3, background: GRAD, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 12px 40px ${C.blue}66` }}>
-      <span style={{ fontSize: size * 0.6, fontWeight: 800, color: "#04222E" }}>e</span>
+  <div style={{ display: "flex", alignItems: "center", gap: size * 0.26 }}>
+    <div style={{ width: size, height: size, borderRadius: size * 0.28, background: "#0E2A3D", border: "1.5px solid rgba(60,200,240,0.35)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 12px 40px ${C.blue}55` }}>
+      <svg width={size * 0.6} height={size * 0.6} viewBox="0 0 24 24" fill="none" stroke="#3CC8F0" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M5 15 L12 8 L19 15" />
+      </svg>
     </div>
-    <span style={{ fontSize: size * 0.8, fontWeight: 800, color: C.text, letterSpacing: -1 }}>sep</span>
+    <span style={{ fontSize: size * 1.05, fontWeight: 800, color: C.text, letterSpacing: 1 }}>ESEP</span>
   </div>
 );
 

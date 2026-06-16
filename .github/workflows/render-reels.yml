@@ -39,9 +39,13 @@ jobs:
         working-directory: marketing-video
         run: npx remotion render EsepBuhReel2 out/esep-buh-reel-2.mp4 --codec=h264 --crf=18
 
-      - name: Upload reels
+      - name: Render walkthrough (обучающее видео)
+        working-directory: marketing-video
+        run: npx remotion render EsepWalkthrough out/esep-walkthrough.mp4 --codec=h264 --crf=18
+
+      - name: Upload videos
         uses: actions/upload-artifact@v4
         with:
-          name: esep-buh-reels
+          name: esep-videos
           path: marketing-video/out/*.mp4
           if-no-files-found: error
