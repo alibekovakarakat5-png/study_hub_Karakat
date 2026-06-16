@@ -114,11 +114,14 @@ const Step: React.FC<{ label: string; right: React.ReactNode; delay: number }> =
   </FadeInUp>
 );
 
-const Caption: React.FC<{ text: string }> = ({ text }) => (
-  <FadeInUp delay={0.5}>
-    <div style={{ position: "absolute", bottom: SAFE.bottom - 120, left: 0, right: 0, textAlign: "center", fontSize: 52, fontWeight: 700, color: C.text }}>{text}</div>
-  </FadeInUp>
-);
+const Caption: React.FC<{ text: string }> = ({ text }) => {
+  const p = useEnter(0.45);
+  return (
+    <div style={{ position: "absolute", bottom: SAFE.bottom, left: SAFE.left, right: SAFE.right, textAlign: "center", fontSize: 52, fontWeight: 700, color: C.text, opacity: p, transform: `translateY(${interpolate(p, [0, 1], [30, 0])}px)` }}>
+      {text}
+    </div>
+  );
+};
 
 const Stage: React.FC<{ children: React.ReactNode; center?: boolean }> = ({ children, center = true }) => (
   <AbsoluteFill style={{ padding: `${SAFE.top}px ${SAFE.right}px ${SAFE.bottom}px ${SAFE.left}px`, alignItems: "center", justifyContent: center ? "center" : "flex-start", textAlign: "center" }}>
@@ -237,13 +240,14 @@ const R2Hook: React.FC = () => (
   </Stage>
 );
 
-const ClientBadge: React.FC<{ n: number }> = ({ n }) => (
-  <ScalePop delay={0.1}>
-    <div style={{ position: "absolute", top: SAFE.top - 110, left: 0, right: 0, textAlign: "center" }}>
+const ClientBadge: React.FC<{ n: number }> = ({ n }) => {
+  const p = useEnter(0.1, { damping: 12, stiffness: 180 });
+  return (
+    <div style={{ position: "absolute", top: SAFE.top + 10, left: SAFE.left, right: SAFE.right, textAlign: "center", opacity: interpolate(p, [0, 1], [0, 1]), transform: `scale(${p})` }}>
       <span style={{ fontSize: 42, fontWeight: 800, color: C.green, background: `${C.green}22`, padding: "12px 34px", borderRadius: 40 }}>Клиент {n} ✓</span>
     </div>
-  </ScalePop>
-);
+  );
+};
 
 const R2Client1: React.FC = () => (
   <Stage>
