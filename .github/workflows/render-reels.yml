@@ -11,6 +11,8 @@ on:
 jobs:
   render:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -43,9 +45,21 @@ jobs:
         working-directory: marketing-video
         run: npx remotion render EsepWalkthrough out/esep-walkthrough.mp4 --codec=h264 --crf=18
 
-      - name: Upload videos
+      - name: Render taxi (таксопарки)
+        working-directory: marketing-video
+        run: npx remotion render EsepTaxi out/esep-taxi.mp4 --codec=h264 --crf=18
+
+      - name: Upload videos (artifact)
         uses: actions/upload-artifact@v4
         with:
           name: esep-videos
           path: marketing-video/out/*.mp4
           if-no-files-found: error
+
+      - name: Publish to Release (прямая ссылка для скачивания)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: esep-videos
+          name: Esep videos
+          files: marketing-video/out/*.mp4
+          make_latest: true
