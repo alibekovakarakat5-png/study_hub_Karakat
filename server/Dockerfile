@@ -44,7 +44,8 @@ RUN mkdir -p uploads
 
 EXPOSE 3001
 
-# Push the Prisma schema to the database (idempotent: no-op when schema already
-# matches), then start the server. Use --accept-data-loss for first-deploy
-# bootstrap; switch to `prisma migrate deploy` once a migrations folder exists.
-CMD ["sh", "-c", "npx prisma db push --skip-generate --accept-data-loss && node dist/index.js"]
+# Apply committed migrations, then start the server. Baseline 0_init помечен
+# applied на проде (prisma migrate resolve, 2026-07-02). Новые изменения схемы:
+# `npm run db:migrate` локально → закоммитить prisma/migrations → deploy применит.
+# НИКОГДА не возвращать db push --accept-data-loss: он молча сносит данные.
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]

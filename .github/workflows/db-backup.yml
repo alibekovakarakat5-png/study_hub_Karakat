@@ -1,0 +1,51 @@
+# Ежесуточный шифрованный бэкап прод-Postgres (Railway) в артефакты GitHub.
+#
+# Репозиторий ПУБЛИЧНЫЙ, поэтому дамп шифруется AES-256 до загрузки — без
+# passphrase артефакт бесполезен. Ретенция 30 дней.
+#
+# Требуемые secrets (Settings → Secrets and variables → Actions):
+#   PROD_DATABASE_URL — строка подключения к прод-БД (postgresql://...rlwy.net...)
+#   BACKUP_PASSPHRASE — любая длинная фраза; ей же расшифровывать при restore
+#
+# Восстановление — см. docs/CLOUD-BACKUP.md
+name: DB Backup
+
+on:
+  schedule:
+    - cron: '0 22 * * *' # 04:00 по Алматы, ежедневно
+  workflow_dispatch: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check secrets configured
+        env:
+          DB: ${{ secrets.PROD_DATABASE_URL }}
+          PASS: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          if [ -z "$DB" ] || [ -z "$PASS" ]; then
+            echo "::error::PROD_DATABASE_URL / BACKUP_PASSPHRASE не заданы в secrets"
+            exit 1
+          fi
+
+      - name: Dump (pg_dump custom format)
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: pg_dump "$DATABASE_URL" -Fc --no-owner -f backup.dump
+
+      - name: Encrypt (AES-256, pbkdf2)
+        env:
+          PASS: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          openssl enc -aes-256-cbc -pbkdf2 -salt \
+            -in backup.dump -out backup.dump.enc -pass env:PASS
+          rm backup.dump
+          ls -lh backup.dump.enc
+
+      - name: Upload artifact (30 days retention)
+        uses: actions/upload-artifact@v4
+        with:
+          name: studyhub-db-${{ github.run_id }}
+          path: backup.dump.enc
+          retention-days: 30
