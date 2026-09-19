@@ -11,8 +11,8 @@ type Commitment = '15' | '30' | '60' | '120'
 
 const GOALS: { id: Goal; emoji: string; title: string; subtitle: string; to: string }[] = [
   { id: 'ent',     emoji: '🎯', title: 'ЕНТ',              subtitle: 'Набрать 120+ баллов',        to: '/diagnostic' },
-  { id: 'ielts',   emoji: '🌍', title: 'IELTS',             subtitle: 'Поступить за рубеж',         to: '/ielts' },
-  { id: 'abroad',  emoji: '🏛️', title: 'Поступление',       subtitle: 'В зарубежный университет',  to: '/admissions' },
+  { id: 'ielts',   emoji: '🌍', title: 'IELTS',             subtitle: 'Поступить за рубеж',         to: '/dashboard' },
+  { id: 'abroad',  emoji: '🏛️', title: 'Поступление',       subtitle: 'В зарубежный университет',  to: '/admission' },
   { id: 'career',  emoji: '💼', title: 'Карьера',           subtitle: 'Портфолио и первая работа', to: '/career-tracker' },
   { id: 'startup', emoji: '🚀', title: 'Стартап',           subtitle: 'Запустить свой проект',     to: '/startup-lab' },
 ]

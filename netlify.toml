@@ -1,0 +1,14 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+  # Vite embeds this public URL into the browser bundle at build time.
+  # Without it, /api/* requests go to Netlify, which has no Express API.
+  VITE_API_URL = "https://creative-simplicity-production.up.railway.app"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -82,6 +82,7 @@ const STATIC_ALLOWED_ORIGINS = [
   'http://localhost:4173',
   'https://studyhubkz.up.railway.app',
   'https://study-hub-karakat.vercel.app',
+  'https://skylla.netlify.app',
 ]
 const ALLOWED_ORIGINS = [...new Set([...envOrigins, ...STATIC_ALLOWED_ORIGINS])]
 

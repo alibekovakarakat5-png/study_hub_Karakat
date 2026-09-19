@@ -9,8 +9,9 @@ const Landing = lazy(() => import('@/pages/Landing'))
 const Auth = lazy(() => import('@/pages/Auth'))
 const Diagnostic = lazy(() => import('@/pages/Diagnostic'))
 const Dashboard = lazy(() => import('@/pages/Dashboard'))
+const LearningWorkspace = lazy(() => import('@/pages/LearningWorkspace'))
 const Plan = lazy(() => import('@/pages/Plan'))
-const Mentor = lazy(() => import('@/pages/Mentor'))
+const Mentor = lazy(() => import('@/pages/StudyMentorPage'))
 const Portfolio = lazy(() => import('@/pages/Portfolio'))
 const ParentDashboard = lazy(() => import('@/pages/ParentDashboard'))
 const Admin = lazy(() => import('@/pages/Admin'))
@@ -20,7 +21,6 @@ const TeacherDashboard = lazy(() => import('@/pages/TeacherDashboard'))
 const PublicProfile = lazy(() => import('@/pages/PublicProfile'))
 const Onboarding = lazy(() => import('@/pages/Onboarding'))
 const CareerOrientation = lazy(() => import('@/pages/CareerOrientation'))
-const Admission = lazy(() => import('@/pages/Admission'))
 const Support = lazy(() => import('@/pages/Support'))
 const Curator = lazy(() => import('@/pages/Curator'))
 const PracticeEnt = lazy(() => import('@/pages/PracticeEnt'))
@@ -117,7 +117,8 @@ export default function App() {
           <Route path="/welcome" element={<ProtectedRoute><WelcomeFlow /></ProtectedRoute>} />
           <Route path="/admin-login" element={<AdminLogin />} />
           <Route path="/diagnostic" element={<Diagnostic />} />
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><LearningWorkspace /></ProtectedRoute>} />
+          <Route path="/ent-dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/plan" element={<ProtectedRoute><Plan /></ProtectedRoute>} />
           <Route path="/mentor" element={<ProtectedRoute><Mentor /></ProtectedRoute>} />
           <Route path="/portfolio" element={<ProtectedRoute><Portfolio /></ProtectedRoute>} />
@@ -128,7 +129,7 @@ export default function App() {
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           <Route path="/career-orientation" element={<ProtectedRoute><CareerOrientation /></ProtectedRoute>} />
           <Route path="/career-tracker" element={<ProtectedRoute><ComingSoon title="Карьерный трекер" description="Резюме, навыки и подготовка к собеседованиям — в разработке." planned={['Конструктор резюме', 'Карта навыков и пробелов', 'Тренажёр собеседований']} /></ProtectedRoute>} />
-          <Route path="/admission" element={<ProtectedRoute><Admission /></ProtectedRoute>} />
+          <Route path="/admission" element={<ProtectedRoute><LearningWorkspace initialTab="applications" /></ProtectedRoute>} />
           <Route path="/internships" element={<ProtectedRoute><ComingSoon title="Стажировки" description="Каталог стажировок и подача заявок — скоро." planned={['Каталог стажировок от партнёров', 'Подача заявок в один клик', 'Отслеживание статусов']} /></ProtectedRoute>} />
           <Route path="/curator" element={<ProtectedRoute><Curator /></ProtectedRoute>} />
           <Route path="/practice-ent" element={<ProtectedRoute><PracticeEnt /></ProtectedRoute>} />

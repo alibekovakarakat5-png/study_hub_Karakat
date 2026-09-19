@@ -7,7 +7,7 @@
 // Mounted at /api/ai/chat (shares /api/ai prefix with aiTest.ts).
 
 import { Router } from 'express'
-import { z } from 'zod'
+import { studyChatSchema } from '../lib/studyChatSchema'
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit'
 import { verifyToken } from '../middleware/auth'
 import { askSkylla } from '../lib/growthAI'
@@ -34,9 +34,7 @@ const chatLimiter = rateLimit({
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 
-const ChatSchema = z.object({
-  message: z.string().min(1).max(2000),
-})
+const ChatSchema = studyChatSchema
 
 // ── POST /api/ai/chat ─────────────────────────────────────────────────────────
 
@@ -53,7 +51,7 @@ router.post('/chat', verifyToken, chatLimiter, async (req, res) => {
   }
 
   const userId = String(req.user!.userId)
-  const { message } = parsed.data
+  const { message, history } = parsed.data
 
   // Look up user name for personalized greeting
   let userName = 'друг'
@@ -69,7 +67,7 @@ router.post('/chat', verifyToken, chatLimiter, async (req, res) => {
 
   try {
     const started = Date.now()
-    const reply = await askSkylla(message, userName)
+    const reply = await askSkylla(message, userName, history)
     const ms = Date.now() - started
 
     res.json({ reply, ms })

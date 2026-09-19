@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   BookOpen, Headphones, PenLine, Mic, Globe, Star, ChevronDown,
-  ChevronRight, ExternalLink, Send, Bot, Lightbulb, Clock,
+  ChevronRight, ExternalLink, Bot, Lightbulb, Clock,
   CheckCircle2, BarChart3, BookMarked, Youtube, Smartphone,
   Library, Download, Play,
 } from 'lucide-react'
@@ -13,10 +13,9 @@ import {
   SPEAKING_CUE_CARDS, VOCAB_TOPICS, IELTS_MATERIALS, BAND_DESCRIPTORS,
   type IeltsSkill,
 } from '@/data/ieltsContent'
-import { findMentorAnswer, IELTS_QUICK_QUESTIONS } from '@/data/mentorKnowledge'
 import { useStore } from '@/store/useStore'
-import { useRobotStore } from '@/store/useRobotStore'
 import { useContentStore } from '@/store/useContentStore'
+import StudyMentor from '@/components/StudyMentor'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -82,107 +81,6 @@ function Accordion({ title, children, defaultOpen = false }: { title: string; ch
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
-  )
-}
-
-// ── Chat message ──────────────────────────────────────────────────────────────
-
-interface ChatMsg { role: 'user' | 'mentor'; text: string }
-
-function MentorChat({ studentName }: { studentName: string }) {
-  const [messages, setMessages] = useState<ChatMsg[]>([
-    { role: 'mentor', text: `Привет, ${studentName || 'студент'}! Я твой IELTS-ментор. Задавай любой вопрос об экзамене — по Writing, Reading, Speaking или Listening. Или выбери быстрый вопрос ниже.` },
-  ])
-  const [input, setInput] = useState('')
-  const [isTyping, setIsTyping] = useState(false)
-  const endRef = useRef<HTMLDivElement>(null)
-  const { speak } = useRobotStore()
-
-  const send = (text: string) => {
-    if (!text.trim()) return
-    const userMsg: ChatMsg = { role: 'user', text }
-    setMessages(prev => [...prev, userMsg])
-    setInput('')
-    setIsTyping(true)
-
-    setTimeout(() => {
-      const answer = findMentorAnswer(text, studentName)
-      const responseText = answer?.text ?? 'Хороший вопрос! Для более точного ответа уточни тему: Writing, Reading, Speaking или Listening — и какой именно аспект.'
-      const mentorMsg: ChatMsg = { role: 'mentor', text: responseText }
-      setMessages(prev => [...prev, mentorMsg])
-      setIsTyping(false)
-      speak(responseText.slice(0, 120))
-      setTimeout(() => endRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
-    }, 800 + Math.random() * 600)
-  }
-
-  return (
-    <div className="flex flex-col h-full max-h-[620px]">
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto space-y-3 pr-1 mb-4 min-h-0">
-        {messages.map((msg, i) => (
-          <div key={i} className={cn('flex gap-2', msg.role === 'user' && 'flex-row-reverse')}>
-            {msg.role === 'mentor' && (
-              <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center shrink-0 mt-0.5">
-                <Bot className="w-4 h-4 text-white" />
-              </div>
-            )}
-            <div className={cn(
-              'rounded-2xl px-3.5 py-2.5 text-sm max-w-[85%] whitespace-pre-line leading-relaxed',
-              msg.role === 'mentor'
-                ? 'bg-white/10 text-white rounded-tl-sm'
-                : 'bg-blue-600 text-white rounded-tr-sm ml-auto',
-            )}>
-              {msg.text}
-            </div>
-          </div>
-        ))}
-        {isTyping && (
-          <div className="flex gap-2">
-            <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
-              <Bot className="w-4 h-4 text-white" />
-            </div>
-            <div className="bg-white/10 rounded-2xl rounded-tl-sm px-4 py-3 flex gap-1 items-center">
-              {[0, 0.15, 0.3].map((delay, i) => (
-                <span key={i} className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: `${delay}s` }} />
-              ))}
-            </div>
-          </div>
-        )}
-        <div ref={endRef} />
-      </div>
-
-      {/* Quick questions */}
-      <div className="flex flex-wrap gap-1.5 mb-3">
-        {IELTS_QUICK_QUESTIONS.slice(0, 4).map(q => (
-          <button
-            key={q}
-            type="button"
-            onClick={() => send(q)}
-            className="text-xs bg-white/10 hover:bg-white/20 text-white/70 hover:text-white px-2.5 py-1 rounded-full transition-colors border border-white/10"
-          >
-            {q}
-          </button>
-        ))}
-      </div>
-
-      {/* Input */}
-      <form onSubmit={e => { e.preventDefault(); send(input) }} className="flex gap-2">
-        <input
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          placeholder="Задай вопрос по IELTS..."
-          className="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/40 outline-none focus:border-blue-400/60"
-        />
-        <button
-          type="submit"
-          disabled={!input.trim() || isTyping}
-          className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white px-4 py-2.5 rounded-xl transition-colors"
-        >
-          <Send className="w-4 h-4" />
-        </button>
-      </form>
     </div>
   )
 }
@@ -915,7 +813,10 @@ function CambridgeTab() {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function Ielts() {
-  const [activeTab, setActiveTab] = useState<Tab>('overview')
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab')
+    return ['overview', 'listening', 'reading', 'writing', 'speaking', 'vocabulary', 'materials', 'cambridge', 'chat'].includes(tab ?? '') ? tab as Tab : 'overview'
+  })
   const user = useStore(s => s.user)
   const navigate = useNavigate()
 
@@ -949,7 +850,7 @@ export default function Ielts() {
             <span className="text-white font-semibold">IELTS Preparation</span>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <span className="text-xs text-white/40 hidden sm:block">AI Ментор доступен в правом нижнем углу</span>
+            <button type="button" onClick={() => navigate('/dashboard')} className="text-sm text-blue-300">Моя подготовка и задания</button>
             <button
               type="button"
               onClick={() => setActiveTab('chat')}
@@ -978,7 +879,7 @@ export default function Ielts() {
                   IELTS Academic Preparation
                 </h1>
                 <p className="text-white/60 text-sm md:text-base mb-4">
-                  Полная база знаний: структура экзамена, шаблоны, стратегии и AI-ментор. Всё, что нужно для Band 7+.
+                  Структура экзамена, стратегии и материалы. Практика и сохранённые работы — в разделе «Моя подготовка».
                 </p>
                 <div className="flex flex-wrap gap-3">
                   {(Object.keys(SKILL_CONFIG) as IeltsSkill[]).map(skill => {
@@ -1048,7 +949,7 @@ export default function Ielts() {
             {activeTab === 'materials'  && <MaterialsTab />}
             {activeTab === 'cambridge'  && <CambridgeTab />}
             {activeTab === 'chat'       && (
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-5" style={{ height: 680 }}>
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
                 <div className="flex items-center gap-2 mb-4 pb-4 border-b border-white/10">
                   <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
                     <Bot className="w-4 h-4 text-white" />
@@ -1056,13 +957,12 @@ export default function Ielts() {
                   <div>
                     <p className="text-white font-semibold text-sm">AI IELTS Ментор</p>
                     <div className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                      <span className="text-green-400 text-xs">Онлайн</span>
+                      <span className="text-slate-300 text-xs">Ответы через сервер · доступность проверяется при отправке</span>
                     </div>
                   </div>
                 </div>
                 <div style={{ height: 'calc(100% - 64px)' }}>
-                  <MentorChat studentName={user?.name ?? ''} />
+                  <StudyMentor key={user?.id} />
                 </div>
               </div>
             )}

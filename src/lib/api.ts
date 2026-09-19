@@ -34,10 +34,13 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    signal: path === '/ai/chat' || path.startsWith('/module-progress') ? AbortSignal.timeout(45000) : undefined,
   })
 
   // Parse JSON even for error responses (server returns { error: string })
-  const data = await res.json().catch(() => ({ error: res.statusText }))
+  const data = await res.json().catch(() => {
+    throw new Error(`Сервер вернул не JSON (HTTP ${res.status}). Проверьте адрес API и настройки размещения.`)
+  })
 
   if (!res.ok) {
     throw new Error((data as { error?: string }).error ?? `HTTP ${res.status}`)
@@ -677,8 +680,8 @@ export const lessonDraftsApi = {
 // ── AI Chat API (Skylla student mentor) ────────────────────────────────────────
 
 export const aiChatApi = {
-  send: (message: string) =>
-    api.post<{ reply: string; ms: number }>('/ai/chat', { message }),
+  send: (message: string, history: { role: 'user' | 'assistant'; content: string }[] = []) =>
+    api.post<{ reply: string; ms: number }>('/ai/chat', { message, history }),
 }
 
 // ── Organization / B2B Types ───────────────────────────────────────────────────

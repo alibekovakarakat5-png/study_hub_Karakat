@@ -80,8 +80,8 @@ export default function Auth() {
   // Context onboarding: redirect based on landing entry point
   const SOURCE_REDIRECT: Record<string, string> = {
     ent:     '/diagnostic',
-    ielts:   '/ielts',
-    admit:   '/admissions',
+    ielts:   '/dashboard',
+    admit:   '/admission',
     startup: '/startup-lab',
     career:  '/career-tracker',
   }
@@ -103,7 +103,7 @@ export default function Auth() {
       } else if (fromSource && SOURCE_REDIRECT[fromSource]) {
         navigate(SOURCE_REDIRECT[fromSource], { replace: true })
       } else {
-        navigate(onboardingCompleted ? '/dashboard' : '/onboarding', { replace: true })
+        navigate('/dashboard', { replace: true })
       }
     }
   }, [isAuthenticated, user, onboardingCompleted, navigate, fromSource, justRegistered])
