@@ -34,7 +34,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
-    signal: path === '/ai/chat' || path.startsWith('/module-progress') ? AbortSignal.timeout(45000) : undefined,
+    signal: path === '/ai/chat' || path.startsWith('/module-progress') || path.startsWith('/learning') ? AbortSignal.timeout(45000) : undefined,
   })
 
   // Parse JSON even for error responses (server returns { error: string })

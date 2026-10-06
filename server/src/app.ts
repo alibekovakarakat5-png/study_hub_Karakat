@@ -13,6 +13,7 @@ import usersRoutes         from './routes/users'
 import diagnosticRoutes    from './routes/diagnostic'
 import studyPlanRoutes     from './routes/studyPlan'
 import moduleProgressRoutes from './routes/moduleProgress'
+import learningRoutes from './routes/learning'
 import entResultsRoutes    from './routes/entResults'
 import contentRoutes       from './routes/content'
 import admissionsRoutes    from './routes/admissions'
@@ -108,6 +109,7 @@ app.use('/api/users',           usersRoutes)
 app.use('/api/diagnostic',      diagnosticRoutes)
 app.use('/api/study-plans',     studyPlanRoutes)
 app.use('/api/module-progress', moduleProgressRoutes)
+app.use('/api/learning',         learningRoutes)
 app.use('/api/ent-results',     entResultsRoutes)
 app.use('/api/content',         contentRoutes)
 app.use('/api/admissions',      admissionsRoutes)

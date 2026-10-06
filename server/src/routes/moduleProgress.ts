@@ -23,6 +23,10 @@ router.put('/:moduleId', verifyToken, async (req, res) => {
 
   const userId   = req.user!.userId
   const moduleId = String(req.params['moduleId'])
+  if (moduleId.startsWith('skylla-v1-')) {
+    res.status(400).json({ error: 'Используйте учебный кабинет для этих записей.' })
+    return
+  }
 
   const data: Prisma.ModuleProgressUncheckedCreateInput = {
     userId,
@@ -49,7 +53,7 @@ router.put('/:moduleId', verifyToken, async (req, res) => {
 
 router.get('/', verifyToken, async (req, res) => {
   const progresses = await prisma.moduleProgress.findMany({
-    where:   { userId: req.user!.userId },
+    where:   { userId: req.user!.userId, NOT: { moduleId: { startsWith: 'skylla-v1-' } } },
     orderBy: { updatedAt: 'desc' },
   })
   res.json({ progresses })

@@ -850,6 +850,7 @@ export default function Ielts() {
             <span className="text-white font-semibold">IELTS Preparation</span>
           </div>
           <div className="ml-auto flex items-center gap-2">
+            <button type="button" onClick={() => navigate('/ielts-coach')} className="rounded-lg bg-blue-600 px-3 py-2 text-sm">Продолжить со Skylla</button>
             <button type="button" onClick={() => navigate('/dashboard')} className="text-sm text-blue-300">Моя подготовка и задания</button>
             <button
               type="button"
