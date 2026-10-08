@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { prisma } from '../lib/prisma'
 import { verifyToken, requireRole } from '../middleware/auth'
+import { realUsers } from '../lib/reviewCatalog'
 
 const router = Router()
 
@@ -30,36 +31,36 @@ router.get('/stats', verifyToken, requireRole('admin'), async (_req, res) => {
     usersBySpecialty,
     regsByDay,
   ] = await Promise.all([
-    prisma.user.count(),
-    prisma.user.count({ where: { isPremium: true } }),
-    prisma.user.count({ where: { lastActiveDate: { gte: todayStart.toISOString() } } }),
+    prisma.user.count({ where: realUsers }),
+    prisma.user.count({ where: { ...realUsers, isPremium: true } }),
+    prisma.user.count({ where: { ...realUsers, lastActiveDate: { gte: todayStart.toISOString() } } }),
     prisma.entResult.count(),
     prisma.studyPlan.count(),
 
-    prisma.user.groupBy({ by: ['role'], _count: { id: true } }),
+    prisma.user.groupBy({ by: ['role'], where: realUsers, _count: { id: true } }),
     prisma.user.groupBy({
       by: ['grade'],
-      where: { grade: { not: null } },
+      where: { ...realUsers, grade: { not: null } },
       _count: { id: true },
       orderBy: { grade: 'asc' },
     }),
     prisma.user.groupBy({
       by: ['city'],
-      where: { city: { not: null } },
+      where: { ...realUsers, city: { not: null } },
       _count: { id: true },
       orderBy: { _count: { id: 'desc' } },
       take: 6,
     }),
     prisma.user.groupBy({
       by: ['targetUniversity'],
-      where: { targetUniversity: { not: null } },
+      where: { ...realUsers, targetUniversity: { not: null } },
       _count: { id: true },
       orderBy: { _count: { id: 'desc' } },
       take: 5,
     }),
     prisma.user.groupBy({
       by: ['targetSpecialty'],
-      where: { targetSpecialty: { not: null } },
+      where: { ...realUsers, targetSpecialty: { not: null } },
       _count: { id: true },
       orderBy: { _count: { id: 'desc' } },
       take: 5,
@@ -71,7 +72,7 @@ router.get('/stats', verifyToken, requireRole('admin'), async (_req, res) => {
         const dayEnd = new Date(dayStart)
         dayEnd.setDate(dayEnd.getDate() + 1)
         const count = await prisma.user.count({
-          where: { createdAt: { gte: dayStart, lt: dayEnd } },
+          where: { ...realUsers, createdAt: { gte: dayStart, lt: dayEnd } },
         })
         const label = `${String(dayStart.getDate()).padStart(2, '0')}.${String(dayStart.getMonth() + 1).padStart(2, '0')}`
         return { date: label, count }

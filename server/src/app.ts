@@ -14,6 +14,9 @@ import diagnosticRoutes    from './routes/diagnostic'
 import studyPlanRoutes     from './routes/studyPlan'
 import moduleProgressRoutes from './routes/moduleProgress'
 import learningRoutes from './routes/learning'
+import reviewRoutes, { createReviewFeed } from './routes/review'
+import { reviewBuild } from './lib/reviewCatalog'
+import { guardReviewTestTraffic } from './middleware/auth'
 import entResultsRoutes    from './routes/entResults'
 import contentRoutes       from './routes/content'
 import admissionsRoutes    from './routes/admissions'
@@ -100,6 +103,7 @@ app.use(cors({
 }))
 
 app.use(express.json({ limit: '2mb' }))
+app.use(guardReviewTestTraffic)
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 
@@ -110,6 +114,8 @@ app.use('/api/diagnostic',      diagnosticRoutes)
 app.use('/api/study-plans',     studyPlanRoutes)
 app.use('/api/module-progress', moduleProgressRoutes)
 app.use('/api/learning',         learningRoutes)
+app.use('/api/review',           reviewRoutes)
+app.use('/api/review-feed',      createReviewFeed())
 app.use('/api/ent-results',     entResultsRoutes)
 app.use('/api/content',         contentRoutes)
 app.use('/api/admissions',      admissionsRoutes)
@@ -140,7 +146,7 @@ setupSwagger(app)
 // ── Health check ──────────────────────────────────────────────────────────────
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, ts: new Date().toISOString() })
+  res.json({ ok: true, ts: new Date().toISOString(), build: reviewBuild() })
 })
 
 // ── 404 ───────────────────────────────────────────────────────────────────────

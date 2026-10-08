@@ -6,6 +6,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "test:learning": "node --import tsx --test src/__tests__/learning-memory.test.ts src/__tests__/study-mentor.test.ts",
+    "test:review": "node --import tsx --test src/__tests__/owner-review.test.ts src/__tests__/auth-recovery.test.ts",
     "start": "prisma migrate deploy && node dist/index.js",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",

@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 
 export default defineConfig({
+  define: { 'import.meta.env.VITE_BUILD_SHA': JSON.stringify(process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.RAILWAY_GIT_COMMIT_SHA ?? process.env.REVIEW_BUILD_SHA ?? 'unknown') },
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {

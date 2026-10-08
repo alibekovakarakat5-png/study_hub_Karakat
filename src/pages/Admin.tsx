@@ -97,11 +97,12 @@ export default function Admin() {
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'revenue' | 'content' | 'courses' | 'billing' | 'uploads'>(user?.role === 'teacher' ? 'courses' : 'overview')
   const [stats, setStats] = useState<AdminStats>(EMPTY_STATS)
   const [statsLoading, setStatsLoading] = useState(true)
+  const [statsError, setStatsError] = useState('')
 
   useEffect(() => {
     adminApi.getStats()
       .then(data => setStats({ ...EMPTY_STATS, ...data }))
-      .catch(() => {/* server may be offline, show zeros */})
+      .catch(e => setStatsError(e.message ?? 'Статистика недоступна'))
       .finally(() => setStatsLoading(false))
   }, [])
 
@@ -166,6 +167,7 @@ export default function Admin() {
             </div>
 
             <div className="flex items-center gap-4">
+              {isAdmin && <button className="rounded-lg bg-blue-600 text-white px-3 py-2 text-sm" onClick={() => navigate('/owner-review')}>Проверка выпусков</button>}
               <button
                 onClick={() => setActiveTab('users')}
                 className="relative hidden md:flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm text-slate-500 transition-colors"
@@ -223,7 +225,8 @@ export default function Admin() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {activeTab === 'overview' && (
+        {statsError && <p role="alert" className="rounded-xl bg-red-50 text-red-700 p-4">Статистика не загружена: {statsError}. Обновите страницу для повторной попытки.</p>}
+        {activeTab === 'overview' && !statsError && (
           <motion.div variants={fadeIn} initial="hidden" animate="visible">
             {/* Main Stat Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

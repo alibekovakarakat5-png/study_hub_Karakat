@@ -9,7 +9,7 @@ export default function ResetPassword() {
   const { t } = useTranslation()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const token = searchParams.get('token') ?? ''
+  const [token] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('token') ?? searchParams.get('token') ?? '')
 
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')

@@ -23,7 +23,7 @@ router.put('/:moduleId', verifyToken, async (req, res) => {
 
   const userId   = req.user!.userId
   const moduleId = String(req.params['moduleId'])
-  if (moduleId.startsWith('skylla-v1-')) {
+  if (moduleId.startsWith('skylla-v1-') || moduleId.startsWith('owner-review-v1-')) {
     res.status(400).json({ error: 'Используйте учебный кабинет для этих записей.' })
     return
   }
@@ -53,7 +53,7 @@ router.put('/:moduleId', verifyToken, async (req, res) => {
 
 router.get('/', verifyToken, async (req, res) => {
   const progresses = await prisma.moduleProgress.findMany({
-    where:   { userId: req.user!.userId, NOT: { moduleId: { startsWith: 'skylla-v1-' } } },
+    where:   { userId: req.user!.userId, NOT: [{ moduleId: { startsWith: 'skylla-v1-' } }, { moduleId: { startsWith: 'owner-review-v1-' } }] },
     orderBy: { updatedAt: 'desc' },
   })
   res.json({ progresses })
@@ -62,6 +62,7 @@ router.get('/', verifyToken, async (req, res) => {
 // ── GET /api/module-progress/:moduleId — single module ───────────────────────
 
 router.get('/:moduleId', verifyToken, async (req, res) => {
+  if (String(req.params.moduleId).startsWith('owner-review-v1-')) { res.status(403).json({ error: 'Служебная запись.' }); return }
   const progress = await prisma.moduleProgress.findUnique({
     where: {
       userId_moduleId: {

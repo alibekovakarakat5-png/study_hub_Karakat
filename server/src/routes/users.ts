@@ -8,7 +8,7 @@ import { verifyToken, requireRole } from '../middleware/auth'
 const router = Router()
 
 function safeUser(u: { passwordHash: string; telegramChatId?: string | null; [key: string]: unknown }) {
-  const { passwordHash: _, telegramChatId, ...rest } = u
+  const { passwordHash: _, resetToken: _reset, resetTokenExp: _expiry, telegramChatId, ...rest } = u
   return { ...rest, telegramLinked: !!telegramChatId }
 }
 

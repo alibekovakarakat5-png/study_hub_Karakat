@@ -6,7 +6,8 @@ import { prisma } from '../lib/prisma'
 import { signToken, verifyToken } from '../middleware/auth'
 import { tg } from '../lib/telegram'
 import { sanitizeString } from '../lib/sanitize'
-import { sendPasswordResetEmail } from '../lib/email'
+import { sendPasswordResetEmail, passwordEmailAvailable } from '../lib/email'
+import { TEST_USER_PREFIX } from '../lib/reviewCatalog'
 import type { Role } from '@prisma/client'
 
 const router = Router()
@@ -30,7 +31,7 @@ const LoginSchema = z.object({
 // ── Strip passwordHash before returning user ──────────────────────────────────
 
 function safeUser(u: { passwordHash: string; telegramChatId?: string | null; [key: string]: unknown }) {
-  const { passwordHash: _, telegramChatId, ...rest } = u
+  const { passwordHash: _, resetToken: _reset, resetTokenExp: _expiry, telegramChatId, ...rest } = u
   return { ...rest, telegramLinked: !!telegramChatId }
 }
 
@@ -99,7 +100,7 @@ router.post('/login', async (req, res) => {
   const { email, password } = parsed.data
 
   const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } })
-  if (!user) {
+  if (!user || user.id.startsWith(TEST_USER_PREFIX)) {
     res.status(401).json({ error: 'Неверный email или пароль' })
     return
   }
@@ -145,9 +146,12 @@ router.post('/forgot-password', async (req, res) => {
   }
 
   const { email } = parsed.data
+  if (!passwordEmailAvailable()) {
+    res.status(503).json({ error: 'Восстановление по почте временно недоступно. Обратитесь к владельцу платформы.' }); return
+  }
   const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } })
 
-  if (user) {
+  if (user && !user.id.startsWith(TEST_USER_PREFIX)) {
     const resetToken = crypto.randomBytes(32).toString('hex')
     const resetTokenExp = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
 
@@ -192,14 +196,16 @@ router.post('/reset-password', async (req, res) => {
 
   const passwordHash = await bcrypt.hash(password, 10)
 
-  await prisma.user.update({
-    where: { id: user.id },
+  const consumed = await prisma.user.updateMany({
+    where: { id: user.id, resetToken: token, resetTokenExp: { gt: new Date() } },
     data: {
       passwordHash,
       resetToken: null,
       resetTokenExp: null,
     },
   })
+
+  if (!consumed.count) { res.status(400).json({ error: 'Ссылка уже использована или истекла.' }); return }
 
   res.json({ ok: true })
 })

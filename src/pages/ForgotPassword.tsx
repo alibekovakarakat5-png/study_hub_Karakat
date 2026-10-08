@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Mail, ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react'
 import { useTranslation, Trans } from 'react-i18next'
-import { apiUrl } from '@/lib/api'
+import { api } from '@/lib/api'
 
 export default function ForgotPassword() {
   const { t } = useTranslation()
@@ -17,14 +17,10 @@ export default function ForgotPassword() {
     setLoading(true)
     setError('')
     try {
-      await fetch(apiUrl('/api/auth/forgot-password'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      })
+      await api.post('/auth/forgot-password', { email })
       setSent(true)
-    } catch {
-      setError(t('forgot_password.error_generic'))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('forgot_password.error_generic'))
     } finally {
       setLoading(false)
     }

@@ -8,10 +8,11 @@ export const transferPrompt = `Составь учебную сводку для
 
 /** Import is local and whitelisted. Raw chats cannot create trusted scores or instructions. */
 export function parseLearningImport(raw: string): LearningProfile {
-  const value = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
+  const fenced = raw.match(/```json\s*([\s\S]*?)```/i)
+  const value = (fenced?.[1] ?? raw).trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
   if (!value) throw new Error('Вставьте учебную сводку.')
   if (value.length > 60000) throw new Error('Сводка слишком большая. Выберите только учебную часть (до 18 000 символов текста).')
-  if (!value.startsWith('{') && !value.startsWith('[')) {
+  if (!value.startsWith('{') && !/^\[\s*(?:\{|\[|"|\])/.test(value)) {
     if (value.length > 18000) throw new Error('Сократите учебную сводку до 18 000 символов.')
     return { ...blankProfile(), source: 'chatgpt', summary: value }
   }
@@ -19,8 +20,9 @@ export function parseLearningImport(raw: string): LearningProfile {
   try { json = JSON.parse(value) } catch { throw new Error('JSON повреждён. Исправьте файл или вставьте обычную текстовую сводку.') }
   if (!json || typeof json !== 'object' || Array.isArray(json)) throw new Error('Это не учебный профиль. Сначала получите краткую сводку по предложенному запросу.')
   const envelope = json as Record<string, unknown>
-  if (envelope.format !== 'studyhub-learning-profile' || envelope.version !== 1 || !envelope.profile || typeof envelope.profile !== 'object' || Array.isArray(envelope.profile)) throw new Error('Поддерживается учебный профиль Study Hub версии 1. Полный архив чатов не импортируется автоматически.')
-  const p = envelope.profile as Record<string, unknown>
+  const direct = envelope.format === undefined && typeof envelope.summary === 'string'
+  if (!direct && (envelope.format !== 'studyhub-learning-profile' || envelope.version !== 1 || !envelope.profile || typeof envelope.profile !== 'object' || Array.isArray(envelope.profile))) throw new Error('В файле нет учебной сводки. Используйте запрос для ChatGPT выше или вставьте обычный текст об обучении. Полный архив чатов не подходит.')
+  const p = direct ? envelope : envelope.profile as Record<string, unknown>
   const field = (key: string, max: number) => {
     if (p[key] === undefined) return ''
     if (typeof p[key] !== 'string' || p[key].length > max) throw new Error(`Проверьте поле ${key}: допустимо до ${max} символов.`)

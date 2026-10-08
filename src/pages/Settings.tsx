@@ -547,6 +547,7 @@ export default function Settings() {
         )}
 
         {/* Support */}
+        <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-2"><h2 className="font-semibold text-slate-800">Учебная память Skylla</h2><p className="text-sm text-slate-500">Перенос прошлого обучения, цель занятий, разрешение ИИ и копия ваших данных.</p><Link to="/ielts-coach?tab=settings" className="inline-block text-blue-600 font-medium hover:underline">Открыть настройки обучения</Link></section>
         <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="p-5">
             <p className="text-sm text-slate-500 text-center">

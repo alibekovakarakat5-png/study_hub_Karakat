@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Mail, Lock, Eye, EyeOff, Shield } from 'lucide-react'
 import { useStore } from '@/store/useStore'
@@ -134,6 +134,7 @@ export default function AdminLogin() {
               )}
             </motion.button>
           </form>
+          <Link className="block mt-4 text-center text-sm text-blue-300 underline" to="/forgot-password">Восстановить доступ</Link>
         </div>
 
         <p className="mt-6 text-center text-xs text-gray-700">

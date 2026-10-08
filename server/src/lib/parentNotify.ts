@@ -4,6 +4,7 @@
 // Fire-and-forget — never throws, never blocks.
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
+import { realUsers } from './reviewCatalog'
 
 export async function notifyParent(chatId: string, text: string): Promise<void> {
   if (!BOT_TOKEN || !chatId) return
@@ -36,7 +37,7 @@ export async function sendWeeklyParentSummaries(): Promise<void> {
 
   // Find all students with linked parents
   const students = await prisma.user.findMany({
-    where: { parentTgChatId: { not: null }, role: 'student' },
+    where: { ...realUsers, parentTgChatId: { not: null }, role: 'student' },
     select: { id: true, name: true, parentTgChatId: true },
   })
 

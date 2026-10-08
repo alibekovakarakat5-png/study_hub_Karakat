@@ -8,6 +8,7 @@
 
 import cron from 'node-cron'
 import { prisma } from './prisma'
+import { realUsers } from './reviewCatalog'
 import { tg } from './telegram'
 import { cronDailyContent, cronDeadlineReminder, checkWarmLeads } from './growthBot'
 import { generateChannelPost } from './growthAI'
@@ -95,7 +96,7 @@ async function sendDailyQuestions() {
   console.log('[Cron] Starting daily question broadcast...')
 
   const users = await prisma.user.findMany({
-    where: { telegramChatId: { not: null } },
+    where: { ...realUsers, telegramChatId: { not: null } },
     select: { id: true, telegramChatId: true, name: true },
   })
 
@@ -142,7 +143,7 @@ async function sendWeeklyReports() {
   console.log('[Cron] Starting weekly progress reports...')
 
   const users = await prisma.user.findMany({
-    where: { telegramChatId: { not: null } },
+    where: { ...realUsers, telegramChatId: { not: null } },
     select: { id: true, telegramChatId: true, name: true, streak: true, totalStudyMinutes: true },
   })
 
@@ -196,8 +197,8 @@ async function sendWeeklyReports() {
 async function sendDailyStats() {
   try {
     const [totalUsers, premiumUsers] = await Promise.all([
-      prisma.user.count(),
-      prisma.user.count({ where: { isPremium: true } }),
+      prisma.user.count({ where: realUsers }),
+      prisma.user.count({ where: { ...realUsers, isPremium: true } }),
     ])
     await tg.dailyStats(totalUsers, premiumUsers, 0)
   } catch (err) {

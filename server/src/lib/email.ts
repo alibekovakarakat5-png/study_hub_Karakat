@@ -14,6 +14,7 @@ const transporter = process.env.SMTP_HOST
 
 const FROM = process.env.SMTP_FROM ?? 'StudyHub <noreply@studyhub.kz>'
 const APP_URL = process.env.FRONTEND_URL ?? 'https://studyhub.kz'
+export const passwordEmailAvailable = () => transporter !== null
 
 export async function sendPasswordResetEmail(email: string, token: string, userName: string): Promise<boolean> {
   if (!transporter) {

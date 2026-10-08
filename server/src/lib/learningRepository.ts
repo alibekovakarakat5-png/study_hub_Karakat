@@ -10,20 +10,21 @@ export interface LearningRepository {
   remove(userId: string, id: string): Promise<void>
   removePrefix(userId: string, prefix: string): Promise<void>
 }
+export function createProgressRepository(storagePrefix: string): LearningRepository {
 function record(row: { moduleId: string; answers: Prisma.JsonValue; updatedAt: Date }): LearningRecord {
   const stored = row.answers as { revision: number; data: Record<string, unknown> }
-  return { id: row.moduleId.slice(LEARNING_PREFIX.length), revision: stored.revision, data: stored.data, updatedAt: row.updatedAt.toISOString() }
+  return { id: row.moduleId.slice(storagePrefix.length), revision: stored.revision, data: stored.data, updatedAt: row.updatedAt.toISOString() }
 }
-export const learningRepository: LearningRepository = {
+return {
   async get(userId, id) {
-    const row = await prisma.moduleProgress.findUnique({ where: { userId_moduleId: { userId, moduleId: LEARNING_PREFIX + id } } })
+    const row = await prisma.moduleProgress.findUnique({ where: { userId_moduleId: { userId, moduleId: storagePrefix + id } } })
     return row ? record(row) : null
   },
   async list(userId, prefix, limit = 100) {
-    return (await prisma.moduleProgress.findMany({ where: { userId, moduleId: { startsWith: LEARNING_PREFIX + prefix } }, orderBy: [{ updatedAt: 'desc' }, { moduleId: 'desc' }], take: limit })).map(record)
+    return (await prisma.moduleProgress.findMany({ where: { userId, moduleId: { startsWith: storagePrefix + prefix } }, orderBy: [{ updatedAt: 'desc' }, { moduleId: 'desc' }], take: limit })).map(record)
   },
   async put(userId, id, data, revision) {
-    const moduleId = LEARNING_PREFIX + id
+    const moduleId = storagePrefix + id
     const answers = { revision: revision + 1, data } as Prisma.InputJsonObject
     if (revision === 0) {
       try { return record(await prisma.moduleProgress.create({ data: { userId, moduleId, answers } })) }
@@ -37,6 +38,9 @@ export const learningRepository: LearningRepository = {
       return record(row)
     })
   },
-  async remove(userId, id) { await prisma.moduleProgress.deleteMany({ where: { userId, moduleId: LEARNING_PREFIX + id } }) },
-  async removePrefix(userId, prefix) { await prisma.moduleProgress.deleteMany({ where: { userId, moduleId: { startsWith: LEARNING_PREFIX + prefix } } }) },
+  async remove(userId, id) { await prisma.moduleProgress.deleteMany({ where: { userId, moduleId: storagePrefix + id } }) },
+  async removePrefix(userId, prefix) { await prisma.moduleProgress.deleteMany({ where: { userId, moduleId: { startsWith: storagePrefix + prefix } } }) },
 }
+
+}
+export const learningRepository = createProgressRepository(LEARNING_PREFIX)

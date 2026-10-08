@@ -1,4 +1,5 @@
 // ── API base URL ──────────────────────────────────────────────────────────────
+import { authStorage } from './reviewSession'
 // Empty string in dev → Vite proxy forwards /api to localhost:3001.
 // In prod set VITE_API_URL to the backend's public URL (no trailing slash).
 export const API_BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
@@ -11,15 +12,15 @@ export const apiUrl = (path: string): string => `${API_BASE}${path}`
 const TOKEN_KEY = 'studyhub-token'
 
 export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY)
+  return authStorage().getItem(TOKEN_KEY)
 }
 
 export function setToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token)
+  authStorage().setItem(TOKEN_KEY, token)
 }
 
 export function clearToken(): void {
-  localStorage.removeItem(TOKEN_KEY)
+  authStorage().removeItem(TOKEN_KEY)
 }
 
 // ── Base request ──────────────────────────────────────────────────────────────

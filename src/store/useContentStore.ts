@@ -7,7 +7,8 @@
 //   IELTS page + robot reads merged data (hardcoded base + custom content)
 
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
+import { authStorage } from '@/lib/reviewSession'
 import type { IeltsSkill } from '@/data/ieltsContent'
 import { contentApi } from '@/lib/api'
 import type { ContentType } from '@/lib/api'
@@ -376,6 +377,6 @@ export const useContentStore = create<ContentState>()(
         try { await contentApi.remove(id) } catch {}
       },
     }),
-    { name: 'studyhub-content' },
+    { name: 'studyhub-content', storage: createJSONStorage(authStorage) },
   ),
 )

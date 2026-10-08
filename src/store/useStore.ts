@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
+import { authStorage } from '@/lib/reviewSession'
 import type { User, UserRole, DiagnosticResult, StudyPlan, ChatMessage, StudyWeek, StudyTask, Achievement, Notification, OnboardingProfile, Subject } from '@/types'
 import { generateId } from '@/lib/utils'
 import { universities } from '@/data/universities'
@@ -608,6 +609,7 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'studyhub-storage',
+      storage: createJSONStorage(authStorage),
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,

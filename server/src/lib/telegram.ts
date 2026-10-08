@@ -107,7 +107,7 @@ setInterval(() => {
   for (const [key, state] of userStates) {
     if (state.lastActive < cutoff) userStates.delete(key)
   }
-}, 30 * 60 * 1000)
+}, 30 * 60 * 1000).unref() // Cleanup alone must not keep maintenance/test processes alive.
 
 function getState(chatId: number): UserState {
   const key = String(chatId)

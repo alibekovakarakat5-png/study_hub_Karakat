@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { api } from '@/lib/api'
 import { blankProfile, downloadLearningFile, learningApi, parseLearningImport, transferPrompt } from '@/lib/learning'
 import type { LearningProfile, LearningRecord } from '@/lib/learning'
@@ -13,23 +13,46 @@ export default function MemoryPanel({ memory, onChange }: { memory: LearningReco
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [deleting, setDeleting] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
+  const [previewReady, setPreviewReady] = useState(false)
+  const rawInput = useRef<HTMLTextAreaElement>(null)
+  const fileInput = useRef<HTMLInputElement>(null)
+  const form = useRef<HTMLFormElement>(null)
   const update = <K extends keyof LearningProfile>(key: K, value: LearningProfile[K]) => { setProfile(p => ({ ...p, [key]: value })); setConfirmed(false); setNotice('') }
   const preview = (value: string) => {
-    try { setProfile(parseLearningImport(value)); setConfirmed(false); setError(''); setNotice('Предпросмотр готов. Проверьте сводку и следующий шаг. Пока ничего не сохранено.') }
+    try { setProfile(parseLearningImport(value)); setConfirmed(false); setPreviewReady(true); setError(''); setNotice('Текст добавлен в предпросмотр. Проверьте его и нажмите «Сохранить учебный профиль».'); requestAnimationFrame(() => form.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })) }
     catch (e) { setError((e as Error).message) }
   }
-  return <div className="space-y-6">
+  async function readFile(file: File) {
+    if (!/\.(txt|md|json)$/i.test(file.name)) { setError('Выберите файл .txt, .md или .json. Из Word или PDF скопируйте учебный текст и вставьте его в поле ниже.'); return }
+    if (file.size > 128000) { setError('Файл больше 128 КБ. Скопируйте из него только учебную сводку (до 18 000 символов).'); return }
+    setBusy(true); setError('')
+    try {
+      const value = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result ?? '')); reader.onerror = () => reject(new Error('read')); reader.readAsText(file, 'UTF-8') })
+      setRaw(value); preview(value)
+    } catch { setError('Не удалось открыть файл. Попробуйте ещё раз или вставьте его текст вручную.') }
+    finally { setBusy(false); if (fileInput.current) fileInput.current.value = '' }
+  }
+  const importer = <div className="space-y-3" onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); const file = e.dataTransfer.files[0]; if (file && !busy) void readFile(file) }}>
     <div className="rounded-2xl bg-blue-950/50 p-5 space-y-3">
       <h2 className="text-xl font-semibold">Продолжить с того места, где остановились</h2>
       <p>Перенесите учебную сводку из ChatGPT, заметок или от преподавателя. Импорт — сведения с ваших слов, не подтверждение уровня или IELTS band.</p>
       <p className="text-sm text-slate-300">Study Hub не подключается к памяти вашего аккаунта ChatGPT. Вы выбираете, что перенести. Этот модуль не передаёт ваши записи школам и центрам.</p>
       <details><summary className="cursor-pointer text-blue-300">Запрос для получения учебной сводки в ChatGPT</summary><textarea className={`${field} mt-3`} rows={8} readOnly value={transferPrompt} aria-label="Запрос для ChatGPT" /><button type="button" className="mt-3 text-blue-300 underline" onClick={async () => { try { await navigator.clipboard.writeText(transferPrompt); setNotice('Запрос скопирован.') } catch { setError('Выделите запрос и скопируйте вручную.') } }}>Скопировать запрос</button></details>
-      <label className="block">Учебная сводка или JSON-профиль<textarea aria-label="Учебная сводка или JSON-профиль" className={field} rows={6} maxLength={60000} value={raw} onChange={e => setRaw(e.target.value)} placeholder="Только учебная часть: темы, ошибки с примерами, где остановились…" /></label>
-      <div className="flex flex-wrap gap-3 items-center"><button className={button} type="button" disabled={!raw.trim() || busy} onClick={() => preview(raw)}>Проверить перед переносом</button><label className="text-sm">Или файл .txt / .md / .json<input className="block mt-2 max-w-full" type="file" accept=".txt,.md,.json" disabled={busy} onChange={async e => { const file = e.target.files?.[0]; if (!file) return; if (file.size > 128000) { setError('Файл больше 128 КБ. Подготовьте краткую учебную сводку.'); return } try { const value = await file.text(); setRaw(value); preview(value) } catch { setError('Не удалось прочитать файл.') } e.target.value = '' }} /></label></div>
+      <div className="flex flex-wrap gap-3"><button type="button" className={button} disabled={busy} onClick={async () => { try { const value = await navigator.clipboard.readText(); if (!value.trim()) throw new Error('empty'); setRaw(value); preview(value) } catch { rawInput.current?.focus(); setNotice('Вставьте текст в поле: Ctrl+V на компьютере или удерживайте поле и выберите «Вставить» на телефоне.') } }}>Вставить текст</button><button type="button" className="rounded-xl border border-slate-500 px-4 py-2.5" disabled={busy} onClick={() => fileInput.current?.click()}>Выбрать файл</button><input ref={fileInput} aria-label="Файл учебной памяти" className="sr-only" type="file" accept=".txt,.md,.json,text/plain,text/markdown,application/json" disabled={busy} onChange={e => { const file = e.target.files?.[0]; if (file) void readFile(file) }} /></div>
+      <p className="text-sm text-slate-300">Текст из чата или файл .txt, .md, .json. Файл также можно перетащить сюда. Ничего не сохраняется без вашего подтверждения.</p>
+      <label className="block">Учебная сводка или JSON-профиль<textarea ref={rawInput} aria-label="Учебная сводка или JSON-профиль" className={field} rows={6} value={raw} onChange={e => { setRaw(e.target.value); setError('') }} placeholder="Вставьте сюда темы, ошибки с примерами и место, где остановились…" /></label>
+      <button className={button} type="button" disabled={!raw.trim() || busy} onClick={() => preview(raw)}>{busy ? 'Читаем файл…' : 'Проверить перед переносом'}</button>
+      {error && <p role="alert" className="rounded-xl bg-red-950 p-3 text-red-200">{error}</p>}
+      {notice && <p role="status" className="text-emerald-300">{notice}</p>}
     </div>
-    <form className="rounded-2xl border border-slate-700 p-5 space-y-4" onSubmit={async e => {
+  </div>
+  return <div className="space-y-6">
+    {!memory && importer}
+    {!memory && !previewReady && <button type="button" className="text-blue-300 underline" onClick={() => setPreviewReady(true)}>Или заполнить профиль вручную</button>}
+    <form ref={form} hidden={!memory && !previewReady} className="rounded-2xl border border-slate-700 p-5 space-y-4" onSubmit={async e => {
       e.preventDefault(); if (!confirmed || busy) return; setBusy(true); setError(''); setNotice('')
-      try { const { record } = await learningApi.memory(profile, memory?.revision ?? 0); onChange(record); setRaw(''); setNotice('Учебный профиль сохранён. Откройте «Сегодня» или продолжите с Skylla.'); setConfirmed(false) }
+      try { const { record } = await learningApi.memory(profile, memory?.revision ?? 0); onChange(record); setRaw(''); setImportOpen(false); setNotice(''); setConfirmed(false) }
       catch (err) { setError((err as Error).message) } finally { setBusy(false) }
     }}>
       <h2 className="text-xl font-semibold">Моя учебная память</h2>
@@ -43,9 +66,11 @@ export default function MemoryPanel({ memory, onChange }: { memory: LearningReco
       <label className="flex gap-3 items-start"><input type="checkbox" className="mt-1" checked={profile.aiConsent} onChange={e => update('aiConsent', e.target.checked)} /><span>Разрешаю Skylla использовать учебную память, недавние работы и диалог. При обращении к ИИ этот контекст отправляется провайдеру Groq. Без разрешения доступны уроки, сохранение и повторение.</span></label>
       <label className="flex gap-3 items-start"><input type="checkbox" className="mt-1" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} /><span>Я проверил(а) сводку и хочу сохранить именно эти учебные сведения.</span></label>
       <button className={button} disabled={busy || !confirmed}>{busy ? 'Сохраняется…' : 'Сохранить учебный профиль'}</button>
+      {error && <p role="alert" className="rounded-xl bg-red-950 p-3 text-red-200">{error}</p>}
     </form>
     <div className="flex flex-wrap gap-4 text-sm"><button disabled={!memory || busy} className="text-blue-300 underline disabled:opacity-40" onClick={() => { if (memory) downloadLearningFile('studyhub-learning-profile.json', { format: 'studyhub-learning-profile', version: 1, profile: { ...memory.data, aiConsent: false } }) }}>Скачать сохранённый профиль</button><button className="text-blue-300 underline" disabled={busy} onClick={async () => { setBusy(true); try { const archive = await api.get<{ truncated: boolean }>('/learning/export'); downloadLearningFile('studyhub-learning-archive.json', archive); setNotice(archive.truncated ? 'Скачаны последние 1000 записей; это часть истории.' : 'Архив скачан. Это резервная копия; для переноса профиля используйте отдельный файл профиля.') } catch (e) { setError((e as Error).message) } finally { setBusy(false) } }}>Скачать архив работ и диалогов</button><button disabled={!memory || busy} className="text-rose-300 underline disabled:opacity-40" onClick={() => setDeleting(true)}>Удалить учебный профиль</button></div>
     {deleting && <div className="rounded-xl border border-rose-800 p-4 space-y-3"><p>Удалить импорт и профиль? Работы и диалог останутся в их разделах. Доступ к ИИ будет выключен до нового разрешения.</p><button className="text-rose-300 underline mr-5" disabled={busy} onClick={async () => { setBusy(true); setError(''); try { await api.del('/learning/memory'); onChange(null); setProfile(blankProfile()); setConfirmed(false); setDeleting(false); setNotice('Профиль удалён.') } catch (e) { setError((e as Error).message) } finally { setBusy(false) } }}>Да, удалить профиль</button><button onClick={() => setDeleting(false)}>Отмена</button></div>}
-    {notice && <p role="status" className="text-emerald-300">{notice}</p>}{error && <p role="alert" className="rounded-xl bg-red-950 p-3 text-red-200">{error}</p>}
+    {memory && <section className="border-t border-slate-700 pt-5"><button type="button" aria-expanded={importOpen} className="text-blue-300 underline" onClick={() => setImportOpen(v => !v)}>Перенести другую учебную сводку</button><p className="text-sm text-slate-400 mt-2">Понадобится, если вы продолжали заниматься вне Study Hub. Работы сохранятся; профиль заменится только после подтверждения.</p>{importOpen && <div className="mt-4">{importer}</div>}</section>}
+    {notice && memory && !importOpen && <p role="status" className="text-emerald-300">{notice}</p>}
   </div>
 }

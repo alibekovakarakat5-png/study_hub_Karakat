@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
+import { authStorage } from '@/lib/reviewSession'
 import type { Subject } from '@/types'
 import type {
   EntBlock,
@@ -339,6 +340,7 @@ export const usePracticeEntStore = create<PracticeEntState>()(
     }),
     {
       name: 'studyhub-practice-ent',
+      storage: createJSONStorage(authStorage),
       partialize: (state) => ({
         history: state.history,
       }),

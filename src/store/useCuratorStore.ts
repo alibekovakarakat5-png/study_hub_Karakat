@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
+import { authStorage } from '@/lib/reviewSession'
 import type { Subject } from '@/types'
 import type {
   CuratorGoalType,
@@ -463,6 +464,7 @@ export const useCuratorStore = create<CuratorState>()(
     }),
     {
       name: 'studyhub-curator',
+      storage: createJSONStorage(authStorage),
       partialize: (state) => ({
         language: state.language,
         phase: state.phase,

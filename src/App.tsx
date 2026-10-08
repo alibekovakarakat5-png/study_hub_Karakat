@@ -11,6 +11,8 @@ const Diagnostic = lazy(() => import('@/pages/Diagnostic'))
 const Dashboard = lazy(() => import('@/pages/Dashboard'))
 const LearningWorkspace = lazy(() => import('@/pages/LearningWorkspace'))
 const IeltsCoach = lazy(() => import('@/pages/IeltsCoach'))
+const OwnerReview = lazy(() => import('@/pages/OwnerReview'))
+const ReviewRail = lazy(() => import('@/components/ReviewRail'))
 const Plan = lazy(() => import('@/pages/Plan'))
 const Mentor = lazy(() => import('@/pages/StudyMentorPage'))
 const Portfolio = lazy(() => import('@/pages/Portfolio'))
@@ -137,6 +139,7 @@ export default function App() {
           <Route path="/daily-challenge" element={<ProtectedRoute><DailyChallenge /></ProtectedRoute>} />
           <Route path="/ielts" element={<ProtectedRoute><Ielts /></ProtectedRoute>} />
           <Route path="/ielts-coach" element={<ProtectedRoute><IeltsCoach /></ProtectedRoute>} />
+          <Route path="/owner-review" element={<ProtectedRoute><OwnerReview /></ProtectedRoute>} />
           <Route path="/admissions" element={<ProtectedRoute><Admissions /></ProtectedRoute>} />
           <Route path="/motivation-letter" element={<ProtectedRoute><MotivationLetter /></ProtectedRoute>} />
           <Route path="/admission-plan" element={<ProtectedRoute><AdmissionPlan /></ProtectedRoute>} />
@@ -172,6 +175,7 @@ export default function App() {
         </Routes>
       </Suspense>
       {/* <RobotWidget /> — temporarily disabled */}
+      <Suspense fallback={null}><ReviewRail /></Suspense>
     </BrowserRouter>
   )
 }

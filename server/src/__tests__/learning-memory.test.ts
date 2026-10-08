@@ -53,6 +53,9 @@ test('import whitelists educational fields, clears consent and does not claim ve
   assert.throws(() => parseLearningImport('[{"messages":[]}]'))
   assert.throws(() => parseLearningImport('x'.repeat(18001)))
   assert.throws(() => parseLearningImport('{broken'))
+  assert.equal(parseLearningImport(JSON.stringify({ ...blankProfile(), summary: 'Direct profile from a chat', aiConsent: true })).aiConsent, false)
+  assert.equal(parseLearningImport('Here is your profile:\n```json\n' + JSON.stringify({ ...blankProfile(), summary: 'A short learning summary' }) + '\n```').summary, 'A short learning summary')
+  assert.equal(parseLearningImport('[Lesson notes](https://example.invalid)\nWorked on articles.').summary.startsWith('[Lesson notes]'), true)
 })
 
 test('memory requires authentication, explicit confirmation, validated fields and is isolated by user', async () => {
