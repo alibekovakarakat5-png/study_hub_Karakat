@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronLeft, User, Lock, Check, AlertCircle, Send, Copy, ExternalLink, Gift, Users } from 'lucide-react'
 import { useStore } from '@/store/useStore'
-import { api, apiUrl } from '@/lib/api'
+import { api, apiUrl, setToken } from '@/lib/api'
 import { useTranslation } from 'react-i18next'
 
 type Status = { type: 'success' | 'error'; msg: string } | null
@@ -27,13 +27,26 @@ export default function Settings() {
   const [tgLoading, setTgLoading] = useState(false)
   const [tgStatus, setTgStatus]   = useState<Status>(null)
   const [copied, setCopied]       = useState(false)
+  const [tgPassword, setTgPassword] = useState('')
+
+  async function refreshTelegram() {
+    setTgLoading(true); setTgStatus(null)
+    try {
+      const result = await api.get<{ user: { telegramLinked: boolean } }>('/auth/me')
+      updateUser({ telegramLinked: result.user.telegramLinked })
+      if (result.user.telegramLinked) { setTgData(null); setTgPassword('') }
+      setTgStatus({ type: result.user.telegramLinked ? 'success' : 'error', msg: result.user.telegramLinked ? 'Telegram привязан. Восстановление пароля доступно через бота.' : 'Привязка ещё не завершена. Откройте бота и нажмите «Начать».' })
+    } catch (err) { setTgStatus({ type: 'error', msg: (err as Error).message }) }
+    finally { setTgLoading(false) }
+  }
 
   async function generateTgCode() {
     setTgLoading(true)
     setTgStatus(null)
     try {
-      const res = await api.post<TelegramLinkData>('/users/me/telegram-link', {})
+      const res = await api.post<TelegramLinkData>('/users/me/telegram-link', { currentPassword: tgPassword })
       setTgData(res)
+      setTgPassword('')
     } catch (err) {
       setTgStatus({ type: 'error', msg: (err as Error).message })
     } finally {
@@ -67,7 +80,8 @@ export default function Settings() {
 
   async function unlinkTelegram() {
     try {
-      await api.del('/users/me/telegram-link')
+      await api.del('/users/me/telegram-link', { currentPassword: tgPassword })
+      setTgPassword('')
       setTgData(null)
       setTgStatus({ type: 'success', msg: t('settings.telegram_unlinked') })
       updateUser({ telegramLinked: false })
@@ -157,7 +171,8 @@ export default function Settings() {
     setPwdLoading(true)
     setPwdStatus(null)
     try {
-      await api.post('/users/me/password', { currentPassword: curPwd, newPassword: newPwd })
+      const result = await api.post<{ token: string }>('/users/me/password', { currentPassword: curPwd, newPassword: newPwd })
+      setToken(result.token)
       setPwdStatus({ type: 'success', msg: t('settings.password_changed') })
       setCurPwd(''); setNewPwd(''); setConfirm('')
     } catch (err) {
@@ -338,7 +353,7 @@ export default function Settings() {
             </div>
             <div>
               <h2 className="font-semibold text-slate-800">{t('settings.telegram_title')}</h2>
-              <p className="text-xs text-slate-500">{t('settings.telegram_subtitle')}</p>
+              <p className="text-xs text-slate-500">Привязка для восстановления пароля и учебных уведомлений</p>
             </div>
           </div>
 
@@ -354,7 +369,11 @@ export default function Settings() {
               </div>
             )}
 
-            {!tgData ? (
+            <p className="text-sm text-slate-600">{user?.telegramLinked ? 'Telegram привязан. Если забудете пароль, бот поможет восстановить доступ.' : 'Привяжите Telegram заранее, чтобы восстановить пароль без почты.'}</p>
+            {!tgData && <label className="block text-sm text-slate-700">Текущий пароль для {user?.telegramLinked ? 'отключения' : 'привязки'}
+              <input type="password" autoComplete="current-password" value={tgPassword} onChange={e => setTgPassword(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" />
+            </label>}
+            {!tgData && !user?.telegramLinked ? (
               <>
                 <p className="text-sm text-slate-600">
                   {t('settings.telegram_description')}
@@ -369,7 +388,7 @@ export default function Settings() {
                   {tgLoading ? t('settings.telegram_generating') : t('settings.telegram_connect')}
                 </button>
               </>
-            ) : (
+            ) : tgData ? (
               <div className="space-y-3">
                 <p className="text-sm text-slate-600 font-medium">{t('settings.telegram_steps_title')}</p>
 
@@ -396,7 +415,7 @@ export default function Settings() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-slate-700 mb-2">{t('settings.telegram_step2')}</p>
                     <div className="flex items-center gap-2">
-                      <code className="flex-1 bg-slate-800 text-green-400 rounded-lg px-3 py-2 text-sm font-mono">
+                      <code className="flex-1 min-w-0 break-all bg-slate-800 text-green-400 rounded-lg px-3 py-2 text-sm font-mono">
                         /link {tgData.code}
                       </code>
                       <button
@@ -420,8 +439,9 @@ export default function Settings() {
                   {t('common.cancel')}
                 </button>
               </div>
-            )}
+            ) : null}
 
+            <button type="button" disabled={tgLoading} onClick={refreshTelegram} className="text-sm text-sky-700 underline disabled:opacity-50">Проверить привязку</button>
             {/* Unlink button — only if Telegram is actually linked */}
             {!tgData && user?.telegramLinked && (
               <button

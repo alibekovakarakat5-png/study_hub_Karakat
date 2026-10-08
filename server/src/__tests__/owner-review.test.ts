@@ -79,8 +79,13 @@ test('service records cannot be forged or read through generic progress endpoint
   const { default: router } = await import('../routes/moduleProgress')
   const express = (await import('express')).default
   const f = await fixture(); const app = express().use(express.json()).use('/api/module-progress', router)
+  const { prisma } = await import('../lib/prisma')
+  const original = prisma.user.findUnique
+  prisma.user.findUnique = (async () => ({ role: 'admin', authVersion: 0 })) as never
+  try {
   for (const method of ['get', 'put'] as const) {
     const res = await request(app)[method]('/api/module-progress/owner-review-v1-access').set('Authorization', 'Bearer ' + f.token('ordinary-admin')).send({ answers: { enabled: true } })
     assert.ok([400, 403].includes(res.status))
   }
+  } finally { prisma.user.findUnique = original }
 })

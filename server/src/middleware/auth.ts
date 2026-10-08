@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import { validReviewSession, allowedTestRequest } from '../lib/reviewStore'
 import { TEST_USER_PREFIX } from '../lib/reviewCatalog'
+import { prisma } from '../lib/prisma'
 
 // ── Extend Express Request ────────────────────────────────────────────────────
 
@@ -24,6 +25,7 @@ export interface JwtPayload {
   userId: string
   role: string
   email: string
+  authVersion?: number
   reviewSession?: { ownerId: string; sessionId: string }
 }
 
@@ -33,7 +35,12 @@ export function signToken(payload: JwtPayload): string {
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 
-export function createTokenVerifier(validateSession = validReviewSession) {
+export async function validAccountSession(payload: JwtPayload) {
+  const user = await prisma.user.findUnique({ where: { id: payload.userId }, select: { authVersion: true, role: true } })
+  return !!user && user.authVersion === (payload.authVersion ?? 0) && user.role === payload.role
+}
+
+export function createTokenVerifier(validateSession = validReviewSession, validateAccount = validAccountSession) {
 return async function verify(req: Request, res: Response, next: NextFunction): Promise<void> {
   // Token normally comes in the Authorization header. For links opened directly
   // in a new browser tab (e.g. parent/center report HTML), we also accept it as
@@ -68,6 +75,10 @@ return async function verify(req: Request, res: Response, next: NextFunction): P
     if (!allowedTestRequest(req.method, req.originalUrl.split('?')[0])) {
       res.status(403).json({ error: 'Это действие отключено в тестовой сессии. Доступны IELTS и просмотр учебных кабинетов.' }); return
     }
+  } else {
+    try {
+      if (!await validateAccount(payload)) { res.status(401).json({ error: 'Войдите снова: пароль или права доступа изменились.' }); return }
+    } catch { res.status(503).json({ error: 'Не удалось проверить аккаунт. Попробуйте снова.' }); return }
   }
   req.user = payload
   next()

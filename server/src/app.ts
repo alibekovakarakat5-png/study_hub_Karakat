@@ -65,6 +65,7 @@ const globalLimiter = rateLimit({
 })
 
 const authLimiter = rateLimit({
+  skip: req => req.path === '/me' || req.path === '/recovery-options',
   windowMs: 15 * 60 * 1000,    // 15 minutes
   max: 15,                      // 15 auth attempts per window per IP
   standardHeaders: true,

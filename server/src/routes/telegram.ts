@@ -6,6 +6,8 @@
 import { Router } from 'express'
 import { handleUpdate, type TelegramUpdate } from '../lib/telegram'
 import { verifyToken, requireRole } from '../middleware/auth'
+import { timingSafeEqual } from 'crypto'
+import { handleTelegramAccount } from '../lib/telegramAccount'
 
 const router = Router()
 
@@ -15,15 +17,18 @@ const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET ?? ''
 // ── POST /api/telegram/webhook — receives updates from Telegram ───────────────
 
 router.post('/webhook', async (req, res) => {
-  if (WEBHOOK_SECRET) {
-    const incoming = req.headers['x-telegram-bot-api-secret-token']
-    if (incoming !== WEBHOOK_SECRET) {
-      res.status(403).json({ error: 'Forbidden' })
-      return
-    }
+  if (!WEBHOOK_SECRET) { res.status(503).json({ error: 'Telegram webhook unavailable' }); return }
+  const incoming = req.headers['x-telegram-bot-api-secret-token']
+  if (typeof incoming !== 'string' || Buffer.byteLength(incoming) !== Buffer.byteLength(WEBHOOK_SECRET) ||
+      !timingSafeEqual(Buffer.from(incoming), Buffer.from(WEBHOOK_SECRET))) {
+    res.status(403).json({ error: 'Forbidden' }); return
   }
 
   const update: TelegramUpdate = req.body
+  if (!update || !Number.isSafeInteger(update.update_id)) { res.status(400).json({ error: 'Invalid update' }); return }
+  try {
+    if (await handleTelegramAccount(update)) { res.json({ ok: true }); return }
+  } catch { res.status(503).json({ error: 'Telegram account operation unavailable' }); return }
 
   // Respond to Telegram immediately (must be within 5s)
   res.json({ ok: true })

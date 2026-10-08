@@ -1,110 +1,49 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Mail, ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react'
-import { useTranslation, Trans } from 'react-i18next'
-import { api } from '@/lib/api'
+import { ArrowLeft, Send, Loader2 } from 'lucide-react'
+import { apiUrl } from '@/lib/api'
 
 export default function ForgotPassword() {
-  const { t } = useTranslation()
-  const [email, setEmail] = useState('')
-  const [sent, setSent] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [botUrl, setBotUrl] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-    try {
-      await api.post('/auth/forgot-password', { email })
-      setSent(true)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t('forgot_password.error_generic'))
-    } finally {
-      setLoading(false)
-    }
-  }
+  const [attempt, setAttempt] = useState(0)
+  useEffect(() => {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 12000)
+    let active = true
+    setLoading(true); setError(''); setBotUrl(null)
+    void fetch(apiUrl('/api/auth/recovery-options'), { signal: controller.signal }).then(async response => {
+      if (!response.ok) throw new Error()
+      const data = await response.json() as { available: boolean; botUrl: string | null }
+      if (!data.available || !data.botUrl || !/^https:\/\/t\.me\/[a-zA-Z0-9_]+\?start=reset_password$/.test(data.botUrl)) throw new Error()
+      if (active) setBotUrl(data.botUrl)
+    }).catch(() => {
+      if (active) setError('Бот восстановления сейчас недоступен. Попробуйте ещё раз немного позже.')
+    }).finally(() => { clearTimeout(timeout); if (active) setLoading(false) })
+    return () => { active = false; clearTimeout(timeout); controller.abort() }
+  }, [attempt])
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      {/* Background blobs */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-gradient-to-br from-primary-300/30 to-purple-300/30 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-gradient-to-tr from-blue-300/20 to-cyan-300/20 blur-3xl" />
+    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 px-4 py-8">
+      <div className="w-full max-w-md rounded-3xl bg-white p-7 shadow-xl border border-slate-100">
+        <Send className="w-10 h-10 text-sky-500 mx-auto mb-4" aria-hidden="true" />
+        <h1 className="text-2xl font-bold text-center text-slate-900">Восстановить пароль</h1>
+        <p className="text-sm text-slate-600 mt-3">Восстановление работает через Telegram, который вы заранее привязали к своему аккаунту Study Hub.</p>
+        <ol className="list-decimal pl-5 my-5 space-y-2 text-sm text-slate-700">
+          <li>Откройте бота и нажмите «Начать» / Start. Если бот уже открыт, отправьте <code>/reset</code>.</li>
+          <li>Бот пришлёт личную одноразовую ссылку. Она действует 15 минут.</li>
+          <li>Откройте ссылку, задайте новый пароль и войдите на сайт с прежним email.</li>
+        </ol>
+        {loading && <p role="status" className="flex items-center justify-center gap-2 text-sm text-slate-500"><Loader2 className="w-4 h-4 animate-spin" />Проверяем доступность бота…</p>}
+        {botUrl && <a href={botUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 rounded-xl bg-sky-600 hover:bg-sky-700 px-4 py-3 text-white font-semibold"><Send className="w-4 h-4" />Открыть Telegram</a>}
+        {error && <div role="alert" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900"><p>{error}</p><button type="button" onClick={() => setAttempt(a => a + 1)} className="mt-2 underline font-semibold">Проверить снова</button></div>}
+        <details className="mt-5 rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
+          <summary className="cursor-pointer font-medium text-slate-800">Telegram ещё не привязан?</summary>
+          <p className="mt-2">Для привязки в Настройках нужен вход в аккаунт и текущий пароль. Если пароль забыт и Telegram не был привязан, обратитесь к владельцу платформы для проверки аккаунта. Восстановление по почте пока не подключено.</p>
+        </details>
+        <Link to="/auth" className="mt-6 flex items-center justify-center gap-1 text-sm font-medium text-primary-600"><ArrowLeft className="w-4 h-4" />Вернуться ко входу</Link>
       </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="relative z-10 w-full max-w-md mx-4"
-      >
-        <div className="backdrop-blur-xl bg-white/70 rounded-3xl shadow-2xl border border-white/50 p-8">
-          {!sent ? (
-            <>
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center">
-                  <Mail className="w-8 h-8 text-white" />
-                </div>
-                <h1 className="text-2xl font-bold text-gray-900">{t('forgot_password.title')}</h1>
-                <p className="text-gray-500 mt-2 text-sm">{t('forgot_password.subtitle')}</p>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder={t('forgot_password.email_placeholder')}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-                  />
-                </div>
-
-                {error && (
-                  <p className="text-red-500 text-sm text-center">{error}</p>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-primary-500 to-purple-600 text-white font-semibold hover:shadow-lg hover:shadow-primary-500/25 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : t('forgot_password.submit')}
-                </button>
-              </form>
-            </>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="text-center py-4"
-            >
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
-                <CheckCircle2 className="w-8 h-8 text-green-600" />
-              </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">{t('forgot_password.success_title')}</h2>
-              <p className="text-gray-500 text-sm">
-                <Trans i18nKey="forgot_password.success_message" values={{ email }} components={{ strong: <strong /> }} />
-              </p>
-              <p className="text-gray-400 text-xs mt-2">{t('forgot_password.check_spam')}</p>
-            </motion.div>
-          )}
-
-          <div className="mt-6 text-center">
-            <Link
-              to="/auth"
-              className="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 font-medium"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              {t('forgot_password.back_to_login')}
-            </Link>
-          </div>
-        </div>
-      </motion.div>
-    </div>
+    </main>
   )
 }

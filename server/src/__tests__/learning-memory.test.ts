@@ -27,12 +27,12 @@ async function fixture() {
   process.env.GROQ_API_KEY = 'test-only'
   process.env.ANTHROPIC_API_KEY = 'test-only'
   const { createLearningRouter } = await import('../routes/learning')
-  const { signToken } = await import('../middleware/auth')
+  const { signToken, createTokenVerifier } = await import('../middleware/auth')
   const repo = memoryRepo()
   const calls: { question: string; history: unknown; context: string }[] = []
   let fail = false
   const app = express().use(express.json())
-  app.use('/api/learning', createLearningRouter(repo, async (question, history, context) => { calls.push({ question, history, context }); if (fail) throw new Error('provider unavailable'); return 'You wrote “keep learn”. Use “keep learning”. Now make a new sentence.' }))
+  app.use('/api/learning', createLearningRouter(repo, async (question, history, context) => { calls.push({ question, history, context }); if (fail) throw new Error('provider unavailable'); return 'You wrote “keep learn”. Use “keep learning”. Now make a new sentence.' }, createTokenVerifier(undefined, async () => true)))
   app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => res.status(500).json({ error: err.message }))
   const auth = (u = 'student-a') => `Bearer ${signToken({ userId: u, role: 'student', email: u + '@example.invalid' })}`
   const profile = { ...blankProfile(), source: 'chatgpt', nextStep: 'Day 8 — Verb Patterns', summary: 'Prior checkpoint: 19/20, not an IELTS band.', aiConsent: true }

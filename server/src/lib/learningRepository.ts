@@ -12,8 +12,12 @@ export interface LearningRepository {
 }
 export function createProgressRepository(storagePrefix: string): LearningRepository {
 function record(row: { moduleId: string; answers: Prisma.JsonValue; updatedAt: Date }): LearningRecord {
-  const stored = row.answers as { revision: number; data: Record<string, unknown> }
-  return { id: row.moduleId.slice(storagePrefix.length), revision: stored.revision, data: stored.data, updatedAt: row.updatedAt.toISOString() }
+  // Some operator SQL clients encode a JSON parameter as a JSON string.
+  // Read that legacy representation without rewriting the saved record.
+  let value: unknown = row.answers
+  if (typeof value === 'string') { try { value = JSON.parse(value) } catch { value = null } }
+  const stored = value && typeof value === 'object' ? value as { revision?: number; data?: Record<string, unknown> } : {}
+  return { id: row.moduleId.slice(storagePrefix.length), revision: stored.revision ?? 0, data: stored.data ?? {}, updatedAt: row.updatedAt.toISOString() }
 }
 return {
   async get(userId, id) {

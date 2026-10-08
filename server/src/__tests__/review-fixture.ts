@@ -28,7 +28,7 @@ export function reviewFixture() {
   const auth = createTokenVerifier(async (ownerId, sessionId, userId) => {
     const row = await repo.get(ownerId, 'session-' + sessionId)
     return !!row && row.data.userId === userId && !row.data.endedAt && Number(row.data.expiresAt) > Date.now() && owners.has(ownerId)
-  })
+  }, async () => true)
   const app = express().use(express.json())
   const persona = async (ownerId: string, name: string) => ({ id: fixtureId(ownerId, name), email: 'test@studyhub.invalid', role: name === 'parent' ? 'parent' : name === 'teacher' || name === 'center' ? 'teacher' : 'student', name: 'Synthetic ' + name, grade: 11, city: 'Test', isPremium: false })
   app.use('/api/review', createReviewRouter({ repo, owner, persona: persona as never, auth }))

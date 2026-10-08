@@ -9,6 +9,7 @@ import { sanitizeString } from '../lib/sanitize'
 import { sendPasswordResetEmail, passwordEmailAvailable } from '../lib/email'
 import { TEST_USER_PREFIX } from '../lib/reviewCatalog'
 import type { Role } from '@prisma/client'
+import { resetTokenKey, telegramAccountOptions } from '../lib/telegramAccount'
 
 const router = Router()
 
@@ -80,7 +81,7 @@ router.post('/register', async (req, res) => {
     data: { referralCode },
   })
 
-  const token = signToken({ userId: user.id, role: user.role, email: user.email })
+  const token = signToken({ userId: user.id, role: user.role, email: user.email, authVersion: user.authVersion })
 
   // Notify developer
   tg.newUser(user.name, user.email, user.role, user.city)
@@ -117,7 +118,7 @@ router.post('/login', async (req, res) => {
     data:  { lastActiveDate: new Date().toISOString() },
   })
 
-  const token = signToken({ userId: user.id, role: user.role, email: user.email })
+  const token = signToken({ userId: user.id, role: user.role, email: user.email, authVersion: user.authVersion })
 
   res.json({ user: safeUser(user), token })
 })
@@ -136,6 +137,11 @@ router.get('/me', verifyToken, async (req, res) => {
 // ── POST /api/auth/forgot-password ──────────────────────────────────────────
 const forgotPasswordSchema = z.object({
   email: z.string().email(),
+})
+
+router.get('/recovery-options', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store')
+  res.json(telegramAccountOptions())
 })
 
 router.post('/forgot-password', async (req, res) => {
@@ -169,7 +175,7 @@ router.post('/forgot-password', async (req, res) => {
 
 // ── POST /api/auth/reset-password ───────────────────────────────────────────
 const resetPasswordSchema = z.object({
-  token: z.string().min(1),
+  token: z.string().regex(/^(?:tg1_)?[a-f0-9]{64}$/),
   password: z.string().min(6).max(100),
 })
 
@@ -181,10 +187,11 @@ router.post('/reset-password', async (req, res) => {
   }
 
   const { token, password } = parsed.data
+  const storedToken = resetTokenKey(token)
 
   const user = await prisma.user.findFirst({
     where: {
-      resetToken: token,
+      resetToken: storedToken,
       resetTokenExp: { gt: new Date() },
     },
   })
@@ -196,13 +203,18 @@ router.post('/reset-password', async (req, res) => {
 
   const passwordHash = await bcrypt.hash(password, 10)
 
-  const consumed = await prisma.user.updateMany({
-    where: { id: user.id, resetToken: token, resetTokenExp: { gt: new Date() } },
+  const consumed = await prisma.$transaction(async tx => {
+    const changed = await tx.user.updateMany({
+    where: { id: user.id, resetToken: storedToken, resetTokenExp: { gt: new Date() } },
     data: {
       passwordHash,
       resetToken: null,
       resetTokenExp: null,
+      authVersion: { increment: 1 },
     },
+    })
+    if (changed.count) await tx.telegramLinkToken.deleteMany({ where: { userId: user.id } })
+    return changed
   })
 
   if (!consumed.count) { res.status(400).json({ error: 'Ссылка уже использована или истекла.' }); return }

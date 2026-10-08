@@ -3,7 +3,9 @@ import crypto from 'crypto'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import { prisma } from '../lib/prisma'
-import { verifyToken, requireRole } from '../middleware/auth'
+import { verifyToken, requireRole, signToken } from '../middleware/auth'
+import { linkTokenKey, telegramAccountOptions } from '../lib/telegramAccount'
+import rateLimit from 'express-rate-limit'
 
 const router = Router()
 
@@ -45,7 +47,7 @@ router.put('/me', verifyToken, async (req, res) => {
 
 const ChangePasswordSchema = z.object({
   currentPassword: z.string().min(1),
-  newPassword:     z.string().min(6, 'Минимум 6 символов'),
+  newPassword:     z.string().min(6, 'Минимум 6 символов').max(100),
 })
 
 router.post('/me/password', verifyToken, async (req, res) => {
@@ -68,30 +70,48 @@ router.post('/me/password', verifyToken, async (req, res) => {
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.newPassword, 10)
-  await prisma.user.update({ where: { id: user.id }, data: { passwordHash } })
+  const changed = await prisma.$transaction(async tx => {
+    const account = await tx.user.update({ where: { id: user.id }, data: { passwordHash, authVersion: { increment: 1 }, resetToken: null, resetTokenExp: null } })
+    await tx.telegramLinkToken.deleteMany({ where: { userId: user.id } })
+    return account
+  })
 
-  res.json({ ok: true })
+  res.json({ ok: true, token: signToken({ userId: changed.id, email: changed.email, role: changed.role, authVersion: changed.authVersion }) })
 })
 
-// ── POST /api/users/me/telegram-link — generate one-time 6-digit code ────────
+// Account-specific limit and password confirmation protect recovery-method changes.
+const telegramLinkLimiter = rateLimit({ windowMs: 15 * 60_000, limit: 8, keyGenerator: req => req.user!.userId,
+  message: { error: 'Слишком много попыток. Попробуйте через 15 минут.' } })
+router.use('/me/telegram-link', verifyToken, telegramLinkLimiter, async (req, res, next) => {
+  const password = req.body?.currentPassword
+  const user = await prisma.user.findUnique({ where: { id: req.user!.userId } })
+  if (typeof password !== 'string' || password.length > 100 || !user || !await bcrypt.compare(password, user.passwordHash)) {
+    res.status(400).json({ error: 'Подтвердите текущий пароль, чтобы изменить привязку Telegram.' }); return
+  }
+  next()
+})
 
 router.post('/me/telegram-link', verifyToken, async (req, res) => {
   const userId = req.user!.userId
+  const options = telegramAccountOptions()
+  if (!options.available || !options.botUrl) { res.status(503).json({ error: 'Бот временно недоступен. Попробуйте позже.' }); return }
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { telegramChatId: true } })
+  if (user?.telegramChatId) { res.status(409).json({ error: 'Telegram уже привязан. Сначала отключите текущую привязку.' }); return }
 
-  // Generate a 6-char alphanumeric code
-  const token = crypto.randomBytes(3).toString('hex').toUpperCase()
+  const token = crypto.randomBytes(32).toString('hex').toUpperCase()
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000) // 15 minutes
 
   await prisma.telegramLinkToken.upsert({
     where:  { userId },
-    create: { userId, token, expiresAt },
-    update: { token, expiresAt },
+    create: { userId, token: linkTokenKey(token), expiresAt },
+    update: { token: linkTokenKey(token), expiresAt },
   })
 
-  const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME ?? 'StudyHubKZBot'
+  const botUrl = new URL(options.botUrl)
+  botUrl.searchParams.set('start', token)
   res.json({
     code:   token,
-    botUrl: `https://t.me/${BOT_USERNAME}?start=${token}`,
+    botUrl: botUrl.toString(),
     expiresAt: expiresAt.toISOString(),
   })
 })
@@ -99,9 +119,12 @@ router.post('/me/telegram-link', verifyToken, async (req, res) => {
 // ── DELETE /api/users/me/telegram-link — unlink Telegram ─────────────────────
 
 router.delete('/me/telegram-link', verifyToken, async (req, res) => {
-  await prisma.user.update({
+  await prisma.$transaction(async tx => {
+    await tx.user.update({
     where: { id: req.user!.userId },
-    data:  { telegramChatId: null },
+      data: { telegramChatId: null, resetToken: null, resetTokenExp: null },
+    })
+    await tx.telegramLinkToken.deleteMany({ where: { userId: req.user!.userId } })
   })
   res.json({ ok: true })
 })
@@ -400,9 +423,12 @@ router.post('/:id/reset-password', verifyToken, requireRole('admin'), async (req
   const tempPassword = crypto.randomBytes(6).toString('base64url')
   const passwordHash = await bcrypt.hash(tempPassword, 10)
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: { passwordHash, resetToken: null, resetTokenExp: null },
+  await prisma.$transaction(async tx => {
+    await tx.user.update({
+      where: { id: userId },
+      data: { passwordHash, resetToken: null, resetTokenExp: null, authVersion: { increment: 1 } },
+    })
+    await tx.telegramLinkToken.deleteMany({ where: { userId } })
   })
 
   res.json({ temporaryPassword: tempPassword })

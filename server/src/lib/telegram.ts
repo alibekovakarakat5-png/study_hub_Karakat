@@ -12,10 +12,11 @@
 import { prisma } from './prisma'
 import { handleGrowthCommand, handleGrowthCallback, isAdmin } from './growthBot'
 import { askSkylla } from './growthAI'
+import { handleTelegramAccount } from './telegramAccount'
 
 const BOT_TOKEN  = process.env.TELEGRAM_BOT_TOKEN
 const ADMIN_CHAT = process.env.TELEGRAM_ADMIN_CHAT ?? process.env.TELEGRAM_CHAT_ID
-const APP_URL    = process.env.APP_URL ?? 'https://skylla.netlify.app'
+const APP_URL    = process.env.APP_URL ?? 'https://study-hub-karakat.vercel.app'
 
 // ── Low-level helpers ─────────────────────────────────────────────────────────
 
@@ -768,40 +769,6 @@ async function handleStats(chatId: number) {
 
 // ── /link ─────────────────────────────────────────────────────────────────────
 
-async function handleLink(chatId: number, token: string) {
-  const code = token.trim().toUpperCase()
-  const linkToken = await prisma.telegramLinkToken.findUnique({ where: { token: code } })
-
-  if (!linkToken) {
-    await sendMsg(chatId,
-      `❌ <b>Неверный или устаревший код.</b>\n\nПолучи новый на странице настроек.`,
-      { reply_markup: { inline_keyboard: [[{ text: '⚙️ Настройки', url: `${APP_URL}/settings` }]] } },
-    )
-    return
-  }
-
-  if (linkToken.expiresAt < new Date()) {
-    await prisma.telegramLinkToken.delete({ where: { id: linkToken.id } })
-    await sendMsg(chatId, `⏰ <b>Код истёк.</b> Сгенерируй новый в настройках.`,
-      { reply_markup: { inline_keyboard: [[{ text: '⚙️ Настройки', url: `${APP_URL}/settings` }]] } })
-    return
-  }
-
-  await prisma.user.update({ where: { id: linkToken.userId }, data: { telegramChatId: String(chatId) } })
-  await prisma.telegramLinkToken.delete({ where: { id: linkToken.id } })
-  const user = await prisma.user.findUnique({ where: { id: linkToken.userId } })
-
-  await sendMsg(chatId,
-    `✅ <b>Аккаунт привязан!</b>\n\nПривет, ${user?.name ?? 'друг'}! 🎉\n\nТеперь я буду присылать тебе вопрос дня и отслеживать твой прогресс.`,
-    { reply_markup: {
-      inline_keyboard: [
-        [{ text: '📱 Открыть платформу', url: `${APP_URL}/dashboard` }],
-        BACK_TO_MENU[0]!,
-      ],
-    } },
-  )
-}
-
 // ── Free-text handler (keyword matching from DB) ──────────────────────────────
 
 const KEYWORD_MAP = [
@@ -932,7 +899,7 @@ export interface TelegramUpdate {
   message?: {
     message_id: number
     from?: { id: number; first_name?: string; username?: string }
-    chat: { id: number }
+    chat: { id: number; type?: string }
     text?: string
   }
   callback_query?: {
@@ -944,6 +911,7 @@ export interface TelegramUpdate {
 }
 
 export async function handleUpdate(update: TelegramUpdate): Promise<void> {
+  if (await handleTelegramAccount(update)) return
   try {
     if (update.message?.text) {
       const chatId = update.message.chat.id
@@ -963,14 +931,14 @@ export async function handleUpdate(update: TelegramUpdate): Promise<void> {
 
       if (text.startsWith('/start')) {
         const payload = text.slice(6).trim()
-        if (payload) { await handleLink(chatId, payload); return }
+        if (payload) return
         await showMainMenu(chatId); return
       }
       if (text === '/help')          { await showMainMenu(chatId); return }
       if (text === '/question')      { await handleQuestion(chatId); return }
       if (text === '/progress')      { await handleProgress(chatId); return }
       if (text === '/stats')         { await handleStats(chatId); return }
-      if (text.startsWith('/link'))  { await handleLink(chatId, text.slice(5).trim()); return }
+      if (text.startsWith('/link'))  { await sendMsg(chatId, 'Open Study Hub settings to get a new Telegram link.'); return }
 
       // Free text → DB lookup + keyword matching + Skylla AI
       const userName = update.message?.from?.first_name ?? undefined

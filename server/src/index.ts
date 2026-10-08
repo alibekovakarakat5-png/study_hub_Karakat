@@ -7,6 +7,7 @@ const env = validateEnv()
 import app from './app'
 import { tg, startPolling } from './lib/telegram'
 import { startCronJobs } from './lib/cron'
+import { configureTelegramAccount } from './lib/telegramAccount'
 
 // Падения вне Express (кроны, telegram-поллинг, оборванные промисы) — алерт
 // админу в Telegram. Не чаще раза в минуту, чтобы цикл падений не заспамил чат.
@@ -33,6 +34,10 @@ app.listen(env.PORT, () => {
   console.log(`   Environment: ${env.NODE_ENV}`)
   tg.serverStart()
   startCronJobs()
+  const configureBot = () => configureTelegramAccount()
+    .then(() => console.log('[Telegram] Account configuration checked'))
+    .catch(() => { console.error('[Telegram] Account configuration failed; retrying'); setTimeout(configureBot, 60_000).unref() })
+  void configureBot()
   // In dev mode (no webhook), use polling to receive Telegram messages
   if (env.NODE_ENV !== 'production') startPolling()
 })
