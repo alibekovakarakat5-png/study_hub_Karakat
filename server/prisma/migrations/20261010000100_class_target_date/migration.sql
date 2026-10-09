@@ -1,0 +1,1 @@
+ALTER TABLE "Class" ADD COLUMN "targetDate" TIMESTAMP(3);

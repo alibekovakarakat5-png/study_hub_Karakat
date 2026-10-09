@@ -20,7 +20,7 @@ const RegisterSchema = z.object({
   email:    z.string().email(),
   password: z.string().min(6).max(100),
   role:     z.enum(['student', 'parent', 'teacher', 'employer']).default('student'),
-  grade:    z.number().int().min(9).max(11).optional(),
+  grade:    z.number().int().min(1).max(11).optional(),
   city:     z.string().max(80).optional(),
 })
 

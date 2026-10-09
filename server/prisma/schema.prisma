@@ -448,6 +448,7 @@ model Class {
   name        String
   subject     String
   description String?
+  targetDate  DateTime?
   teacherId   String
   teacher     User     @relation("TeacherClasses", fields: [teacherId], references: [id], onDelete: Cascade)
   orgId       String?

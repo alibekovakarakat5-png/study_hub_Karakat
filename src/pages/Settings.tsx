@@ -244,6 +244,7 @@ export default function Settings() {
                   className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 >
                   <option value="">{t('settings.grade_not_set')}</option>
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map(value => <option key={value} value={value}>{value}</option>)}
                   <option value="9">{t('settings.grade_9')}</option>
                   <option value="10">{t('settings.grade_10')}</option>
                   <option value="11">{t('settings.grade_11')}</option>

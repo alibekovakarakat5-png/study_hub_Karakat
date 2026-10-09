@@ -4,6 +4,8 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma'
 import { verifyToken, requireRole } from '../middleware/auth'
+import { studentContent } from '../lib/classroomContent'
+import { randomInt } from 'crypto'
 
 const router = Router()
 
@@ -15,7 +17,7 @@ async function generateUniqueInviteCode(): Promise<string> {
   for (let attempt = 0; attempt < 10; attempt++) {
     let code = ''
     for (let i = 0; i < 6; i++) {
-      code += INVITE_CHARS[Math.floor(Math.random() * INVITE_CHARS.length)]
+      code += INVITE_CHARS[randomInt(INVITE_CHARS.length)]
     }
     const existing = await prisma.class.findUnique({ where: { inviteCode: code } })
     if (!existing) return code
@@ -78,6 +80,7 @@ const CreateClassSchema = z.object({
   name:        z.string().min(1).max(100),
   subject:     z.string().min(1).max(50),
   description: z.string().max(500).optional(),
+  targetDate: z.string().date().nullable().optional(),
 })
 
 router.post('/', verifyToken, requireRole('teacher', 'admin'), async (req, res) => {
@@ -104,7 +107,7 @@ router.post('/', verifyToken, requireRole('teacher', 'admin'), async (req, res) 
 
   const inviteCode = await generateUniqueInviteCode()
   const cls = await prisma.class.create({
-    data: { ...parsed.data, teacherId, orgId, inviteCode },
+    data: { ...parsed.data, targetDate: parsed.data.targetDate ? new Date(parsed.data.targetDate + 'T00:00:00Z') : null, teacherId, orgId, inviteCode },
     include: { _count: { select: { members: true, assignments: true } } },
   })
 
@@ -140,7 +143,7 @@ router.get('/', verifyToken, async (req, res) => {
     },
     orderBy: { createdAt: 'desc' },
   })
-  res.json({ classes })
+  res.json({ classes: classes.map(cls => ({ ...cls, assignments: cls.assignments.map(a => ({ ...a, content: studentContent(a.content) })) })) })
 })
 
 // ── GET /api/classes/:id ──────────────────────────────────────────────────────
@@ -154,7 +157,7 @@ router.get('/:id', verifyToken, async (req, res) => {
     include: {
       teacher:     { select: { id: true, name: true, email: true } },
       members:     { include: { student: { select: { id: true, name: true, email: true, grade: true } } }, orderBy: { joinedAt: 'asc' } },
-      assignments: { include: { _count: { select: { submissions: true } } }, orderBy: { createdAt: 'desc' } },
+      assignments: { include: { _count: { select: { submissions: true } }, submissions: { where: { studentId: userId } } }, orderBy: { createdAt: 'desc' } },
     },
   })
   if (!cls) { res.status(404).json({ error: 'Класс не найден' }); return }
@@ -201,7 +204,17 @@ router.get('/:id', verifyToken, async (req, res) => {
     })
   }
 
-  res.json({ class: cls, progress })
+  res.json({ class: isOwner ? cls : { ...cls, members: cls.members.filter(m => m.studentId === userId), assignments: cls.assignments.map(a => ({ ...a, content: studentContent(a.content) })) }, progress })
+})
+
+// A goal date is an editable planning reference; it never locks study materials.
+router.patch('/:id/goal', verifyToken, requireRole('teacher', 'admin'), async (req, res) => {
+  const parsed = z.object({ targetDate: z.string().date().nullable() }).strict().safeParse(req.body)
+  if (!parsed.success) { res.status(400).json({ error: 'Укажите корректную дату или уберите её.' }); return }
+  const changed = await prisma.class.updateMany({ where: { id: String(req.params.id), teacherId: req.user!.userId },
+    data: { targetDate: parsed.data.targetDate ? new Date(parsed.data.targetDate + 'T00:00:00Z') : null } })
+  if (!changed.count) { res.status(404).json({ error: 'Класс не найден или недоступен.' }); return }
+  res.json({ targetDate: parsed.data.targetDate })
 })
 
 // ── DELETE /api/classes/:id ───────────────────────────────────────────────────

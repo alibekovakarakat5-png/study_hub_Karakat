@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { prisma } from '../lib/prisma'
 import { verifyToken, requireRole } from '../middleware/auth'
 import { notifyParent } from '../lib/parentNotify'
+import { classroomQuestions, classroomScore, studentContent } from '../lib/classroomContent'
 
 const router = Router()
 
@@ -69,7 +70,8 @@ router.get('/:id', verifyToken, async (req, res) => {
     res.status(403).json({ error: 'Нет доступа' }); return
   }
 
-  res.json({ assignment })
+  const submission = isMember ? await prisma.assignmentSubmission.findUnique({ where: { assignmentId_studentId: { assignmentId: id, studentId: userId } } }) : null
+  res.json({ assignment: isTeacher || req.user!.role === 'admin' || submission ? assignment : { ...assignment, content: studentContent(assignment.content) }, submission })
 })
 
 // ── DELETE /api/assignments/:id ───────────────────────────────────────────────
@@ -114,30 +116,17 @@ router.post('/:id/submit', verifyToken, async (req, res) => {
   // AI lessons are saved with type='reading', content={ theory, quiz, isLesson:true }.
   // The student takes the quiz inline (number[] payload), so we grade the same way.
   let score: number | null = null
-  const contentObj = assignment.content as {
-    questions?: Array<{ correctAnswer: number }>
-    quiz?:      Array<{ correctAnswer: number }>
-    isLesson?:  boolean
-  }
-  const gradedQuestions =
-    assignment.type === 'test'                          ? contentObj.questions :
-    (assignment.type === 'reading' && contentObj.isLesson) ? contentObj.quiz :
-    undefined
-
-  if (gradedQuestions?.length) {
-    const studentAnswers = answers as number[]
-    if (Array.isArray(studentAnswers)) {
-      let correct = 0
-      gradedQuestions.forEach((q, i) => {
-        if (studentAnswers[i] === q.correctAnswer) correct++
-      })
-      score = Math.round((correct / gradedQuestions.length) * 100)
-    }
+  const gradedQuestions = classroomQuestions(assignment.type, assignment.content)
+  try { score = classroomScore(gradedQuestions, answers) }
+  catch { res.status(400).json({ error: 'Ответьте на все вопросы, выбрав один вариант в каждом.' }); return }
+  if (!gradedQuestions.length && !z.object({ text: z.string().trim().min(1).max(10000) }).safeParse(answers).success) {
+    res.status(400).json({ error: 'Добавьте текст работы (до 10 000 символов).' }); return
   }
 
   const submission = await prisma.assignmentSubmission.create({
     data: { assignmentId: id, studentId: userId, answers: answers as object, score },
-  })
+  }).catch(error => { if (error?.code === 'P2002') return null; throw error })
+  if (!submission) { res.status(409).json({ error: 'Работа уже сохранена. Откройте результат.' }); return }
 
   const totalQuestions = assignment.type === 'test'
     ? ((assignment.content as { questions?: unknown[] }).questions?.length ?? 0)
@@ -223,9 +212,13 @@ router.put('/:id/grade/:submissionId', verifyToken, requireRole('teacher', 'admi
     res.status(403).json({ error: 'Нет прав' }); return
   }
 
-  const submission = await prisma.assignmentSubmission.update({
-    where: { id: submissionId },
+  const changed = await prisma.assignmentSubmission.updateMany({
+    where: { id: submissionId, assignmentId: id },
     data:  { score: parsed.data.score, feedback: parsed.data.feedback ?? null },
+  })
+  if (!changed.count) { res.status(404).json({ error: 'Работа не найдена в этом задании.' }); return }
+  const submission = await prisma.assignmentSubmission.findUniqueOrThrow({
+    where: { id: submissionId },
     include: { student: { select: { name: true, parentTgChatId: true } } },
   })
 

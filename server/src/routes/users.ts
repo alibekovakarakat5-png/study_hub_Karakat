@@ -19,7 +19,7 @@ function safeUser(u: { passwordHash: string; telegramChatId?: string | null; [ke
 const UpdateProfileSchema = z.object({
   name:             z.string().min(2).max(80).optional(),
   email:            z.string().email().optional(),
-  grade:            z.number().int().min(9).max(11).optional(),
+  grade:            z.number().int().min(1).max(11).optional(),
   city:             z.string().max(80).optional(),
   targetUniversity: z.string().max(200).optional(),
   targetSpecialty:  z.string().max(200).optional(),

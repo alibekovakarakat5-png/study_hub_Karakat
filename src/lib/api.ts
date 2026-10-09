@@ -529,6 +529,7 @@ export interface DBClass {
   name: string
   subject: string
   description: string | null
+  targetDate?: string | null
   inviteCode: string
   teacherId: string
   teacher?: { id: string; name: string; email?: string }
@@ -597,7 +598,7 @@ export const assignmentsApi = {
     content: unknown; description?: string; dueDate?: string;
   }) => api.post<{ assignment: DBAssignment }>('/assignments', body),
 
-  get:          (id: string)  => api.get<{ assignment: DBAssignment }>(`/assignments/${id}`),
+  get:          (id: string)  => api.get<{ assignment: DBAssignment; submission?: DBSubmission | null }>(`/assignments/${id}`),
   delete:       (id: string)  => api.del<{ ok: boolean }>(`/assignments/${id}`),
   submit:       (id: string, answers: unknown) =>
                   api.post<{ submission: DBSubmission }>(`/assignments/${id}/submit`, { answers }),

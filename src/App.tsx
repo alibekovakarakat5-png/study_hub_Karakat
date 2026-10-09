@@ -21,6 +21,7 @@ const Admin = lazy(() => import('@/pages/Admin'))
 const Pricing = lazy(() => import('@/pages/Pricing'))
 const Courses = lazy(() => import('@/pages/Courses'))
 const TeacherDashboard = lazy(() => import('@/pages/TeacherDashboard'))
+const Classroom = lazy(() => import('@/pages/Classroom'))
 const PublicProfile = lazy(() => import('@/pages/PublicProfile'))
 const Onboarding = lazy(() => import('@/pages/Onboarding'))
 const CareerOrientation = lazy(() => import('@/pages/CareerOrientation'))
@@ -97,7 +98,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 function TeacherRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useStore()
   if (!isAuthenticated) return <Navigate to="/auth" replace />
-  if (user?.role !== 'teacher') return <Navigate to="/dashboard" replace />
+  if (user?.role !== 'teacher' && user?.role !== 'admin') return <Navigate to="/dashboard" replace />
   return <>{children}</>
 }
 
@@ -128,6 +129,7 @@ export default function App() {
           <Route path="/parent" element={<ParentRoute><ParentDashboard /></ParentRoute>} />
           <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
           <Route path="/teacher" element={<TeacherRoute><TeacherDashboard /></TeacherRoute>} />
+          <Route path="/classroom" element={<ProtectedRoute><Classroom /></ProtectedRoute>} />
           <Route path="/employer" element={<EmployerRoute><ComingSoon title="Кабинет работодателя" description="Раздел для компаний — поиск кандидатов из выпускников и публикация вакансий — скоро." planned={['Профили кандидатов с навыками и портфолио', 'Публикация вакансий и стажировок', 'Аналитика откликов']} /></EmployerRoute>} />
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           <Route path="/career-orientation" element={<ProtectedRoute><CareerOrientation /></ProtectedRoute>} />
