@@ -13,6 +13,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -20,6 +22,9 @@ jobs:
           cache: npm
 
       # ── Frontend ──
+      - name: Require owner-review coverage for product changes
+        run: node scripts/check-review-coverage.mjs --head HEAD
+
       - name: Install frontend dependencies
         run: npm ci
 

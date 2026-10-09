@@ -5,6 +5,7 @@ import { verifyToken, signToken } from '../middleware/auth'
 import { reviewStore, isReviewOwner, provisionPersona } from '../lib/reviewStore'
 import { reviewBuild, reviewCatalog, reviewPersonas } from '../lib/reviewCatalog'
 import type { LearningRepository } from '../lib/learningRepository'
+import { isClassroomPersona, reviewClassroomId } from '../lib/reviewClassroom'
 
 const uuid = z.string().uuid()
 const revision = z.number().int().min(1)
@@ -106,13 +107,16 @@ export function createReviewRouter(deps: ReviewDependencies = live) {
     const spec = reviewPersonas.find(p => p.id === input.persona)
     const run = await repo.get(req.user!.userId, 'run-' + input.runId)
     if (!spec || !run) { res.status(400).json({ error: 'Выберите проверку и тестовую роль.' }); return }
-    const user = await deps.persona(req.user!.userId, spec.id)
+    const runScenario = run.data.scenario as typeof reviewCatalog[number]
+    if (!runScenario.steps.some(step => step.persona === spec.id)) { res.status(400).json({ error: 'Эта роль не входит в выбранный сценарий.' }); return }
+    const classroomId = isClassroomPersona(spec.id) ? reviewClassroomId(req.user!.userId, input.runId) : undefined
+    const user = await deps.persona(req.user!.userId, spec.id, input.runId)
     const key = 'session-' + input.id
     let session = await repo.get(req.user!.userId, key)
     if (session && (session.data.userId !== user.id || session.data.runId !== input.runId || session.data.endedAt || Number(session.data.expiresAt) <= Date.now())) { res.status(409).json({ error: 'Сессия завершена или относится к другой проверке.' }); return }
     if (!session) session = await repo.put(req.user!.userId, key, { userId: user.id, persona: spec.id, runId: input.runId, startedAt: new Date().toISOString(), expiresAt: Date.now() + 30 * 60 * 1000 }, 0)
     if (!session) { res.status(409).json({ error: 'Сессия уже создаётся.' }); return }
-    res.json({ token: signToken({ userId: user.id, email: user.email, role: user.role, reviewSession: { ownerId: req.user!.userId, sessionId: input.id } }), user, session, path: spec.path })
+    res.json({ token: signToken({ userId: user.id, email: user.email, role: user.role, reviewSession: { ownerId: req.user!.userId, sessionId: input.id, ...(classroomId ? { classroomId } : {}) } }), user, session, path: classroomId ? '/classroom?class=' + classroomId : spec.path })
   })
   router.delete('/sessions/:id', async (req, res) => {
     const key = 'session-' + uuid.parse(req.params.id)

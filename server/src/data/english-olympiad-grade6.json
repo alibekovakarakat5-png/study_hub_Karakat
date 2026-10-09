@@ -1,0 +1,725 @@
+{
+  "lessons": [
+    {
+      "title": "01 · Старт: найди языковые подсказки",
+      "type": "test",
+      "description": "20–25 минут. Авторская практика для 6 класса; не официальный вариант олимпиады.",
+      "content": {
+        "stage": "diagnostic",
+        "minutes": 20,
+        "theory": "## Твоя первая миссия\nСначала попробуй без словаря и подсказок. Если сомневаешься, выбери наиболее подходящий ответ. Это стартовая точка, а не школьная оценка и не определение уровня английского.\n\nВ вопросах встречаются времена, слова, чтение и логика. После сдачи откроется объяснение каждого ответа. Куратор выберет, чему уделить больше внимания.\n\n## Как работать\nПрочитай предложение целиком → найди подсказку → исключи неподходящие ответы → выбери один. Не торопись: здесь нет обратного отсчёта.",
+        "questions": [
+          {
+            "topic": "Грамматика",
+            "text": "My brother usually ___ to school by bus.",
+            "options": [
+              "go",
+              "goes",
+              "is going",
+              "went"
+            ],
+            "correctAnswer": 1,
+            "explanation": "Usually описывает привычку. В Present Simple после he/she/it у глагола появляется -s: my brother goes. Go подходит для I/you/we/they; is going — для действия сейчас; went — для прошлого.",
+            "id": "diagnostic-1"
+          },
+          {
+            "topic": "Грамматика",
+            "text": "Listen! Someone ___ at the door.",
+            "options": [
+              "knocks",
+              "knocked",
+              "is knocking",
+              "knock"
+            ],
+            "correctAnswer": 2,
+            "explanation": "Listen! направляет внимание на действие в этот момент: is knocking. Someone употребляется с is. Knocks — регулярное действие, knocked — прошлое.",
+            "id": "diagnostic-2"
+          },
+          {
+            "topic": "Грамматика",
+            "text": "We ___ our grandparents last Sunday.",
+            "options": [
+              "visit",
+              "visited",
+              "visiting",
+              "visits"
+            ],
+            "correctAnswer": 1,
+            "explanation": "Last Sunday — завершённое прошлое. Visit — правильный глагол: visited. Visits — настоящее после he/she/it; visiting не может быть сказуемым без вспомогательного глагола.",
+            "id": "diagnostic-3"
+          },
+          {
+            "topic": "Грамматика",
+            "text": "There isn’t ___ milk in the fridge.",
+            "options": [
+              "many",
+              "a few",
+              "an",
+              "much"
+            ],
+            "correctAnswer": 3,
+            "explanation": "Milk — неисчисляемое существительное. В отрицательном предложении подходит much. Many и a few относятся к исчисляемым предметам во множественном числе; an milk нельзя.",
+            "id": "diagnostic-4"
+          },
+          {
+            "topic": "Грамматика",
+            "text": "This bag is ___ than that one.",
+            "options": [
+              "heavy",
+              "heaviest",
+              "heavier",
+              "more heavyer"
+            ],
+            "correctAnswer": 2,
+            "explanation": "Than — подсказка сравнения двух предметов. Heavy → heavier: y меняется на i, добавляем -er. Heaviest — превосходная степень; двойной вариант more heavyer неверен.",
+            "id": "diagnostic-5"
+          },
+          {
+            "topic": "Слова и сочетания",
+            "text": "Please ___ attention to the instructions.",
+            "options": [
+              "make",
+              "pay",
+              "do",
+              "take"
+            ],
+            "correctAnswer": 1,
+            "explanation": "Устойчивое сочетание — pay attention to: обращать внимание на. Запоминай целое сочетание, а не один перевод слова attention.",
+            "id": "diagnostic-6"
+          },
+          {
+            "topic": "Слова и сочетания",
+            "text": "The girl speaks very ___. We can understand every word.",
+            "options": [
+              "clear",
+              "clearly",
+              "clearness",
+              "cleared"
+            ],
+            "correctAnswer": 1,
+            "explanation": "Слово описывает действие speaks: как говорит? Clearly — наречие. Clear обычно описывает предмет: a clear explanation. Clearness — существительное, cleared — форма глагола.",
+            "id": "diagnostic-7"
+          },
+          {
+            "topic": "Слова и сочетания",
+            "text": "Which word is the opposite of “borrow” in “Can I borrow your pen?”",
+            "options": [
+              "lend",
+              "buy",
+              "keep",
+              "lose"
+            ],
+            "correctAnswer": 0,
+            "explanation": "Borrow — взять на время, lend — дать на время. I borrow a pen from you; you lend a pen to me. Buy — купить, keep — хранить, lose — потерять.",
+            "id": "diagnostic-8"
+          },
+          {
+            "topic": "Чтение",
+            "text": "The notice says: “The library closes at 4 today, one hour earlier than usual.” When does it usually close?",
+            "options": [
+              "At 3",
+              "At 4",
+              "At 5",
+              "At 6"
+            ],
+            "correctAnswer": 2,
+            "explanation": "Сегодня закрытие в 4, на час раньше обычного. Значит, обычно в 5. Earlier than usual — важная подсказка; в вопросе спрашивают usually, а не today.",
+            "id": "diagnostic-9"
+          },
+          {
+            "topic": "Чтение",
+            "text": "“Mia wanted to cycle, but it was raining, so she took the bus.” Why did Mia take the bus?",
+            "options": [
+              "Her bicycle was broken.",
+              "It was raining.",
+              "She dislikes cycling.",
+              "The bus was free."
+            ],
+            "correctAnswer": 1,
+            "explanation": "Причина названа прямо: it was raining. Остальные варианты возможны в жизни, но текст их не подтверждает. В чтении выбирай доказательство из текста.",
+            "id": "diagnostic-10"
+          },
+          {
+            "topic": "Контекст и логика",
+            "text": "“Would you like some juice?” Choose the most suitable reply.",
+            "options": [
+              "Yes, I like.",
+              "Yes, please.",
+              "I am juice.",
+              "Yes, I do yesterday."
+            ],
+            "correctAnswer": 1,
+            "explanation": "Это предложение напитка. Вежливый ответ — Yes, please. На Do you like juice? можно ответить Yes, I do, но вопрос здесь другой.",
+            "id": "diagnostic-11"
+          },
+          {
+            "topic": "Контекст и логика",
+            "text": "Lena is older than Max. Max is older than Sam. Who is the youngest?",
+            "options": [
+              "Lena",
+              "Max",
+              "Sam",
+              "They are the same age."
+            ],
+            "correctAnswer": 2,
+            "explanation": "Построй цепочку: Lena старше Max, Max старше Sam. Самый младший — Sam. Youngest — превосходная степень от young.",
+            "id": "diagnostic-12"
+          }
+        ]
+      }
+    },
+    {
+      "title": "02 · Детектив времени: usually, now, yesterday",
+      "type": "reading",
+      "description": "15–20 минут. Авторская практика для 6 класса; не официальный вариант олимпиады.",
+      "content": {
+        "stage": "time",
+        "minutes": 15,
+        "theory": "## Дело о трёх фотографиях\nПредставь три снимка: обычный школьный день, действие прямо сейчас и вчерашняя поездка. Твоя задача — подобрать глагол к нужному снимку.\n\n## Три шага\n1. Найди время или смысл: every day / now / yesterday.\n2. Посмотри на подлежащее: I, she, they.\n3. Проверь весь глагол: окончание и вспомогательное слово.\n\n| Смысл | Пример | На что смотреть |\n|---|---|---|\n| Привычка | She reads every evening. | В Present Simple: he/she/it + -s. |\n| Сейчас | She is reading now. | am/is/are + глагол-ing. |\n| Законченное прошлое | She read a story yesterday. | У read форма пишется одинаково, но произносится иначе. |\n\n## Ловушка did\nПосле did/didn’t глагол возвращается в начальную форму: Did she go? She didn’t go. Не did went!\n\n## Пробуем вместе\n“Look! The cat ___.” Подсказка Look! и действие сейчас → is sleeping. Для “The cat usually ___ here” → sleeps.\n\nСлова-подсказки помогают, но всегда проверяй смысл всего предложения.",
+        "isLesson": true,
+        "quiz": [
+          {
+            "topic": "Грамматика",
+            "text": "Every Saturday, Leo ___ football with his friends.",
+            "options": [
+              "play",
+              "plays",
+              "is playing",
+              "played"
+            ],
+            "correctAnswer": 1,
+            "explanation": "Every Saturday — привычка; Leo = he → plays. Сначала время, потом подлежащее, потом окончание.",
+            "id": "time-1"
+          },
+          {
+            "topic": "Грамматика",
+            "text": "Look at Nina! She ___ a picture at the moment.",
+            "options": [
+              "draw",
+              "draws",
+              "drew",
+              "is drawing"
+            ],
+            "correctAnswer": 3,
+            "explanation": "At the moment и Look! показывают действие сейчас. She is drawing — полная форма Present Continuous.",
+            "id": "time-2"
+          },
+          {
+            "topic": "Грамматика",
+            "text": "Yesterday we ___ to the museum.",
+            "options": [
+              "go",
+              "went",
+              "gone",
+              "going"
+            ],
+            "correctAnswer": 1,
+            "explanation": "Yesterday требует прошедшего времени. Go — неправильный глагол: go → went. Gone употребляется в других конструкциях, например have gone.",
+            "id": "time-3"
+          },
+          {
+            "topic": "Грамматика",
+            "text": "Choose the correct question about yesterday.",
+            "options": [
+              "Did you saw the robot?",
+              "Did you see the robot?",
+              "Do you saw the robot?",
+              "Did you seen the robot?"
+            ],
+            "correctAnswer": 1,
+            "explanation": "После did — начальная форма see. Прошедшее время уже обозначено словом did. Saw и seen здесь не нужны.",
+            "id": "time-4"
+          },
+          {
+            "topic": "Грамматика",
+            "text": "We didn’t ___ the answer during the quiz yesterday.",
+            "options": [
+              "knew",
+              "known",
+              "know",
+              "knows"
+            ],
+            "correctAnswer": 2,
+            "explanation": "После didn’t используется начальная форма know. Не добавляй вторую отметку прошлого времени к глаголу.",
+            "id": "time-5"
+          }
+        ]
+      }
+    },
+    {
+      "title": "03 · Лаборатория слов: собираем сочетания",
+      "type": "reading",
+      "description": "15–20 минут. Авторская практика для 6 класса; не официальный вариант олимпиады.",
+      "content": {
+        "stage": "words",
+        "minutes": 15,
+        "theory": "## Слова любят компанию\nВ олимпиадном задании часто важно не слово по отдельности, а его соседи.\n\n- **do homework** — выполнять домашнюю работу;\n- **make a mistake** — допустить ошибку;\n- **pay attention to** — обратить внимание на;\n- **interested in** — интересоваться;\n- **good at** — хорошо справляться с чем-то.\n\n## Кто? Какой? Как?\n**A careful student** — careful описывает ученика. **The student works carefully** — carefully описывает действие works.\n\nПример: “The instructions are clear. The teacher explains them clearly.”\n\n## Мини-ловушка: borrow и lend\n**I borrow a book from you** — я беру книгу у тебя. **You lend a book to me** — ты даёшь мне книгу. Сначала реши, кто отдаёт, а кто получает.\n\n## Как запоминать\nПрочитай сочетание → закрой его → придумай свой пример → проверь. Завтра попробуй вспомнить снова без подсказки.",
+        "isLesson": true,
+        "quiz": [
+          {
+            "topic": "Слова и сочетания",
+            "text": "I always ___ my homework before dinner.",
+            "options": [
+              "make",
+              "do",
+              "take",
+              "pay"
+            ],
+            "correctAnswer": 1,
+            "explanation": "Правильное сочетание — do homework. Make сочетается, например, с a mistake или a cake.",
+            "id": "words-1"
+          },
+          {
+            "topic": "Слова и сочетания",
+            "text": "Emma is interested ___ space and robots.",
+            "options": [
+              "at",
+              "on",
+              "in",
+              "for"
+            ],
+            "correctAnswer": 2,
+            "explanation": "Запоминаем interested in целиком. Не переносим русский предлог в английское сочетание.",
+            "id": "words-2"
+          },
+          {
+            "topic": "Слова и сочетания",
+            "text": "This is a ___ answer. You explained it well.",
+            "options": [
+              "clearly",
+              "clear",
+              "clearerly",
+              "clearness"
+            ],
+            "correctAnswer": 1,
+            "explanation": "Answer — существительное. Его описывает прилагательное clear. Clearly описывает действие: explain clearly.",
+            "id": "words-3"
+          },
+          {
+            "topic": "Слова и сочетания",
+            "text": "Please read the question ___ before you answer.",
+            "options": [
+              "careful",
+              "carefully",
+              "care",
+              "carefulness"
+            ],
+            "correctAnswer": 1,
+            "explanation": "Read — действие: прочитай как? Carefully. A careful reader — внимательный читатель, но read carefully — читать внимательно.",
+            "id": "words-4"
+          },
+          {
+            "topic": "Слова и сочетания",
+            "text": "I will return it tomorrow. Could you ___ me your dictionary?",
+            "options": [
+              "borrow",
+              "lend",
+              "spend",
+              "learn"
+            ],
+            "correctAnswer": 1,
+            "explanation": "Собеседника просят дать словарь: lend me your dictionary. Borrow означало бы взять, а не дать. Return it tomorrow подтверждает временную передачу.",
+            "id": "words-5"
+          }
+        ]
+      }
+    },
+    {
+      "title": "04 · Reading Detective: исчезнувший ключ",
+      "type": "reading",
+      "description": "20–25 минут. Авторская практика для 6 класса; не официальный вариант олимпиады.",
+      "content": {
+        "stage": "reading",
+        "minutes": 20,
+        "theory": "## Читаем как детектив\nСначала пойми, что произошло. Затем прочитай вопрос и найди фразу-доказательство. Не выбирай ответ только потому, что в нём знакомое слово.\n\n## The missing key\nOn Friday, Maya and Ben arrived at the school science club at half past three. Their teacher, Ms Green, was waiting outside the classroom. She could not find the key. Maya wanted to search the playground, but Ben remembered that Ms Green had used the library before lunch. They went there together. The librarian pointed to a small blue box near the window. Inside it was the key.\n\nThe club usually tested robots on Fridays. That day, however, they had only twenty minutes left, so they planned a new robot instead. Maya drew its arms, and Ben wrote a list of materials. “We did not build anything today,” Ben said. “But now we know what to do next week,” Maya replied.\n\n## Три ловушки\n- **Usually** и **that day** могут описывать разные действия.\n- Точное время: **half past three = 3:30**.\n- “В тексте не сказано” не означает “это точно неправда”. Не додумывай сведения.\n\nПри ответе можно возвращаться к тексту.",
+        "isLesson": true,
+        "quiz": [
+          {
+            "topic": "Чтение",
+            "text": "What time did Maya and Ben arrive?",
+            "options": [
+              "3:00",
+              "3:15",
+              "3:30",
+              "4:30"
+            ],
+            "correctAnswer": 2,
+            "explanation": "Доказательство: at half past three. Half past — половина часа после указанного часа, то есть 3:30.",
+            "id": "reading-1"
+          },
+          {
+            "topic": "Чтение",
+            "text": "Why was Ms Green outside the classroom?",
+            "options": [
+              "She was looking for Ben.",
+              "She could not find the key.",
+              "The class was over.",
+              "She wanted to draw outside."
+            ],
+            "correctAnswer": 1,
+            "explanation": "Текст прямо связывает ожидание у кабинета с пропавшим ключом: She could not find the key. Остальные причины не названы.",
+            "id": "reading-2"
+          },
+          {
+            "topic": "Чтение",
+            "text": "Who suggested the useful place to search?",
+            "options": [
+              "Maya",
+              "Ben",
+              "The robot",
+              "The librarian"
+            ],
+            "correctAnswer": 1,
+            "explanation": "Ben вспомнил, что учительница была в библиотеке. Maya хотела искать на площадке. Librarian показала коробку уже после их прихода.",
+            "id": "reading-3"
+          },
+          {
+            "topic": "Чтение",
+            "text": "What did the club do that Friday?",
+            "options": [
+              "They tested their old robots.",
+              "They built two new robots.",
+              "They planned a new robot.",
+              "They cancelled the club forever."
+            ],
+            "correctAnswer": 2,
+            "explanation": "Usually tested robots — обычный порядок. That day ... planned a new robot instead — то, что произошло именно в этот день.",
+            "id": "reading-4"
+          },
+          {
+            "topic": "Чтение",
+            "text": "Which statement is NOT supported by the story?",
+            "options": [
+              "The key was in a blue box.",
+              "Maya drew the robot’s arms.",
+              "The librarian had hidden the key as a joke.",
+              "Ben made a list of materials."
+            ],
+            "correctAnswer": 2,
+            "explanation": "Мы знаем только, что библиотекарь указала на коробку. Кто положил туда ключ и зачем — не сказано. Не добавляй собственную версию к фактам.",
+            "id": "reading-5"
+          },
+          {
+            "topic": "Чтение",
+            "text": "How does Maya see the short meeting at the end?",
+            "options": [
+              "It was still useful for their next meeting.",
+              "It was dangerous.",
+              "They should stop learning science.",
+              "They finished building the robot."
+            ],
+            "correctAnswer": 0,
+            "explanation": "Now we know what to do next week показывает пользу планирования. Она не утверждает, что робот уже построен.",
+            "id": "reading-6"
+          }
+        ]
+      }
+    },
+    {
+      "title": "05 · Второй заход: новые вопросы на знакомые ловушки",
+      "type": "test",
+      "description": "15–20 минут. Авторская практика для 6 класса; не официальный вариант олимпиады.",
+      "content": {
+        "stage": "review",
+        "minutes": 15,
+        "theory": "## Сначала вспомни сама\nВернись к этому шагу на следующий день после уроков 02–04, если позволяет время. Закрой прошлые объяснения и попробуй новые вопросы.\n\nПосле сдачи сравни не только проценты, но и причину ошибки: время, форма слова, сочетание или невнимательное чтение. Одна и та же ошибка дважды — сигнал разобрать ещё один пример с куратором.",
+        "questions": [
+          {
+            "topic": "Грамматика",
+            "text": "My cousin ___ chess every evening.",
+            "options": [
+              "plays",
+              "play",
+              "is playing",
+              "played"
+            ],
+            "correctAnswer": 0,
+            "explanation": "Every evening — привычка, my cousin = he/she, поэтому plays. Правило то же, что в уроке о времени, но пример новый.",
+            "id": "review-1"
+          },
+          {
+            "topic": "Грамматика",
+            "text": "At the moment, the children ___ a model plane.",
+            "options": [
+              "build",
+              "built",
+              "are building",
+              "builds"
+            ],
+            "correctAnswer": 2,
+            "explanation": "At the moment → Present Continuous. The children = they, поэтому are building.",
+            "id": "review-2"
+          },
+          {
+            "topic": "Грамматика",
+            "text": "Did Anna ___ her notebook yesterday?",
+            "options": [
+              "brought",
+              "bring",
+              "brings",
+              "bringing"
+            ],
+            "correctAnswer": 1,
+            "explanation": "После did — начальная форма bring. В утвердительном предложении было бы Anna brought her notebook.",
+            "id": "review-3"
+          },
+          {
+            "topic": "Слова и сочетания",
+            "text": "Tom is good ___ solving puzzles.",
+            "options": [
+              "on",
+              "for",
+              "in",
+              "at"
+            ],
+            "correctAnswer": 3,
+            "explanation": "Правильное сочетание — good at. После предлога глагол принимает форму -ing: at solving.",
+            "id": "review-4"
+          },
+          {
+            "topic": "Слова и сочетания",
+            "text": "The children listened ___.",
+            "options": [
+              "quiet",
+              "quietly",
+              "quietness",
+              "quieterly"
+            ],
+            "correctAnswer": 1,
+            "explanation": "Listened — действие. Наречие quietly отвечает на вопрос «как?». Quiet описывает существительное: quiet children.",
+            "id": "review-5"
+          },
+          {
+            "topic": "Чтение",
+            "text": "“The match starts at 2. Please arrive fifteen minutes early.” When should players arrive?",
+            "options": [
+              "1:15",
+              "1:45",
+              "2:00",
+              "2:15"
+            ],
+            "correctAnswer": 1,
+            "explanation": "На 15 минут раньше 2:00 — 1:45. Early значит раньше, не позже.",
+            "id": "review-6"
+          },
+          {
+            "topic": "Контекст и логика",
+            "text": "“I can’t find my ruler.” Which reply offers help?",
+            "options": [
+              "You are a ruler.",
+              "Let’s look in your bag.",
+              "Yesterday is Monday.",
+              "Rulers are often long."
+            ],
+            "correctAnswer": 1,
+            "explanation": "Let’s look ... предлагает совместное действие и помогает решить проблему. Факт о длине линеек не является предложением помощи.",
+            "id": "review-7"
+          },
+          {
+            "topic": "Контекст и логика",
+            "text": "All the red tickets are for Saturday. Nina has a red ticket. What can we be sure of?",
+            "options": [
+              "Nina’s ticket is for Saturday.",
+              "Nina is wearing red.",
+              "All Saturday tickets are red.",
+              "Nina bought two tickets."
+            ],
+            "correctAnswer": 0,
+            "explanation": "Из «все красные билеты — на субботу» следует, что билет Нины на субботу. Обратное утверждение о всех субботних билетах не доказано.",
+            "id": "review-8"
+          }
+        ]
+      }
+    },
+    {
+      "title": "06 · Пишем сообщение: пригласи друга в клуб",
+      "type": "homework",
+      "description": "20–25 минут. Авторская практика для 6 класса; не официальный вариант олимпиады.",
+      "content": {
+        "stage": "writing",
+        "minutes": 20,
+        "text": "## Твоя задача\nНапиши на английском сообщение другу, примерно 60–80 слов. Ты приглашаешь его в школьный клуб.\n\nРасскажи:\n1. Что это за клуб и почему он тебе нравится.\n2. Когда и где вы встречаетесь.\n3. Что вы обычно делаете.\n4. Что собираетесь сделать на следующей встрече.\n5. Задай другу один вопрос.\n\n## План без готового ответа\nПриветствие → приглашение → две-три детали → вопрос → прощание.\n\nМожно опереться на начала: “Would you like to ...?”, “We usually ...”, “Next time, we are going to ...”. Добавь свои мысли. Не копируй целое сообщение из переводчика.\n\n## Перед отправкой\nПроверь: есть ли все пять пунктов? Не пропали ли -s после he/she/it и am/is/are? Есть ли заглавные буквы и точки?\n\nЕсли 60 слов пока трудно, напиши 4–5 своих предложений и обсуди сложные места с куратором.",
+        "rubric": "Куратор оценивает вручную, максимум 100: выполнение задачи — 30; понятность и порядок мыслей — 25; грамматика — 25; слова, орфография и пунктуация — 20. Это учебная шкала, не официальные критерии неизвестной олимпиады. Комментарий: две сильные стороны, одна важная поправка и следующий шаг."
+      }
+    },
+    {
+      "title": "07 · Финальная миссия: проверь, что стало легче",
+      "type": "test",
+      "description": "20–25 минут. Авторская практика для 6 класса; не официальный вариант олимпиады.",
+      "content": {
+        "stage": "checkpoint",
+        "minutes": 20,
+        "theory": "## Новая проверка\nПопробуй без прошлых разборов. Темы похожи на стартовую работу, но предложения новые. После сдачи куратор сравнит ошибки и результаты по темам.\n\nЭто короткая учебная проверка, а не полный пробник конкретной олимпиады. Listening и Speaking этот набор не оценивает.",
+        "questions": [
+          {
+            "topic": "Грамматика",
+            "text": "Sara often ___ her younger brother with his homework.",
+            "options": [
+              "help",
+              "helping",
+              "helps",
+              "is helped"
+            ],
+            "correctAnswer": 2,
+            "explanation": "Often — привычка. Sara = she, поэтому helps. Helping требует вспомогательного глагола; is helped значит «ей помогают» и не подходит по смыслу.",
+            "id": "checkpoint-1"
+          },
+          {
+            "topic": "Грамматика",
+            "text": "Be quiet! The baby ___ right now.",
+            "options": [
+              "sleeps",
+              "is sleeping",
+              "slept",
+              "sleep"
+            ],
+            "correctAnswer": 1,
+            "explanation": "Right now — сейчас. The baby = it → is sleeping. Просьба Be quiet! поддерживает этот смысл.",
+            "id": "checkpoint-2"
+          },
+          {
+            "topic": "Грамматика",
+            "text": "Last weekend, our class ___ a new museum.",
+            "options": [
+              "visits",
+              "visiting",
+              "visited",
+              "visit"
+            ],
+            "correctAnswer": 2,
+            "explanation": "Last weekend — завершённое прошлое. Visit → visited. Не выбирай настоящее visits только потому, что class — единственное число.",
+            "id": "checkpoint-3"
+          },
+          {
+            "topic": "Грамматика",
+            "text": "How ___ apples do we need for the picnic?",
+            "options": [
+              "much",
+              "many",
+              "a little",
+              "an"
+            ],
+            "correctAnswer": 1,
+            "explanation": "Apples можно посчитать, они во множественном числе. Вопрос количества: How many apples? How much используют с неисчисляемыми существительными.",
+            "id": "checkpoint-4"
+          },
+          {
+            "topic": "Грамматика",
+            "text": "A train is usually ___ than a bicycle.",
+            "options": [
+              "fast",
+              "fastest",
+              "faster",
+              "more faster"
+            ],
+            "correctAnswer": 2,
+            "explanation": "Than требует сравнения: faster. У fast прибавляется -er. More faster — двойная сравнительная степень, так не говорят.",
+            "id": "checkpoint-5"
+          },
+          {
+            "topic": "Слова и сочетания",
+            "text": "Don’t worry if you ___ a mistake. Read the explanation.",
+            "options": [
+              "do",
+              "pay",
+              "make",
+              "take"
+            ],
+            "correctAnswer": 2,
+            "explanation": "Make a mistake — устойчивое сочетание. Ошибку делают с make, домашнюю работу — с do: do homework.",
+            "id": "checkpoint-6"
+          },
+          {
+            "topic": "Слова и сочетания",
+            "text": "The singer sang the song ___.",
+            "options": [
+              "beautiful",
+              "beauty",
+              "beautifully",
+              "beautify"
+            ],
+            "correctAnswer": 2,
+            "explanation": "Sang — действие, его описывает наречие beautifully. Beautiful описывает предмет или человека: a beautiful song.",
+            "id": "checkpoint-7"
+          },
+          {
+            "topic": "Слова и сочетания",
+            "text": "I forgot my book. May I ___ yours until tomorrow?",
+            "options": [
+              "lend",
+              "borrow",
+              "teach",
+              "spend"
+            ],
+            "correctAnswer": 1,
+            "explanation": "Говорящий просит взять книгу на время: borrow yours. Можно переформулировать: Could you lend me your book?",
+            "id": "checkpoint-8"
+          },
+          {
+            "topic": "Чтение",
+            "text": "“The art room opens at 10 today, two hours later than usual.” When does it usually open?",
+            "options": [
+              "At 8",
+              "At 10",
+              "At 12",
+              "At 2"
+            ],
+            "correctAnswer": 0,
+            "explanation": "Сегодня в 10, на два часа позже обычного. Значит, обычно в 8. Сравни today и usually; later означает позже.",
+            "id": "checkpoint-9"
+          },
+          {
+            "topic": "Чтение",
+            "text": "“Dan planned to play outside. When the rain began, he stayed in and read a book.” Why did he stay inside?",
+            "options": [
+              "He had lost his shoes.",
+              "It began to rain.",
+              "He always dislikes games.",
+              "The book was a present."
+            ],
+            "correctAnswer": 1,
+            "explanation": "Текст называет дождь причиной изменения планов. Ни обувь, ни подарок, ни постоянная нелюбовь к играм не упомянуты.",
+            "id": "checkpoint-10"
+          },
+          {
+            "topic": "Контекст и логика",
+            "text": "“Thank you for helping me.” Choose the most suitable reply.",
+            "options": [
+              "You’re welcome.",
+              "I am eleven.",
+              "Never helping.",
+              "Yes, I am a help."
+            ],
+            "correctAnswer": 0,
+            "explanation": "You’re welcome — обычный вежливый ответ на благодарность. Возраст и остальные варианты не отвечают на смысл реплики.",
+            "id": "checkpoint-11"
+          },
+          {
+            "topic": "Контекст и логика",
+            "text": "The blue box is heavier than the green box. The green box is heavier than the yellow box. Which is the lightest?",
+            "options": [
+              "Blue",
+              "Green",
+              "Yellow",
+              "All three weigh the same."
+            ],
+            "correctAnswer": 2,
+            "explanation": "Цепочка веса: blue > green > yellow. Самая лёгкая коробка — yellow. Внимательно прочитай lightest: спрашивают не самую тяжёлую.",
+            "id": "checkpoint-12"
+          }
+        ]
+      }
+    }
+  ],
+  "educatorNotes": {
+    "version": 1,
+    "goal": "General English olympiad preparation, grade 6. Competition and official format not yet specified.",
+    "suggestedSequence": "Session 1: initial quiz; session 2: time and collocations; session 3: reading; session 4: next-day retrieval and writing; session 5: checkpoint and review. Adjust workload after the initial attempt.",
+    "sourcesForTeachingApproach": [
+      "https://ies.ed.gov/ncee/wwc/PracticeGuide/1",
+      "https://learnenglishteens.britishcouncil.org/grammar/a1-a2-grammar",
+      "https://learnenglishteens.britishcouncil.org/skills/reading/a2-reading"
+    ],
+    "limitations": "All passages and questions above are original. No official paper is reproduced. No CEFR, IELTS band or competition placing is inferred from these scores. Listening and speaking require separate material once competition requirements are known."
+  }
+}

@@ -2,6 +2,7 @@ import crypto from 'crypto'
 import { prisma } from './prisma'
 import { createProgressRepository } from './learningRepository'
 import { REVIEW_PREFIX, TEST_USER_PREFIX, reviewPersonas } from './reviewCatalog'
+import { isClassroomPersona, provisionReviewClassroom } from './reviewClassroom'
 
 export const reviewStore = createProgressRepository(REVIEW_PREFIX)
 export async function isReviewOwner(userId: string) {
@@ -12,7 +13,11 @@ export async function isReviewOwner(userId: string) {
   return user?.role === 'admin' && access?.data.enabled === true
 }
 export const fixtureId = (owner: string, persona: string) => TEST_USER_PREFIX + crypto.createHash('sha256').update(owner).digest('hex').slice(0, 20) + '_' + persona
-export async function provisionPersona(owner: string, persona: string) {
+export async function provisionPersona(owner: string, persona: string, runId?: string) {
+  if (isClassroomPersona(persona)) {
+    if (!runId) throw new Error('Classroom review requires a run')
+    return provisionReviewClassroom(owner, runId, persona)
+  }
   const spec = reviewPersonas.find(p => p.id === persona)
   if (!spec) throw new Error('Unknown persona')
   const id = fixtureId(owner, persona)

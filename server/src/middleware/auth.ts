@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken'
 import { validReviewSession, allowedTestRequest } from '../lib/reviewStore'
 import { TEST_USER_PREFIX } from '../lib/reviewCatalog'
 import { prisma } from '../lib/prisma'
+import { allowedClassroomMutation } from '../lib/reviewClassroom'
 
 // ── Extend Express Request ────────────────────────────────────────────────────
 
@@ -26,7 +27,7 @@ export interface JwtPayload {
   role: string
   email: string
   authVersion?: number
-  reviewSession?: { ownerId: string; sessionId: string }
+  reviewSession?: { ownerId: string; sessionId: string; classroomId?: string }
 }
 
 export function signToken(payload: JwtPayload): string {
@@ -72,8 +73,9 @@ return async function verify(req: Request, res: Response, next: NextFunction): P
         res.status(401).json({ error: 'Тестовая сессия завершена. Вернитесь в кабинет владельца.' }); return
       }
     } catch { res.status(503).json({ error: 'Не удалось проверить тестовую сессию.' }); return }
-    if (!allowedTestRequest(req.method, req.originalUrl.split('?')[0])) {
-      res.status(403).json({ error: 'Это действие отключено в тестовой сессии. Доступны IELTS и просмотр учебных кабинетов.' }); return
+    const path = req.originalUrl.split('?')[0]
+    if (!allowedTestRequest(req.method, path) && !allowedClassroomMutation(req.method, path, session, payload.userId)) {
+      res.status(403).json({ error: 'Это действие отключено в тестовой сессии. Изменения разрешены только в выделенных данных текущей проверки.' }); return
     }
   } else {
     try {

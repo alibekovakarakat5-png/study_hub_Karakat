@@ -6,6 +6,7 @@ import { prisma } from '../lib/prisma'
 import { verifyToken, requireRole } from '../middleware/auth'
 import { studentContent } from '../lib/classroomContent'
 import { randomInt } from 'crypto'
+import { TEST_USER_PREFIX } from '../lib/reviewCatalog'
 
 const router = Router()
 
@@ -38,6 +39,7 @@ router.post('/join', verifyToken, async (req, res) => {
     include: { teacher: { select: { id: true, name: true } } },
   })
   if (!cls) { res.status(404).json({ error: 'Класс не найден — проверьте код' }); return }
+  if (cls.id.startsWith(TEST_USER_PREFIX)) { res.status(403).json({ error: 'Тестовый класс доступен только через кабинет проверки.' }); return }
 
   const userId = String(req.user!.userId)
   const existing = await prisma.classMembership.findUnique({

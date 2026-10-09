@@ -3,6 +3,7 @@ import express from 'express'
 import { createReviewRouter, createReviewFeed } from '../routes/review'
 import { createTokenVerifier, signToken } from '../middleware/auth'
 import { fixtureId } from '../lib/reviewStore'
+import { isClassroomPersona, reviewClassroomId, reviewClassroomUserId } from '../lib/reviewClassroom'
 import { createLearningRouter } from '../routes/learning'
 import type { LearningRecord, LearningRepository } from '../lib/learningRepository'
 
@@ -30,7 +31,7 @@ export function reviewFixture() {
     return !!row && row.data.userId === userId && !row.data.endedAt && Number(row.data.expiresAt) > Date.now() && owners.has(ownerId)
   }, async () => true)
   const app = express().use(express.json())
-  const persona = async (ownerId: string, name: string) => ({ id: fixtureId(ownerId, name), email: 'test@studyhub.invalid', role: name === 'parent' ? 'parent' : name === 'teacher' || name === 'center' ? 'teacher' : 'student', name: 'Synthetic ' + name, grade: 11, city: 'Test', isPremium: false })
+  const persona = async (ownerId: string, name: string, runId?: string) => ({ id: isClassroomPersona(name) ? reviewClassroomUserId(reviewClassroomId(ownerId, runId!), name) : fixtureId(ownerId, name), email: 'test@studyhub.invalid', role: name === 'parent' ? 'parent' : name === 'teacher' || name === 'center' || name === 'classroom-curator' ? 'teacher' : 'student', name: 'Synthetic ' + name, grade: isClassroomPersona(name) ? 6 : 11, city: 'Test', isPremium: false })
   app.use('/api/review', createReviewRouter({ repo, owner, persona: persona as never, auth }))
   app.use('/api/review-feed', createReviewFeed({ repo, owner }))
   app.use('/api/learning', createLearningRouter(learning, async () => 'Synthetic feedback for browser verification only.', auth))

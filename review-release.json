@@ -1,0 +1,5 @@
+{
+  "id": "classroom-owner-review-2026-10-10",
+  "scenarios": ["classroom-olympiad-v1"],
+  "summary": "Add an executable owner-review scenario for the grade-six classroom: fresh isolated class per run, seven original lessons, student submission, curator date and feedback, and cross-account isolation."
+}
