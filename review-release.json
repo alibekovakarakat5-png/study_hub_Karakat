@@ -1,5 +1,5 @@
 {
-  "id": "classroom-owner-review-2026-10-10",
-  "scenarios": ["classroom-olympiad-v1"],
-  "summary": "Add an executable owner-review scenario for the grade-six classroom: fresh isolated class per run, seven original lessons, student submission, curator date and feedback, and cross-account isolation."
+  "id": "admissions-owner-review-2026-10-10",
+  "scenarios": ["classroom-olympiad-v1", "admissions-review-v1", "skylla-memory-v1"],
+  "summary": "Preserve classroom review; add full admissions review with per-run candidates, bounded application writes, persistent text/image drafts, page and actual-role attribution, private screenshots, reader handoff and repeat verification."
 }

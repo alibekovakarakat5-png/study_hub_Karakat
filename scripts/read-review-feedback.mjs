@@ -9,5 +9,21 @@ const response = await fetch(url, { headers: { Authorization: `Bearer ${key}` },
 if (!response.ok) throw new Error(`Cannot read review queue: HTTP ${response.status}`)
 const report = await response.json()
 await mkdir('.studyhub-local', { recursive: true })
+await mkdir('.studyhub-local/review-evidence', { recursive: true })
+let screenshots = 0
+for (const item of report.feedback) {
+  const id = item.data.screenshotId
+  if (!id) continue
+  if (!/^[a-f0-9-]{36}$/.test(id)) throw new Error('Invalid screenshot ID')
+  const result = await fetch(new URL('/api/review-feed/attachments/' + id, origin), { headers: { Authorization: `Bearer ${key}` }, redirect: 'error', signal: AbortSignal.timeout(30000) })
+  if (!result.ok) throw new Error(`Cannot read screenshot ${id}: HTTP ${result.status}`)
+  const { record } = await result.json()
+  const match = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(record.data.dataUrl)
+  if (!match) throw new Error('Unexpected screenshot format')
+  const path = `.studyhub-local/review-evidence/${id}.${match[1] === 'png' ? 'png' : 'jpg'}`
+  await writeFile(path, Buffer.from(match[2], 'base64'), { mode: 0o600 })
+  item.data.screenshotFile = path
+  screenshots++
+}
 await writeFile('.studyhub-local/review-feedback.json', JSON.stringify(report, null, 2), { mode: 0o600 })
-console.log(JSON.stringify({ saved: '.studyhub-local/review-feedback.json', feedbackCount: report.feedback.length, truncated: report.truncated }))
+console.log(JSON.stringify({ saved: '.studyhub-local/review-feedback.json', feedbackCount: report.feedback.length, screenshots, truncated: report.truncated }))

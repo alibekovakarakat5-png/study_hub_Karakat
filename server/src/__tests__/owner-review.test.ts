@@ -39,7 +39,7 @@ test('runs are idempotent; steps validate the catalog, isolate owners and reject
 test('feedback retries do not duplicate; accepting requires a passed step on the fixed deployed version', async () => {
   const f = await fixture(); const runId = randomUUID(); await start(f, runId)
   const id = randomUUID(); const body = { id, runId, stepId: 'open', text: 'Cannot open cabinet', path: '/ielts-coach?token=secret' }
-  const send = () => request(f.app).post('/api/review/feedback').set('Authorization', 'Bearer ' + f.token()).send(body)
+  const send = () => request(f.app).post('/api/review/feedback').set('Authorization', 'Bearer ' + f.token()).set('X-StudyHub-Build', 'aaaaaaaa').send(body)
   assert.equal((await send()).status, 201); assert.equal((await send()).status, 200)
   assert.equal((await f.repo.list('owner-a', 'feedback-')).length, 1)
   const patch = (data: unknown) => request(f.app).patch('/api/review/feedback/' + id).set('Authorization', 'Bearer ' + f.token()).send(data)

@@ -13,6 +13,13 @@ export async function isReviewOwner(userId: string) {
   return user?.role === 'admin' && access?.data.enabled === true
 }
 export const fixtureId = (owner: string, persona: string) => TEST_USER_PREFIX + crypto.createHash('sha256').update(owner).digest('hex').slice(0, 20) + '_' + persona
+export const isAdmissionsPersona = (persona: string) => ['admissions-candidate', 'admissions-outsider'].includes(persona)
+export const admissionsFixtureId = (owner: string, runId: string, persona: string) => fixtureId(owner + ':' + runId, persona)
+export function allowedAdmissionsRequest(method: string, path: string, scope?: { ownerId: string; admissionsRunId?: string }, userId?: string) {
+  if (!scope?.admissionsRunId || !['admissions-candidate', 'admissions-outsider'].some(p => admissionsFixtureId(scope.ownerId, scope.admissionsRunId!, p) === userId)) return false
+  if (method === 'GET' && /^\/api\/(module-progress|admissions|study-abroad)(?:\/|$)/.test(path)) return true
+  return method === 'PUT' && /^\/api\/module-progress\/learning-v1-application-[a-zA-Z0-9-]+$/.test(path)
+}
 export async function provisionPersona(owner: string, persona: string, runId?: string) {
   if (isClassroomPersona(persona)) {
     if (!runId) throw new Error('Classroom review requires a run')
@@ -20,7 +27,8 @@ export async function provisionPersona(owner: string, persona: string, runId?: s
   }
   const spec = reviewPersonas.find(p => p.id === persona)
   if (!spec) throw new Error('Unknown persona')
-  const id = fixtureId(owner, persona)
+  if (isAdmissionsPersona(persona) && !runId) throw new Error('Admissions review requires a run')
+  const id = isAdmissionsPersona(persona) ? admissionsFixtureId(owner, runId!, persona) : fixtureId(owner, persona)
   // No known password, registration notifications, Telegram identity or external mail.
   const user = await prisma.user.upsert({ where: { id }, update: {}, create: {
     id, name: spec.name, email: id + '@studyhub.invalid', role: spec.role,

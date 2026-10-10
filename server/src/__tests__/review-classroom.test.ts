@@ -5,6 +5,7 @@ import request from 'supertest'
 import { allowedClassroomMutation, reviewClassroomId, reviewClassroomUserId, provisionReviewClassroom } from '../lib/reviewClassroom'
 import { reviewCatalog } from '../lib/reviewCatalog'
 import { prisma } from '../lib/prisma'
+process.env.REVIEW_BUILD_SHA = 'aaaaaaaa'
 
 test('classroom review covers both roles, writing feedback and outsider isolation', () => {
   const scenario = reviewCatalog.find(s => s.id === 'classroom-olympiad-v1')!
@@ -61,7 +62,7 @@ test('review launch scopes signed mutation rights and refuses personas outside t
   const session = await start('classroom-student'); assert.equal(session.status, 200)
   const id = reviewClassroomId('owner-a', runId)
   assert.equal(session.body.path, '/classroom?class=' + id)
-  const feedback = await request(f.app).post('/api/review/feedback').set('Authorization', 'Bearer ' + f.token()).send({ id: randomUUID(), runId, stepId: 'route', text: 'Synthetic classroom feedback', path: '/classroom?class=private' })
+  const feedback = await request(f.app).post('/api/review/feedback').set('Authorization', 'Bearer ' + f.token()).set('X-StudyHub-Build', 'aaaaaaaa').send({ id: randomUUID(), runId, stepId: 'route', text: 'Synthetic classroom feedback', path: '/classroom?class=private', sessionId })
   assert.equal(feedback.status, 201)
   assert.equal(feedback.body.record.data.persona, 'classroom-student')
   const exported = await request(f.app).get('/api/review/export').set('Authorization', 'Bearer ' + f.token())

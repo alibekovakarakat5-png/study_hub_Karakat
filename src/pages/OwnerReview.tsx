@@ -5,6 +5,7 @@ import { FRONTEND_SHA, loadReview, ownerRequest, statusLabel, outcomeLabel } fro
 import type { Feedback, ReviewState, Run } from '@/lib/review'
 import type { LearningRecord } from '@/lib/learning'
 import { downloadLearningFile } from '@/lib/learning'
+import ReviewScreenshot from '@/components/ReviewScreenshot'
 
 const button = 'self-start rounded-xl bg-blue-600 px-4 py-2.5 text-white disabled:opacity-40'
 const field = 'w-full rounded-xl border border-slate-300 p-3 text-slate-900 bg-white'
@@ -27,6 +28,8 @@ function FeedbackCard({ item, runs, reload }: { item: LearningRecord<Feedback>; 
     <p className="text-sm text-blue-700">{statusLabel[item.data.status]} · {item.data.persona} · {item.data.path}</p>
     <p className="whitespace-pre-wrap break-words font-medium">{item.data.text}</p>
     <p className="text-xs text-slate-500">Шаг: {item.data.stepId} · версия: {item.data.frontendSha.slice(0, 8)}</p>
+    <p className="text-xs text-slate-500">№{item.data.id.slice(0,8)}{item.data.section ? ' · ' + item.data.section : ''}{item.data.capturedAt ? ' · ' + new Date(item.data.capturedAt).toLocaleString() : ''}{item.data.viewport ? ` · ${item.data.viewport.width}×${item.data.viewport.height}` : ''}</p>
+    {item.data.screenshotId && <ReviewScreenshot id={item.data.screenshotId} />}
     <details><summary className="cursor-pointer">Обработка замечания</summary><div className="space-y-3 mt-3">
       <label className="block">Что сделано или нужно уточнить<textarea className={field} value={note} maxLength={4000} onChange={e => setNote(e.target.value)} /></label>
       <label className="block">Версия исправления<input className={field} value={fixedSha} placeholder="SHA опубликованного исправления" onChange={e => setFixedSha(e.target.value)} /></label>

@@ -2,7 +2,8 @@ import { Router, type RequestHandler } from 'express'
 import { randomBytes, randomUUID, createHash, timingSafeEqual } from 'crypto'
 import { z } from 'zod'
 import { verifyToken, signToken } from '../middleware/auth'
-import { reviewStore, isReviewOwner, provisionPersona } from '../lib/reviewStore'
+import { reviewStore, isReviewOwner, provisionPersona, isAdmissionsPersona } from '../lib/reviewStore'
+import { evidenceContext, screenshotSchema, evidenceDigest } from '../lib/reviewEvidence'
 import { reviewBuild, reviewCatalog, reviewPersonas } from '../lib/reviewCatalog'
 import type { LearningRepository } from '../lib/learningRepository'
 import { isClassroomPersona, reviewClassroomId } from '../lib/reviewClassroom'
@@ -21,9 +22,16 @@ function cleanPath(input: string) {
   if (!input.startsWith('/') || input.startsWith('//')) return '/'
   return input.split(/[?#]/)[0].slice(0, 160)
 }
-async function report(repo: LearningRepository, userId: string) {
+async function report(repo: LearningRepository, userId: string, withImages = false) {
   const [runs, feedback] = await Promise.all([repo.list(userId, 'run-', 501), repo.list(userId, 'feedback-', 501)])
-  return { format: 'studyhub-owner-review', version: 1, exportedAt: new Date().toISOString(), truncated: runs.length > 500 || feedback.length > 500, runs: runs.slice(0, 500), feedback: feedback.slice(0, 500) }
+  const attachments = []
+  if (withImages) for (const row of feedback.slice(0,500)) {
+    if (typeof row.data.screenshotId === 'string') {
+      const image = await repo.get(userId, 'attachment-' + row.data.screenshotId)
+      if (image) attachments.push(image)
+    }
+  }
+  return { format: 'studyhub-owner-review', version: 2, exportedAt: new Date().toISOString(), truncated: runs.length > 500 || feedback.length > 500, runs: runs.slice(0, 500), feedback: feedback.slice(0, 500), ...(withImages ? { attachments } : {}) }
 }
 export function createReviewRouter(deps: ReviewDependencies = live) {
   const { repo, owner } = deps
@@ -55,11 +63,16 @@ export function createReviewRouter(deps: ReviewDependencies = live) {
     res.status(201).json({ record })
   })
   router.put('/runs/:id/steps/:stepId', async (req, res) => {
-    const input = z.object({ revision, outcome: z.enum(['passed', 'failed', 'unclear', 'skipped']), comment, path: z.string().max(2048) }).strict().parse(req.body)
+    const input = z.object({ revision, outcome: z.enum(['passed', 'failed', 'unclear', 'skipped']), comment, path: z.string().max(2048), sessionId: uuid.optional() }).strict().parse(req.body)
     const key = 'run-' + uuid.parse(req.params.id)
     const run = await repo.get(req.user!.userId, key)
     const scenario = run?.data.scenario as typeof reviewCatalog[number] | undefined
     if (!run || !scenario?.steps.some(s => s.id === req.params.stepId)) { res.status(404).json({ error: 'Шаг проверки не найден.' }); return }
+    if (run.data.scenarioId === 'admissions-review-v1') {
+      const step = scenario.steps.find(s => s.id === req.params.stepId)!
+      const session = input.sessionId ? await repo.get(req.user!.userId, 'session-' + input.sessionId) : null
+      if (!session || session.data.runId !== run.data.id || session.data.persona !== step.persona || step.path !== cleanPath(input.path)) { res.status(400).json({ error: 'Проверьте страницу и тестовую роль.' }); return }
+    }
     if (req.get('X-StudyHub-Build') !== run.data.frontendSha || (run.data.backend as { sha: string }).sha !== reviewBuild().sha) {
       res.status(409).json({ error: 'Версия сайта или сервера изменилась. Начните новую проверку текущего выпуска; прежние результаты сохранены.' }); return
     }
@@ -70,19 +83,48 @@ export function createReviewRouter(deps: ReviewDependencies = live) {
     res.json({ record: saved })
   })
   router.post('/feedback', async (req, res) => {
-    const input = z.object({ id: uuid, runId: uuid, stepId: z.string().max(80), text: comment.min(1), path: z.string().max(2048) }).strict().parse(req.body)
+    const input = z.object({ id: uuid, ...evidenceContext, text: comment.min(1), screenshotId: uuid.optional(), outcome: z.enum(['failed','unclear']).optional() }).strict().parse(req.body)
     const run = await repo.get(req.user!.userId, 'run-' + input.runId)
     const step = (run?.data.scenario as typeof reviewCatalog[number] | undefined)?.steps.find(s => s.id === input.stepId)
     if (!run || !step) { res.status(404).json({ error: 'Шаг проверки не найден.' }); return }
+    const normalized = { ...input, path: cleanPath(input.path) }
+    const digest = evidenceDigest(normalized)
     const key = 'feedback-' + input.id
     const previous = await repo.get(req.user!.userId, key)
     if (previous) {
-      if (previous.data.text !== input.text || previous.data.runId !== input.runId || previous.data.stepId !== input.stepId) { res.status(409).json({ error: 'Замечание с таким номером уже существует.' }); return }
+      if (previous.data.digest ? previous.data.digest !== digest : previous.data.text !== input.text || previous.data.runId !== input.runId || previous.data.stepId !== input.stepId || previous.data.path !== normalized.path) { res.status(409).json({ error: 'Замечание с таким номером уже существует.' }); return }
       res.json({ record: previous }); return
     }
-    const record = await repo.put(req.user!.userId, key, { ...input, path: cleanPath(input.path), scenarioId: run.data.scenarioId, persona: step.persona, frontendSha: run.data.frontendSha, backend: run.data.backend, status: 'new', history: [], createdAt: new Date().toISOString() }, 0)
+    if (req.get('X-StudyHub-Build') !== run.data.frontendSha || (run.data.backend as { sha: string }).sha !== reviewBuild().sha) { res.status(409).json({ error: 'Версия изменилась. Черновик сохраните; начните проверку текущей версии.' }); return }
+    const session = input.sessionId ? await repo.get(req.user!.userId, 'session-' + input.sessionId) : null
+    if (input.sessionId && (!session || session.data.runId !== input.runId)) { res.status(400).json({ error: 'Тестовая роль относится к другой проверке.' }); return }
+    if (run.data.scenarioId === 'admissions-review-v1' && (!session || session.data.persona !== step.persona || step.path !== normalized.path)) { res.status(400).json({ error: 'Страница или фактическая роль не совпадает с шагом. Откройте нужную страницу тестовым кандидатом.' }); return }
+    if (input.screenshotId) {
+      const image = await repo.get(req.user!.userId, 'attachment-' + input.screenshotId)
+      if (!image || image.data.runId !== input.runId || image.data.stepId !== input.stepId || image.data.path !== normalized.path || image.data.sessionId !== input.sessionId || image.data.section !== input.section || image.data.capturedAt !== input.capturedAt) { res.status(400).json({ error: 'Скриншот не относится к этому замечанию.' }); return }
+    }
+    const record = await repo.put(req.user!.userId, key, { ...normalized, digest, scenarioId: run.data.scenarioId, persona: session?.data.persona ?? 'owner', frontendSha: run.data.frontendSha, backend: run.data.backend, status: 'new', history: [], createdAt: new Date().toISOString() }, 0)
     if (!record) { res.status(409).json({ error: 'Замечание уже добавлено.' }); return }
     res.status(201).json({ record })
+  })
+  router.post('/attachments', async (req, res) => {
+    const input = z.object({ id: uuid, ...evidenceContext, dataUrl: screenshotSchema }).strict().parse(req.body)
+    const data = { ...input, path: cleanPath(input.path) }
+    const old = await repo.get(req.user!.userId, 'attachment-' + input.id)
+    if (old) { res.status(evidenceDigest(old.data) === evidenceDigest(data) ? 200 : 409).json({ id: input.id, error: 'Этот номер изображения уже использован.' }); return }
+    const run = await repo.get(req.user!.userId, 'run-' + input.runId)
+    const step = (run?.data.scenario as typeof reviewCatalog[number] | undefined)?.steps.find(s => s.id === input.stepId)
+    const session = input.sessionId ? await repo.get(req.user!.userId, 'session-' + input.sessionId) : null
+    if (!run || !step || (input.sessionId && (!session || session.data.runId !== input.runId))) { res.status(400).json({ error: 'Не найден контекст изображения.' }); return }
+    if (req.get('X-StudyHub-Build') !== run.data.frontendSha || (run.data.backend as { sha: string }).sha !== reviewBuild().sha) { res.status(409).json({ error: 'Версия изменилась; изображение осталось в черновике.' }); return }
+    if (run.data.scenarioId === 'admissions-review-v1' && (!session || session.data.persona !== step.persona || step.path !== data.path)) { res.status(400).json({ error: 'Скриншот относится к другой странице или роли.' }); return }
+    const record = await repo.put(req.user!.userId, 'attachment-' + input.id, data, 0)
+    res.status(record ? 201 : 409).json({ id: input.id })
+  })
+  router.get('/attachments/:id', async (req, res) => {
+    const record = await repo.get(req.user!.userId, 'attachment-' + uuid.parse(req.params.id))
+    if (!record) { res.status(404).json({ error: 'Изображение не найдено.' }); return }
+    res.json({ record })
   })
   router.patch('/feedback/:id', async (req, res) => {
     const input = z.object({ revision, status: z.enum(['new', 'in-progress', 'ready', 'accepted']), note: comment, fixedSha: sha.optional(), proofRunId: uuid.optional() }).strict().parse(req.body)
@@ -116,7 +158,7 @@ export function createReviewRouter(deps: ReviewDependencies = live) {
     if (session && (session.data.userId !== user.id || session.data.runId !== input.runId || session.data.endedAt || Number(session.data.expiresAt) <= Date.now())) { res.status(409).json({ error: 'Сессия завершена или относится к другой проверке.' }); return }
     if (!session) session = await repo.put(req.user!.userId, key, { userId: user.id, persona: spec.id, runId: input.runId, startedAt: new Date().toISOString(), expiresAt: Date.now() + 30 * 60 * 1000 }, 0)
     if (!session) { res.status(409).json({ error: 'Сессия уже создаётся.' }); return }
-    res.json({ token: signToken({ userId: user.id, email: user.email, role: user.role, reviewSession: { ownerId: req.user!.userId, sessionId: input.id, ...(classroomId ? { classroomId } : {}) } }), user, session, path: classroomId ? '/classroom?class=' + classroomId : spec.path })
+    res.json({ token: signToken({ userId: user.id, email: user.email, role: user.role, reviewSession: { ownerId: req.user!.userId, sessionId: input.id, ...(classroomId ? { classroomId } : {}), ...(isAdmissionsPersona(spec.id) ? { admissionsRunId: input.runId } : {}) } }), user, session, path: classroomId ? '/classroom?class=' + classroomId : spec.path })
   })
   router.delete('/sessions/:id', async (req, res) => {
     const key = 'session-' + uuid.parse(req.params.id)
@@ -127,7 +169,7 @@ export function createReviewRouter(deps: ReviewDependencies = live) {
     }
     res.json({ ok: true })
   })
-  router.get('/export', async (req, res) => { res.json(await report(repo, req.user!.userId)) })
+  router.get('/export', async (req, res) => { res.json(await report(repo, req.user!.userId, true)) })
   router.post('/reader-key', async (req, res) => {
     const secret = randomBytes(32).toString('hex'); const keyId = randomUUID()
     const old = await repo.get(req.user!.userId, 'reader-key')
@@ -144,7 +186,7 @@ export function createReviewRouter(deps: ReviewDependencies = live) {
 }
 export function createReviewFeed(deps: Pick<ReviewDependencies, 'repo' | 'owner'> = live) {
   const router = Router()
-  router.get('/', async (req, res) => {
+  router.use(async (req, res, next) => {
     res.setHeader('Cache-Control', 'no-store')
     const parts = req.headers.authorization?.replace(/^Bearer /, '').split('.') ?? []
     if (parts.length !== 3 || parts[2].length !== 64) { res.status(401).json({ error: 'Нужен ключ чтения очереди.' }); return }
@@ -153,7 +195,15 @@ export function createReviewFeed(deps: Pick<ReviewDependencies, 'repo' | 'owner'
     if (!row || row.data.keyId !== parts[1] || Number(row.data.expiresAt) <= Date.now() || typeof row.data.digest !== 'string' || row.data.digest.length !== digest.length || !timingSafeEqual(Buffer.from(row.data.digest), Buffer.from(digest)) || !await deps.owner(parts[0])) {
       res.status(401).json({ error: 'Ключ истёк или отозван.' }); return
     }
-    res.json(await report(deps.repo, parts[0]))
+    res.locals.reviewOwner = parts[0]
+    next()
+  })
+  router.get('/', async (_req, res) => res.json(await report(deps.repo, res.locals.reviewOwner)))
+  router.get('/attachments/:id', async (req, res) => {
+    if (!uuid.safeParse(req.params.id).success) { res.status(400).json({ error: 'Неверный номер изображения.' }); return }
+    const record = await deps.repo.get(res.locals.reviewOwner, 'attachment-' + req.params.id)
+    if (!record) { res.status(404).json({ error: 'Изображение не найдено.' }); return }
+    res.json({ record })
   })
   return router
 }

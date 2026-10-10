@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma'
 import { verifyToken } from '../middleware/auth'
 
+export function createModuleProgressRouter(db = prisma, auth = verifyToken) {
 const router = Router()
 
 // ── PUT /api/module-progress/:moduleId — upsert module progress ───────────────
@@ -14,7 +15,7 @@ const ProgressSchema = z.object({
   completed: z.boolean().optional(),
 })
 
-router.put('/:moduleId', verifyToken, async (req, res) => {
+router.put('/:moduleId', auth, async (req, res) => {
   const parsed = ProgressSchema.safeParse(req.body)
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.issues[0].message })
@@ -36,7 +37,7 @@ router.put('/:moduleId', verifyToken, async (req, res) => {
     ...(parsed.data.completed !== undefined && { completed: parsed.data.completed }),
   }
 
-  const progress = await prisma.moduleProgress.upsert({
+  const progress = await db.moduleProgress.upsert({
     where:  { userId_moduleId: { userId, moduleId } },
     create: data,
     update: {
@@ -51,8 +52,8 @@ router.put('/:moduleId', verifyToken, async (req, res) => {
 
 // ── GET /api/module-progress — all modules for current user ───────────────────
 
-router.get('/', verifyToken, async (req, res) => {
-  const progresses = await prisma.moduleProgress.findMany({
+router.get('/', auth, async (req, res) => {
+  const progresses = await db.moduleProgress.findMany({
     where:   { userId: req.user!.userId, NOT: [{ moduleId: { startsWith: 'skylla-v1-' } }, { moduleId: { startsWith: 'owner-review-v1-' } }] },
     orderBy: { updatedAt: 'desc' },
   })
@@ -61,9 +62,9 @@ router.get('/', verifyToken, async (req, res) => {
 
 // ── GET /api/module-progress/:moduleId — single module ───────────────────────
 
-router.get('/:moduleId', verifyToken, async (req, res) => {
+router.get('/:moduleId', auth, async (req, res) => {
   if (String(req.params.moduleId).startsWith('owner-review-v1-')) { res.status(403).json({ error: 'Служебная запись.' }); return }
-  const progress = await prisma.moduleProgress.findUnique({
+  const progress = await db.moduleProgress.findUnique({
     where: {
       userId_moduleId: {
         userId:   req.user!.userId,
@@ -74,4 +75,6 @@ router.get('/:moduleId', verifyToken, async (req, res) => {
   res.json({ progress: progress ?? null })
 })
 
-export default router
+return router
+}
+export default createModuleProgressRouter()

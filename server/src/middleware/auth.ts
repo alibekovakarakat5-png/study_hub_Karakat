@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
-import { validReviewSession, allowedTestRequest } from '../lib/reviewStore'
+import { validReviewSession, allowedTestRequest, allowedAdmissionsRequest } from '../lib/reviewStore'
 import { TEST_USER_PREFIX } from '../lib/reviewCatalog'
 import { prisma } from '../lib/prisma'
 import { allowedClassroomMutation } from '../lib/reviewClassroom'
@@ -27,7 +27,7 @@ export interface JwtPayload {
   role: string
   email: string
   authVersion?: number
-  reviewSession?: { ownerId: string; sessionId: string; classroomId?: string }
+  reviewSession?: { ownerId: string; sessionId: string; classroomId?: string; admissionsRunId?: string }
 }
 
 export function signToken(payload: JwtPayload): string {
@@ -74,7 +74,7 @@ return async function verify(req: Request, res: Response, next: NextFunction): P
       }
     } catch { res.status(503).json({ error: 'Не удалось проверить тестовую сессию.' }); return }
     const path = req.originalUrl.split('?')[0]
-    if (!allowedTestRequest(req.method, path) && !allowedClassroomMutation(req.method, path, session, payload.userId)) {
+    if (!allowedTestRequest(req.method, path) && !allowedClassroomMutation(req.method, path, session, payload.userId) && !allowedAdmissionsRequest(req.method, path, session, payload.userId)) {
       res.status(403).json({ error: 'Это действие отключено в тестовой сессии. Изменения разрешены только в выделенных данных текущей проверки.' }); return
     }
   } else {

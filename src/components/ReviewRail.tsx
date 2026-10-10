@@ -4,6 +4,7 @@ import { loadReview, ownerRequest, launchPersona, outcomeLabel } from '@/lib/rev
 import type { ReviewState, Run, StepResult } from '@/lib/review'
 import type { LearningRecord } from '@/lib/learning'
 import { currentTestSession, leaveTestSession } from '@/lib/reviewSession'
+import AdmissionsReviewRail from './AdmissionsReviewRail'
 
 export default function ReviewRail() {
   const location = useLocation()
@@ -49,9 +50,9 @@ export default function ReviewRail() {
   }
   async function sendFeedback() {
     if (!run || !step) return
-    const value = JSON.stringify({ run: activeId, step: step.id, text })
+    const value = JSON.stringify({ run: activeId, step: step.id, text, path:location.pathname, sessionId:session?.sessionId })
     if (feedbackId.current?.value !== value) feedbackId.current = { value, id: crypto.randomUUID() }
-    await ownerRequest('POST', '/review/feedback', { id: feedbackId.current.id, runId: activeId, stepId: step.id, text, path: location.pathname })
+    await ownerRequest('POST', '/review/feedback', { id: feedbackId.current.id, runId: activeId, stepId: step.id, text, path: location.pathname, sessionId:session?.sessionId })
     localStorage.removeItem(draftKey); setText(''); setNotice('Замечание сохранено в приватной очереди.');
   }
   async function save(outcome: StepResult['outcome']) {
@@ -61,6 +62,7 @@ export default function ReviewRail() {
     setNotice('Результат шага сохранён.');
   }
   if (!ownerId || !activeId) return null
+  if (state && run?.data.scenarioId === 'admissions-review-v1') return <AdmissionsReviewRail key={ownerId + activeId} ownerId={ownerId} run={run} state={state} reload={async () => setState(await loadReview())} />
   return <>
     {open && <style>{'@media(min-width:1100px){body{padding-right:380px}}'}</style>}
     {!open && <button className="fixed bottom-4 right-4 z-[100] rounded-xl bg-blue-700 text-white px-4 py-3 shadow-lg" onClick={() => setOpen(true)}>{session ? 'Тестовая роль · Проверка' : 'Открыть проверку'}</button>}
