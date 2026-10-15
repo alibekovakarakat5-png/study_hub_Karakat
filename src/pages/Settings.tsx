@@ -405,7 +405,7 @@ export default function Settings() {
                       className="inline-flex items-center gap-1.5 mt-1.5 text-sky-600 font-semibold text-sm hover:underline"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
-                      {t('settings.telegram_open_bot')}
+                      Открыть {new URL(tgData.botUrl).pathname.slice(1)}
                     </a>
                   </div>
                 </div>

@@ -207,6 +207,10 @@ router.get('/me/analytics', verifyToken, async (req, res) => {
 // ── POST /api/users/me/parent-link — generate code for parent to link via Telegram
 router.post('/me/parent-link', verifyToken, async (req, res) => {
   const userId = req.user!.userId
+  const options = telegramAccountOptions()
+  if (!options.available || !options.botUrl) { res.status(503).json({ error: 'Telegram-бот пока недоступен. Попробуйте позже.' }); return }
+  const bot = new URL(options.botUrl)
+  bot.search = ''
 
   // Generate 6-digit numeric code
   const code = String(Math.floor(100000 + Math.random() * 900000))
@@ -216,11 +220,11 @@ router.post('/me/parent-link', verifyToken, async (req, res) => {
     data: { parentLinkCode: code },
   })
 
-  const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME ?? 'StudyHubKZBot'
+  const BOT_USERNAME = bot.pathname.slice(1)
   res.json({
     code,
     instruction: `Родитель должен отправить этот код боту @${BOT_USERNAME} в Telegram`,
-    botUrl: `https://t.me/${BOT_USERNAME}`,
+    botUrl: bot.toString(),
   })
 })
 

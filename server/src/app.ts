@@ -24,6 +24,7 @@ import coursesRoutes       from './routes/courses'
 import plansRoutes         from './routes/plans'
 import billingRoutes       from './routes/billing'
 import telegramRoutes      from './routes/telegram'
+import telegramReviewRoutes from './routes/telegramReview'
 import uploadRoutes        from './routes/uploads'
 import studyAbroadRoutes   from './routes/studyAbroad'
 import courseGenerateRoutes from './routes/courseGenerate'
@@ -124,6 +125,7 @@ app.use('/api/courses',         coursesRoutes)
 app.use('/api/plans',           plansRoutes)
 app.use('/api/billing',         billingRoutes)
 app.use('/api/telegram',        telegramRoutes)
+app.use('/api/telegram-review', telegramReviewRoutes)
 app.use('/api/uploads',         uploadRoutes)
 app.use('/api/study-abroad',    studyAbroadRoutes)
 app.use('/api/courses',         courseGenerateRoutes) // adds /api/courses/generate

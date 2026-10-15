@@ -330,6 +330,9 @@ model ContentIdea {
   tags        Json?     // string[]
   status      String    @default("draft") // 'draft' | 'approved' | 'published' | 'archived'
   scheduledAt DateTime?
+  telegramChatId    String?
+  telegramMessageId Int?
+  deliveryError    String?
   createdAt   DateTime  @default(now())
 
   @@index([status])

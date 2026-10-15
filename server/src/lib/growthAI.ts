@@ -1,3 +1,4 @@
+import { appSite, automaticChannelPolicy } from './telegramContent'
 // ── Growth AI — Claude-powered functions for Growth Assistant ─────────────────
 //
 // Uses Claude Haiku for fast, cheap AI generation:
@@ -148,7 +149,7 @@ export async function analyzeCompetitor(name: string, description: string): Prom
 const GROQ_API_KEY = process.env.GROQ_API_KEY
 const GROQ_URL     = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL   = 'llama-3.3-70b-versatile'
-const APP_URL      = process.env.APP_URL || 'https://skylla.netlify.app'
+const APP_URL      = appSite()
 
 const SKYLLA_SYSTEM = `Ты — Skylla, AI-репетитор образовательной платформы StudyHub (Казахстан).
 Помогаешь школьникам 9-11 класса готовиться к ЕНТ, IELTS и поступлению в вуз.
@@ -194,189 +195,13 @@ export async function askSkylla(question: string, userName = 'друг', history
   return reply
 }
 
-// ── Channel Post v2 — реальные новости для @skyllaAI ────────────────────────
-//
-// Парсим реальные новости → AI пишет пост на основе фактов
-// Тематика: поступление за рубеж, гранты, стипендии, дедлайны
-
-const NEWS_SOURCES = [
-  'https://www.educations.com/articles-and-advice',
-  'https://www.topuniversities.com/student-info/studying-abroad',
-]
-
-const WEEKDAY_FOCUS: Record<number, string> = {
-  1: 'Гранты и стипендии для казахстанских студентов за рубежом (Болашак, Chevening, DAAD, Erasmus, Korean Government Scholarship)',
-  2: 'Поступление в Европу (Чехия, Германия, Польша, Турция) — бесплатное или дешёвое обучение',
-  3: 'Поступление в Азию (Корея, Китай, Малайзия, Япония) — стипендии и программы',
-  4: 'IELTS/TOEFL — конкретные советы для казахстанских студентов, разбор частых ошибок',
-  5: 'Истории успеха — казахстанцы которые поступили в топ-вузы мира, их путь и советы',
-  6: 'Дедлайны ближайших программ и грантов, что подавать прямо сейчас',
-  0: 'Сравнение стран для учёбы: стоимость жизни, язык, перспективы после диплома',
-}
-
-const CHANNEL_POST_SYSTEM = `Ты — редактор Telegram-канала о поступлении за рубеж для казахстанских студентов.
-
-ТВОЯ ЗАДАЧА: написать один информативный, полезный пост.
-
-ФОРМАТ ПОСТА:
-1. Эмодзи + заголовок-крючок (вопрос или факт который заставит остановить скролл)
-2. 4-6 предложений с КОНКРЕТНОЙ полезной информацией (цифры, названия программ, дедлайны, суммы грантов)
-3. Один практический совет (что делать прямо сейчас)
-4. CTA: ссылка на платформу
-5. 3-4 хештега
-
-СТИЛЬ:
-- Пиши как умный друг который уже поступил и делится опытом
-- Конкретика > мотивация. Цифры, даты, названия > "верь в себя"
-- Казахстанский контекст обязателен (цены в тенге, сравнение с КЗ вузами, визовые нюансы)
-- Короткие абзацы, воздух между строками
-- HTML теги: <b>, <i>, <a href="...">. НЕ markdown
-
-ДЛИНА: 150-250 слов
-ЯЗЫК: русский`
-
-/** Fetch a news page and extract key sentences about studying abroad */
-async function fetchNewsContext(): Promise<string> {
-  try {
-    const url = NEWS_SOURCES[Math.floor(Math.random() * NEWS_SOURCES.length)]!
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 8000)
-
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 StudyHub Bot' },
-      signal: controller.signal,
-    })
-    clearTimeout(timeout)
-
-    if (!res.ok) return ''
-    const html = await res.text()
-
-    // Extract text content, strip tags
-    const text = html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .slice(0, 3000)
-
-    return text
-  } catch {
-    return ''
-  }
-}
-
+// Unverified news generation is paused until source-based editorial review exists.
 export async function generateChannelPost(): Promise<string> {
-  if (!GROQ_API_KEY) throw new Error('GROQ_API_KEY not set')
-
-  const now     = new Date()
-  const weekday = now.getDay()
-  const focus   = WEEKDAY_FOCUS[weekday] ?? WEEKDAY_FOCUS[1]!
-  const dateStr = now.toLocaleDateString('ru-KZ', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Almaty' })
-  const month   = now.toLocaleDateString('ru-KZ', { month: 'long', timeZone: 'Asia/Almaty' })
-
-  // Try to get real news context
-  const newsContext = await fetchNewsContext()
-  const contextBlock = newsContext
-    ? `\n\nВот фрагмент свежих новостей для вдохновения (НЕ копируй, а используй как основу):\n${newsContext.slice(0, 1500)}`
-    : ''
-
-  const res = await fetch(GROQ_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type':  'application/json',
-      'Authorization': `Bearer ${GROQ_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model:      GROQ_MODEL,
-      max_tokens: 600,
-      temperature: 0.8,
-      messages: [
-        { role: 'system', content: CHANNEL_POST_SYSTEM },
-        { role: 'user', content: `Сегодня ${dateStr}. Сейчас ${month} — учитывай актуальные дедлайны.
-
-Фокус поста: ${focus}
-
-Ссылка для CTA: ${APP_URL}${contextBlock}
-
-Напиши пост.` },
-      ],
-    }),
-  })
-
-  if (!res.ok) throw new Error(`Groq error: ${res.status}`)
-  const json = await res.json() as { choices: Array<{ message: { content: string } }> }
-  return json.choices[0]?.message?.content ?? ''
+  throw new Error(automaticChannelPolicy.reason)
 }
-
-// ── Multi-channel post generator (для будущих каналов ЕНТ, IELTS) ───────────
-
-type ChannelType = 'abroad' | 'ent' | 'ielts'
-
-const CHANNEL_CONFIGS: Record<ChannelType, { system: string; topics: string[] }> = {
-  abroad: {
-    system: CHANNEL_POST_SYSTEM,
-    topics: Object.values(WEEKDAY_FOCUS),
-  },
-  ent: {
-    system: `Ты — редактор Telegram-канала о подготовке к ЕНТ для казахстанских школьников.
-Пиши посты с конкретными разборами заданий, лайфхаками по предметам, новостями о ЕНТ.
-Формат: эмодзи + заголовок, 4-6 предложений, практический совет, CTA, хештеги.
-HTML теги: <b>, <i>. НЕ markdown. Русский язык. 150-250 слов.`,
-    topics: [
-      'Разбор сложного задания по математике ЕНТ — пошаговое решение',
-      'Лайфхак: как запоминать даты по истории Казахстана',
-      'Топ ошибок на ЕНТ по грамотности чтения и как их избежать',
-      'Физика/химия — формулы которые ТОЧНО будут на ЕНТ',
-      'Тайм-менеджмент на ЕНТ: сколько минут на каждый блок',
-      'Новости ЕНТ: изменения формата, пороговые баллы, даты',
-      'Мотивация + план подготовки на неделю',
-    ],
-  },
-  ielts: {
-    system: `Ты — редактор Telegram-канала о подготовке к IELTS для казахстанских студентов.
-Пиши посты с конкретными советами по Speaking, Writing, Reading, Listening.
-Формат: эмодзи + заголовок, 4-6 предложений, конкретный совет или разбор, CTA, хештеги.
-HTML теги: <b>, <i>. НЕ markdown. Русский язык (можно английские примеры). 150-250 слов.`,
-    topics: [
-      'IELTS Speaking Part 2 — разбор реального cue card + модельный ответ',
-      'IELTS Writing Task 2 — структура эссе на 7.0+ с примером',
-      'Vocabulary boost: 10 слов которые впечатлят экзаменатора',
-      'IELTS Reading — техника skimming & scanning за 60 секунд на passage',
-      'Listening — как не пропустить ответ: типичные ловушки IELTS',
-      'Разбор частых ошибок казахстанских студентов на IELTS',
-      'Мотивация: истории студентов из КЗ которые сдали на 7.5+',
-    ],
-  },
-}
-
-export async function generateChannelPostForType(type: ChannelType): Promise<string> {
-  if (!GROQ_API_KEY) throw new Error('GROQ_API_KEY not set')
-
-  const config = CHANNEL_CONFIGS[type]
-  const now = new Date()
-  const dateStr = now.toLocaleDateString('ru-KZ', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Almaty' })
-  const topic = config.topics[now.getDay() % config.topics.length]!
-
-  const res = await fetch(GROQ_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type':  'application/json',
-      'Authorization': `Bearer ${GROQ_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model:      GROQ_MODEL,
-      max_tokens: 600,
-      temperature: 0.8,
-      messages: [
-        { role: 'system', content: config.system },
-        { role: 'user', content: `Сегодня ${dateStr}. Фокус: ${topic}. Ссылка для CTA: ${APP_URL}. Напиши пост.` },
-      ],
-    }),
-  })
-
-  if (!res.ok) throw new Error(`Groq error: ${res.status}`)
-  const json = await res.json() as { choices: Array<{ message: { content: string } }> }
-  return json.choices[0]?.message?.content ?? ''
+export async function generateChannelPostForType(_type: 'abroad' | 'ent' | 'ielts'): Promise<string> {
+  void _type
+  throw new Error(automaticChannelPolicy.reason)
 }
 
 // ── Teacher Test Generator — 3 варианта через Groq ───────────────────────────

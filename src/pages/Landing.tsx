@@ -1851,7 +1851,7 @@ function Footer() {
               </a>
               {/* Telegram */}
               <a
-                href="https://t.me/studyhub_kz"
+                href="https://t.me/skyllaAI"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Telegram"

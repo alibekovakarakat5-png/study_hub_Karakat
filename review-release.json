@@ -1,5 +1,7 @@
 {
-  "id": "admissions-owner-review-2026-10-10",
-  "scenarios": ["classroom-olympiad-v1", "admissions-review-v1", "skylla-memory-v1"],
-  "summary": "Preserve classroom review; add full admissions review with per-run candidates, bounded application writes, persistent text/image drafts, page and actual-role attribution, private screenshots, reader handoff and repeat verification."
+  "id": "telegram-foundation-2026-10-15",
+  "scenarios": [
+    "telegram-foundation-v1"
+  ],
+  "summary": "Disable unverified automatic channel news; require durable manual publication confirmation and honest delivery status. Correct IELTS and ENT messaging and Telegram links. Add isolated owner review with persisted publication fixtures."
 }

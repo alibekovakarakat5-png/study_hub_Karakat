@@ -6,6 +6,7 @@ import { fixtureId, admissionsFixtureId, isAdmissionsPersona } from '../lib/revi
 import { isClassroomPersona, reviewClassroomId, reviewClassroomUserId } from '../lib/reviewClassroom'
 import { createLearningRouter } from '../routes/learning'
 import { createModuleProgressRouter } from '../routes/moduleProgress'
+import { createTelegramReviewRouter } from '../routes/telegramReview'
 import type { LearningRecord, LearningRepository } from '../lib/learningRepository'
 
 export function memoryRepository(): LearningRepository {
@@ -26,6 +27,7 @@ export function memoryRepository(): LearningRepository {
 export function reviewFixture() {
   const repo = memoryRepository(); const learning = memoryRepository()
   const progress = memoryRepository()
+  const telegram = memoryRepository()
   const owners = new Set(['owner-a', 'owner-b'])
   const owner = async (u: string) => owners.has(u)
   const auth = createTokenVerifier(async (ownerId, sessionId, userId) => {
@@ -36,6 +38,7 @@ export function reviewFixture() {
   const persona = async (ownerId: string, name: string, runId?: string) => ({ id: isAdmissionsPersona(name) ? admissionsFixtureId(ownerId, runId!, name) : isClassroomPersona(name) ? reviewClassroomUserId(reviewClassroomId(ownerId, runId!), name) : fixtureId(ownerId, name), email: 'test@studyhub.invalid', role: name === 'parent' ? 'parent' : name === 'teacher' || name === 'center' || name === 'classroom-curator' ? 'teacher' : 'student', name: 'Synthetic ' + name, grade: isClassroomPersona(name) ? 6 : 11, city: 'Test', isPremium: false })
   app.use('/api/review', createReviewRouter({ repo, owner, persona: persona as never, auth }))
   app.use('/api/review-feed', createReviewFeed({ repo, owner }))
+  app.use('/api/telegram-review', createTelegramReviewRouter(telegram, auth))
   app.use('/api/learning', createLearningRouter(learning, async () => 'Synthetic feedback for browser verification only.', auth))
   // Real HTTP handler and authorization; only its database adapter is substituted.
   const db = { moduleProgress: {
@@ -57,5 +60,5 @@ export function reviewFixture() {
   app.post('/api/billing/pay', auth, (_req, res) => res.json({ shouldNeverExecute: true }))
   app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => res.status(500).json({ error: err.message }))
   const token = (id = 'owner-a', role = 'admin') => signToken({ userId: id, role, email: id + '@example.invalid' })
-  return { repo, app, token, owners, auth, learning, progress }
+  return { repo, app, token, owners, auth, learning, progress, telegram }
 }

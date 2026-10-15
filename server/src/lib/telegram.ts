@@ -13,21 +13,17 @@ import { prisma } from './prisma'
 import { handleGrowthCommand, handleGrowthCallback, isAdmin } from './growthBot'
 import { askSkylla } from './growthAI'
 import { handleTelegramAccount } from './telegramAccount'
+import { telegramRequest, telegramAdminChat } from './telegramTransport'
+import { appSite, ieltsEntry, entMiniResult } from './telegramContent'
 
 const BOT_TOKEN  = process.env.TELEGRAM_BOT_TOKEN
-const ADMIN_CHAT = process.env.TELEGRAM_ADMIN_CHAT ?? process.env.TELEGRAM_CHAT_ID
-const APP_URL    = process.env.APP_URL ?? 'https://study-hub-karakat.vercel.app'
+const ADMIN_CHAT = telegramAdminChat()
+const APP_URL    = appSite()
 
 // ── Low-level helpers ─────────────────────────────────────────────────────────
 
 async function call(method: string, body: Record<string, unknown>): Promise<unknown> {
-  if (!BOT_TOKEN) return
-  const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(body),
-  })
-  return res.json()
+  return telegramRequest(method, body)
 }
 
 async function sendMsg(chat_id: string | number, text: string, extra?: Record<string, unknown>) {
@@ -207,7 +203,7 @@ async function handleQuestionAnswer(chatId: number, messageId: number, questionI
     reply_markup: {
       inline_keyboard: [
         [{ text: '🎯 Ещё вопрос', callback_data: 'flow:question' }],
-        [{ text: '📚 500+ вопросов на платформе', url: `${APP_URL}/diagnostic` }],
+        [{ text: '📚 Практика на платформе', url: `${APP_URL}/diagnostic` }],
         BACK_TO_MENU[0]!,
       ],
     },
@@ -247,23 +243,12 @@ async function handleEntDiagAns(chatId: number, ansIdx: number) {
 
   if (nextStep >= 5) {
     resetState(chatId)
-    const projected = Math.round(newScore * 24 + 20) // 20–140 scale approx
-    const level = newScore <= 1 ? '🔴 Начальный' : newScore <= 3 ? '🟡 Средний' : '🟢 Хороший'
-    const advice = newScore <= 1
-      ? 'Нужна серьёзная подготовка. Персональный план закроет пробелы быстрее.'
-      : newScore <= 3
-      ? 'Хорошая база! Осталось закрыть слабые темы — платформа покажет какие.'
-      : 'Отличный результат! Ещё немного — и 120+. Платформа поможет довести до максимума.'
-
     await sendMsg(chatId,
-      `📊 <b>Результат диагностики ЕНТ</b>\n\n` +
-      `Правильных ответов: <b>${newScore}/5</b>\n` +
-      `Прогноз балла ЕНТ: <b>~${projected}</b>\n` +
-      `Уровень: ${level}\n\n${advice}`,
+      entMiniResult(newScore),
       {
         reply_markup: {
           inline_keyboard: [
-            [{ text: '🎯 Полная диагностика (40 вопросов)', url: `${APP_URL}/diagnostic` }],
+            [{ text: '🎯 Продолжить практику ЕНТ', url: `${APP_URL}/diagnostic` }],
             [{ text: '📚 Получить учебный план',            url: `${APP_URL}/dashboard` }],
             BACK_TO_MENU[0]!,
           ],
@@ -582,23 +567,8 @@ async function startIeltsFlow(chatId: number) {
     }
   } catch { /* ignore */ }
 
-  await sendMsg(chatId,
-    `🇬🇧 <b>IELTS подготовка</b>\n\n` +
-    `IELTS нужен для:\n` +
-    `— Поступления в зарубежные вузы\n` +
-    `— Иммиграции (Канада, Австралия)\n` +
-    `— Работы за границей\n\n` +
-    `Band 6.0+ открывает большинство европейских вузов.` + wordBlock,
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '📚 IELTS Lab — полный курс',  url: `${APP_URL}/ielts` }],
-          [{ text: '🎯 Вопрос дня по ЕНТ/IELTS',  callback_data: 'flow:question' }],
-          BACK_TO_MENU[0]!,
-        ],
-      },
-    },
-  )
+  const entry = ieltsEntry(APP_URL, wordBlock)
+  await sendMsg(chatId, entry.text, { reply_markup: entry.reply_markup })
 }
 
 // ── Flow: Стартап (2 вопроса) ─────────────────────────────────────────────────
@@ -919,13 +889,13 @@ export async function handleUpdate(update: TelegramUpdate): Promise<void> {
 
       // ── Growth Assistant commands (admin-only, /g_ prefix) ────────────
       if (isAdmin(chatId) && (text.startsWith('/g') || text === '/g')) {
-        const handled = await handleGrowthCommand(chatId, text)
+        const handled = await handleGrowthCommand(chatId, text, update.update_id)
         if (handled) return
       }
 
       // ── Growth Assistant: multi-step flow input (admin typing responses) ─
       if (isAdmin(chatId)) {
-        const handled = await handleGrowthCommand(chatId, text)
+        const handled = await handleGrowthCommand(chatId, text, update.update_id)
         if (handled) return
       }
 

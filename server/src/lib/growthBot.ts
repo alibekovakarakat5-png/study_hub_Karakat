@@ -12,29 +12,19 @@
 
 import { prisma } from './prisma'
 import { generateContent, analyzeLead, processDocument, analyzeCompetitor } from './growthAI'
+import { telegramRequest, telegramAdminChat } from './telegramTransport'
+import { channelPublicationStore } from './channelPublicationStore'
+import { publishManualPost, publicationNotice } from './channelPublication'
+import { automaticChannelPolicy } from './telegramContent'
 
-const BOT_TOKEN   = process.env.TELEGRAM_BOT_TOKEN
-const ADMIN_CHAT  = process.env.TELEGRAM_ADMIN_CHAT ?? process.env.TELEGRAM_CHAT_ID
-const CHANNEL_ID  = process.env.TELEGRAM_CHANNEL_ID // Marketing_Admin channel
+const ADMIN_CHAT  = telegramAdminChat()
+const CHANNEL_ID  = process.env.TELEGRAM_CHANNEL_ID
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 async function send(text: string, extra?: Record<string, unknown>) {
-  if (!BOT_TOKEN || !ADMIN_CHAT) return
-  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ chat_id: ADMIN_CHAT, text, parse_mode: 'HTML', disable_web_page_preview: true, ...extra }),
-  })
-}
-
-async function sendToChannel(text: string) {
-  if (!BOT_TOKEN || !CHANNEL_ID) return
-  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ chat_id: CHANNEL_ID, text, parse_mode: 'HTML', disable_web_page_preview: true }),
-  })
+  if (!ADMIN_CHAT) throw new Error('Telegram admin chat not configured')
+  await telegramRequest('sendMessage', { chat_id: ADMIN_CHAT, text, parse_mode: 'HTML', disable_web_page_preview: true, ...extra })
 }
 
 function esc(s: string): string {
@@ -74,7 +64,7 @@ export function isAdmin(chatId: number): boolean {
 
 // ── Main command router ──────────────────────────────────────────────────────
 
-export async function handleGrowthCommand(chatId: number, text: string): Promise<boolean> {
+export async function handleGrowthCommand(chatId: number, text: string, updateId?: number): Promise<boolean> {
   if (!isAdmin(chatId)) return false
 
   // Commands
@@ -83,6 +73,7 @@ export async function handleGrowthCommand(chatId: number, text: string): Promise
   if (text === '/g_leads')      { await listLeads(); return true }
   if (text === '/g_add_lead')   { await startAddLead(); return true }
   if (text === '/g_content')    { await generateDailyContent(); return true }
+  if (text === '/g_publications') { await listPublications(); return true }
   if (text === '/g_tasks')      { await listTasks(); return true }
   if (text === '/g_add_task')   { await startAddTask(); return true }
   if (text === '/g_competitors'){ await listCompetitors(); return true }
@@ -91,10 +82,10 @@ export async function handleGrowthCommand(chatId: number, text: string): Promise
   if (text === '/g_stats')      { await showGrowthStats(); return true }
   if (text === '/g_cancel')     { resetGrowth(); await send('❌ Отменено.'); return true }
 
-  // Publish text directly to channel
+  // Prepare a manual draft; never publish until its explicit confirmation.
   if (text.startsWith('/g_publish ')) {
     const msg = text.slice(11).trim()
-    if (msg) { await publishToChannel(msg); return true }
+    if (msg) { await prepareChannelPost(msg, updateId); return true }
   }
 
   // Find leads with keyword
@@ -119,6 +110,13 @@ export async function handleGrowthCallback(chatId: number, data: string): Promis
   if (!data.startsWith('g:')) return false
 
   const parts = data.split(':')
+  if (parts[1] === 'publish' && parts[2]) {
+    const post = await channelPublicationStore.get(parts[2])
+    if (!post || post.target !== CHANNEL_ID) { await send('Канал изменился или ручной черновик не найден. Подготовьте новый черновик.'); return true }
+    const result = await publishManualPost(channelPublicationStore, post.id, (target, text) => telegramRequest('sendMessage', { chat_id: target, text, disable_web_page_preview: true }))
+    await send(esc(publicationNotice(result)))
+    return true
+  }
 
   // Lead status updates: g:lead_status:<id>:<status>
   if (parts[1] === 'lead_status' && parts[2] && parts[3]) {
@@ -174,7 +172,9 @@ async function showGrowthMenu() {
     `/g_find &lt;keyword&gt; — AI-поиск лидов\n\n` +
     `<b>📲 Контент:</b>\n` +
     `/g_content — сгенерировать контент на сегодня\n` +
-    `/g_publish &lt;текст&gt; — опубликовать в канал\n\n` +
+    `/g_publish &lt;текст&gt; — предпросмотр ручного поста\n` +
+    `/g_publications — черновики и статусы доставки\n` +
+    `${automaticChannelPolicy.reason}\n\n` +
     `<b>📋 Задачи:</b>\n` +
     `/g_tasks — список задач/грантов\n` +
     `/g_add_task — добавить задачу\n\n` +
@@ -292,13 +292,29 @@ export async function checkWarmLeads() {
 
 // ── Direct channel publish ───────────────────────────────────────────────────
 
-async function publishToChannel(text: string) {
+async function prepareChannelPost(text: string, updateId?: number) {
   if (!CHANNEL_ID) {
     await send('⚠️ TELEGRAM_CHANNEL_ID не настроен в .env')
     return
   }
-  await sendToChannel(text)
-  await send(`✅ Опубликовано в канал Marketing_Admin`)
+  if (!Number.isSafeInteger(updateId) || updateId! < 0) { await send('Не удалось определить номер сообщения. Отправьте команду заново.'); return }
+  if (text.length > 3000) { await send('Для ручной публикации сократите текст до 3000 символов.'); return }
+  const post = await channelPublicationStore.prepare('tg-manual-' + updateId, text, CHANNEL_ID)
+  await showPublication(post.id)
+}
+
+async function showPublication(id: string) {
+  const post = await channelPublicationStore.get(id)
+  if (!post) return
+  await send(`Канал: <b>${esc(post.target)}</b>\n\n${esc(post.text)}\n\n${esc(publicationNotice(post))}\nПеред публикацией проверьте первоисточники сумм, сроков и историй. Текст будет опубликован без HTML-разметки.`, {
+    reply_markup: { inline_keyboard: ['draft', 'failed'].includes(post.status)
+      ? [[{ text: 'Факты и канал проверены — опубликовать', callback_data: `g:publish:${post.id}` }]] : [] },
+  })
+}
+async function listPublications() {
+  const rows = await prisma.contentIdea.findMany({ where: { type: 'manual_post', platform: 'telegram' }, orderBy: { createdAt: 'desc' }, take: 5 })
+  if (!rows.length) { await send('Ручных публикаций пока нет. /g_publish текст — подготовить черновик.'); return }
+  for (const row of rows) await showPublication(row.id)
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -322,7 +338,7 @@ async function generateDailyContent() {
 
     // Show approval buttons for saved ideas
     const saved = await prisma.contentIdea.findMany({
-      where: { status: 'draft' },
+      where: { status: 'draft', type: { not: 'manual_post' } },
       orderBy: { createdAt: 'desc' },
       take: 5,
     })
@@ -332,7 +348,7 @@ async function generateDailyContent() {
         { text: `✅ ${idea.title.slice(0, 25)}`, callback_data: `g:content_approve:${idea.id}` },
         { text: `🗑`, callback_data: `g:content_archive:${idea.id}` },
       ]))
-      await send('Одобри контент для публикации:', { reply_markup: { inline_keyboard: buttons } })
+      await send('Сохраните подходящие AI-идеи. Одобрение идеи не публикует её. Факты, суммы и сроки ещё не проверены.', { reply_markup: { inline_keyboard: buttons } })
     }
   } catch (err) {
     await send(`⚠️ Ошибка генерации: ${esc(String(err))}`)
@@ -383,21 +399,11 @@ function parseContentIdeas(aiResponse: string): Array<{
 
 async function approveContent(ideaId: string) {
   try {
-    const idea = await prisma.contentIdea.update({
-      where: { id: ideaId },
+    const result = await prisma.contentIdea.updateMany({
+      where: { id: ideaId, type: { not: 'manual_post' }, status: { in: ['draft', 'approved'] } },
       data: { status: 'approved' },
     })
-
-    // Auto-publish to Marketing_Admin channel
-    const tags = (idea.tags as string[] | null) ?? []
-    const hashtags = tags.map(t => `#${t}`).join(' ')
-    const channelPost =
-      `📲 <b>${esc(idea.title)}</b>\n\n` +
-      (idea.body ? `${esc(idea.body)}\n\n` : '') +
-      (hashtags ? hashtags : '')
-    await sendToChannel(channelPost)
-
-    await send(`✅ Контент одобрен и опубликован в канал: <b>${esc(idea.title)}</b>`)
+    await send(result.count ? '✅ Идея сохранена. Публикации не было. Проверьте первоисточники, исправьте текст и подготовьте ручной пост через /g_publish.' : 'Идея недоступна для одобрения.')
   } catch {
     await send('⚠️ Контент не найден.')
   }
@@ -405,8 +411,8 @@ async function approveContent(ideaId: string) {
 
 async function archiveContent(ideaId: string) {
   try {
-    await prisma.contentIdea.update({
-      where: { id: ideaId },
+    await prisma.contentIdea.updateMany({
+      where: { id: ideaId, type: { not: 'manual_post' }, status: { in: ['draft', 'approved'] } },
       data: { status: 'archived' },
     })
     await send('🗑 Контент убран в архив.')

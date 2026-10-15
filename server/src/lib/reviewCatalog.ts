@@ -2,6 +2,8 @@ export const REVIEW_PREFIX = 'owner-review-v1-'
 export const TEST_USER_PREFIX = 'review_test_'
 export const realUsers = { id: { not: { startsWith: TEST_USER_PREFIX } } }
 export const reviewPersonas = [
+  { id: 'telegram-reviewer', role: 'student', name: 'Редактор тестового Telegram', path: '/telegram-review', scope: 'Изолированный канал этой проверки; настоящие сообщения не отправляются' },
+  { id: 'telegram-outsider', role: 'student', name: 'Другой редактор Telegram', path: '/telegram-review', scope: 'Отдельная история без публикаций первого редактора' },
   { id: 'admissions-candidate', role: 'student', name: 'Тестовый абитуриент', path: '/admission', scope: 'Отдельный кандидат для этой проверки; можно сохранять свои заявки' },
   { id: 'admissions-outsider', role: 'student', name: 'Другой абитуриент', path: '/admission', scope: 'Отдельный кандидат без доступа к заявкам первого' },
   { id: 'classroom-student', role: 'student', name: 'Ученица тестового класса', path: '/classroom', scope: 'Отдельная копия занятий: можно сдавать работы; результаты Жании не меняются' },
@@ -15,6 +17,20 @@ export const reviewPersonas = [
 ] as const
 export type ReviewScenario = { id: string; title: string; purpose: string; path: string; limitation: string; steps: { id: string; title: string; action: string; expected: string; persona: string; path?: string }[] }
 export const reviewCatalog: ReviewScenario[] = [{
+  id: 'telegram-foundation-v1', title: 'Telegram: честные ответы и ручная публикация',
+  purpose: 'Проверить исправленные входы IELTS/ЕНТ, запрет автопубликации непроверенных новостей и ручной пост с подтверждённой доставкой.',
+  path: '/telegram-review',
+  limitation: 'Используются настоящие функции текста, доставки и защиты от повторной отправки, но ответ Telegram и канал синтетические. Прогресс проверки сохраняется в аккаунте. Реальный токен, права канала, webhook и доставка требуют отдельного приёмочного теста с тестовым ботом. Редактор медиа и автоматическая проверка источников пока не реализованы.',
+  steps: [
+    { id: 'content', title: 'IELTS, ЕНТ и ссылки', persona: 'telegram-reviewer', action: 'Запустите редактора. Посмотрите ответ IELTS и результат 3/5 ЕНТ. Откройте канал из ответа; на публичной главной странице ссылка Telegram должна вести туда же.', expected: 'IELTS ведёт в английский кабинет и материалы, без вопроса ЕНТ и обещания band. Для 3/5 нет прогноза ЕНТ. Канал — @skyllaAI; ссылка бота в Настройках использует адрес сервера, без выдуманного username.' },
+    { id: 'policy', title: 'Проверка фактов перед публикацией', persona: 'telegram-reviewer', action: 'Прочитайте статус автоматических публикаций. Создайте ручной черновик с вымышленным учебным текстом.', expected: 'Автопубликации отключены. Черновик сохранён, но не отправлен. В боте AI-одобрение только сохраняет идею; /g_publish сначала показывает текст и целевой канал.' },
+    { id: 'success', title: 'Успех и повторное нажатие', persona: 'telegram-reviewer', action: 'Выберите «Успех», подтвердите отправку черновика. Повторите подтверждение и обновите страницу.', expected: 'Первый вызов показывает подтверждение и номер 101, повтор — 0 новых запросов. Статус сохраняется после обновления.' },
+    { id: 'rejected', title: 'Telegram отклонил сообщение', persona: 'telegram-reviewer', action: 'Создайте другой черновик, выберите отказ Telegram. Затем измените вариант на успех и повторите отправку этого же черновика.', expected: 'Сначала статус failed без ложного успеха. После исправления причины разрешена явная повторная попытка.' },
+    { id: 'unknown', title: 'Потеря подтверждения', persona: 'telegram-reviewer', action: 'Создайте третий черновик, выберите тайм-аут. Затем попробуйте отправить его повторно с вариантом успех.', expected: 'Доставка unknown; повтор заблокирован и выполняет 0 запросов. Сообщение могло быть доставлено — требуется сверка канала.' },
+    { id: 'isolation', title: 'Изоляция редакторов', persona: 'telegram-outsider', action: 'Запустите другого редактора, затем вернитесь к первому через предыдущий шаг.', expected: 'Истории не смешиваются; публикации первого редактора сохранились.' },
+    { id: 'fresh', title: 'Новый запуск и обратная связь', persona: 'telegram-reviewer', action: 'Оставьте замечание через панель, вернитесь владельцем и начните новую проверку. Затем продолжите прежнюю.', expected: 'Замечание содержит шаг, роль и версию. Новая проверка чистая; прежняя сохраняет статусы.' },
+  ],
+}, {
   id: 'admissions-review-v1', title: 'Поступление — полная проверка',
   purpose: 'Пройти все страницы поступления как абитуриент и оставить несколько замечаний с текстом и скриншотами. Проверить сохранение, повторный вход и изоляцию.',
   path: '/admission',

@@ -11,60 +11,24 @@ import { prisma } from './prisma'
 import { realUsers } from './reviewCatalog'
 import { tg } from './telegram'
 import { cronDailyContent, cronDeadlineReminder, checkWarmLeads } from './growthBot'
-import { generateChannelPost } from './growthAI'
+import { telegramRequest } from './telegramTransport'
+import { appSite, automaticChannelPolicy } from './telegramContent'
 import { sendWeeklyParentSummaries } from './parentNotify'
 import {
   FALLBACK_QUESTIONS, getQuestions, getRandomQuestion,
   buildQuestionText, buildQuestionKeyboard,
 } from './questions'
 
-const BOT_TOKEN    = process.env.TELEGRAM_BOT_TOKEN
-const CHANNEL_ID   = process.env.TELEGRAM_CHANNEL_ID
+
 
 // ── Low-level send (separate from telegram.ts to avoid circular import) ──────
 
 async function sendMsg(chat_id: string | number, text: string, extra?: Record<string, unknown>) {
-  if (!BOT_TOKEN) return
-  try {
-    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ chat_id, text, parse_mode: 'HTML', ...extra }),
-    })
-  } catch (err) {
-    console.error('[Cron] sendMsg failed:', err)
-  }
+  await telegramRequest('sendMessage', { chat_id, text, parse_mode: 'HTML', ...extra })
 }
 
-// ── Channel post broadcast (@skyllaAI) ────────────────────────────────────────
-
-async function sendChannelPost() {
-  if (!BOT_TOKEN || !CHANNEL_ID) {
-    console.log('[Cron] Channel post skipped: no BOT_TOKEN or CHANNEL_ID')
-    return
-  }
-  try {
-    console.log('[Cron] Generating channel post...')
-    const text = await generateChannelPost()
-    if (!text) { console.log('[Cron] Empty channel post, skipping'); return }
-
-    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        chat_id:                  CHANNEL_ID,
-        text,
-        parse_mode:               'HTML',
-        disable_web_page_preview: true,
-      }),
-    })
-    console.log('[Cron] Channel post sent ✓')
-  } catch (err) {
-    console.error('[Cron] Channel post failed:', err)
-  }
-}
-
-export const sendChannelPostNow = sendChannelPost
+// Retained for callers: this operation can no longer bypass editorial review.
+export async function sendChannelPostNow() { return automaticChannelPolicy }
 
 // ── Daily question broadcast (персонализированный) ───────────────────────────
 
@@ -137,7 +101,7 @@ async function sendDailyQuestions() {
 
 // ── Weekly progress report (воскресенье) ─────────────────────────────────────
 
-const APP_URL = process.env.APP_URL ?? 'https://skylla.netlify.app'
+const APP_URL = appSite()
 
 async function sendWeeklyReports() {
   console.log('[Cron] Starting weekly progress reports...')
@@ -252,17 +216,7 @@ export function startCronJobs() {
     sendWeeklyParentSummaries().catch(err => console.error('[Cron] sendWeeklyParentSummaries error:', err))
   }, { timezone: 'UTC' })
 
-  // ── @skyllaAI channel auto-posting ──────────────────────────────────────
+  // AI ideas remain private drafts. No automatic public channel jobs.
 
-  // Morning post — 10:00 Almaty (UTC+5) = 05:00 UTC
-  cron.schedule('0 5 * * *', () => {
-    sendChannelPost().catch(err => console.error('[Cron] channel morning post error:', err))
-  }, { timezone: 'UTC' })
-
-  // Evening post — 18:00 Almaty (UTC+5) = 13:00 UTC
-  cron.schedule('0 13 * * *', () => {
-    sendChannelPost().catch(err => console.error('[Cron] channel evening post error:', err))
-  }, { timezone: 'UTC' })
-
-  console.log('[Cron] Jobs registered: question @ 09:00, stats @ 08:00, content @ 07:00, deadlines @ 10:00, leads @ 12:00, weekly Sun @ 19:00, parents Sun @ 19:30, channel @ 10:00 + 18:00 (Almaty)')
+  console.log('[Cron] Jobs registered: question @ 09:00, stats @ 08:00, content @ 07:00, deadlines @ 10:00, leads @ 12:00, weekly Sun @ 19:00, parents Sun @ 19:30, automatic channel publishing disabled (Almaty)')
 }

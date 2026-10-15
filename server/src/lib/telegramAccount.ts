@@ -2,6 +2,12 @@ import crypto from 'crypto'
 import { prisma } from './prisma'
 import { TEST_USER_PREFIX } from './reviewCatalog'
 import type { TelegramUpdate } from './telegram'
+import { telegramRequest as transportRequest } from './telegramTransport'
+// Preserve the account-recovery error contract; delivery callers use typed outcomes.
+export async function telegramRequest<T>(method: string, body: Record<string, unknown> = {}): Promise<T> {
+  try { return await transportRequest<T>(method, body) }
+  catch { throw new Error('Telegram request failed') }
+}
 
 export const recoveryDuration = 15 * 60_000
 export const recoveryCooldown = 60_000
@@ -9,19 +15,6 @@ export const resetTokenKey = (token: string) => token.startsWith('tg1_')
   ? 'sha256:' + crypto.createHash('sha256').update(token).digest('hex') : token
 export const linkTokenKey = (token: string) => 'link1:' + crypto.createHash('sha256').update(token).digest('hex')
 export const accountSite = () => new URL(process.env.APP_URL || 'https://study-hub-karakat.vercel.app').origin
-
-// Never propagate Telegram request URLs, response bodies, or credentials to logs.
-export async function telegramRequest<T>(method: string, body: Record<string, unknown> = {}): Promise<T> {
-  try {
-    if (!process.env.TELEGRAM_BOT_TOKEN) throw new Error()
-    const response = await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/${method}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(8000),
-    })
-    const data = await response.json() as { ok?: boolean; result: T }
-    if (!response.ok || data.ok !== true) throw new Error()
-    return data.result
-  } catch { throw new Error('Telegram request failed') }
-}
 
 let botUsername = ''
 let configured = false

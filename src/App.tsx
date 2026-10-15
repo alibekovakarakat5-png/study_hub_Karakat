@@ -12,6 +12,7 @@ const Dashboard = lazy(() => import('@/pages/Dashboard'))
 const LearningWorkspace = lazy(() => import('@/pages/LearningWorkspace'))
 const IeltsCoach = lazy(() => import('@/pages/IeltsCoach'))
 const OwnerReview = lazy(() => import('@/pages/OwnerReview'))
+const TelegramReview = lazy(() => import('@/pages/TelegramReview'))
 const ReviewRail = lazy(() => import('@/components/ReviewRail'))
 const Plan = lazy(() => import('@/pages/Plan'))
 const Mentor = lazy(() => import('@/pages/StudyMentorPage'))
@@ -142,6 +143,7 @@ export default function App() {
           <Route path="/ielts" element={<ProtectedRoute><Ielts /></ProtectedRoute>} />
           <Route path="/ielts-coach" element={<ProtectedRoute><IeltsCoach /></ProtectedRoute>} />
           <Route path="/owner-review" element={<ProtectedRoute><OwnerReview /></ProtectedRoute>} />
+          <Route path="/telegram-review" element={<ProtectedRoute><TelegramReview /></ProtectedRoute>} />
           <Route path="/admissions" element={<ProtectedRoute><Admissions /></ProtectedRoute>} />
           <Route path="/motivation-letter" element={<ProtectedRoute><MotivationLetter /></ProtectedRoute>} />
           <Route path="/admission-plan" element={<ProtectedRoute><AdmissionPlan /></ProtectedRoute>} />
