@@ -2,6 +2,8 @@ export const REVIEW_PREFIX = 'owner-review-v1-'
 export const TEST_USER_PREFIX = 'review_test_'
 export const realUsers = { id: { not: { startsWith: TEST_USER_PREFIX } } }
 export const reviewPersonas = [
+  { id: 'ielts-bot-learner', role: 'student', name: 'Ученик IELTS-бота', path: '/ielts-bot-review', scope: 'Синтетический Telegram и отдельные попытки этого запуска' },
+  { id: 'ielts-bot-outsider', role: 'student', name: 'Другой ученик IELTS-бота', path: '/ielts-bot-review', scope: 'Отдельная история без ответов первого ученика' },
   { id: 'telegram-reviewer', role: 'student', name: 'Редактор тестового Telegram', path: '/telegram-review', scope: 'Изолированный канал этой проверки; настоящие сообщения не отправляются' },
   { id: 'telegram-outsider', role: 'student', name: 'Другой редактор Telegram', path: '/telegram-review', scope: 'Отдельная история без публикаций первого редактора' },
   { id: 'admissions-candidate', role: 'student', name: 'Тестовый абитуриент', path: '/admission', scope: 'Отдельный кандидат для этой проверки; можно сохранять свои заявки' },
@@ -17,6 +19,20 @@ export const reviewPersonas = [
 ] as const
 export type ReviewScenario = { id: string; title: string; purpose: string; path: string; limitation: string; steps: { id: string; title: string; action: string; expected: string; persona: string; path?: string }[] }
 export const reviewCatalog: ReviewScenario[] = [{
+  id: 'ielts-bot-v1', title: 'IELTS-бот: подписка, задание и сохранение',
+  purpose: 'Пройти короткое задание, увидеть объяснения, повторить ошибку и продолжить после перезагрузки без потери результатов.',
+  path: '/ielts-bot-review',
+  limitation: '6 авторских мини-занятий Reading/Vocabulary, не полный курс или оценка IELTS band. Нет Writing/Speaking и напоминаний. Telegram и подписка синтетические; рабочая доставка @SkyllaIELTS_bot проверяется отдельно после подключения. Нужна миграция IELTS-таблиц. Локальные тесты не подтверждают доставку Telegram и сохранение в рабочей БД.',
+  steps: [
+    { id: 'subscription', title: 'Подписка и её ошибка', persona: 'ielts-bot-learner', action: 'Выберите «Не подписан», нажмите /start. Затем «Telegram недоступен» и снова /start.', expected: 'Задания закрыты. При сетевой ошибке бот не утверждает, что ученик отписан; есть кнопки канала и повторной проверки.' },
+    { id: 'goal', title: 'Цель и первое задание', persona: 'ielts-bot-learner', action: 'Выберите «Подписан», нажмите /start, цель 7.0 и /today. Ответьте 09:00 на вопрос о субботе.', expected: 'Цель сохранена. Ответ неверный, есть объяснение 10:00; первые ответы 0/1, ошибка сохранена.' },
+    { id: 'resume', title: 'Сохранение и дубликат', persona: 'ielts-bot-learner', action: 'Повторите тот же update. Обновите страницу, нажмите /today и ответьте False. Затем нажмите старую кнопку ответа.', expected: 'Дубликат не вызывает новую отправку и не меняет счёт. После обновления продолжается второй вопрос; старый ответ не засчитывается повторно.' },
+    { id: 'repair', title: 'Исправить ошибку', persona: 'ielts-bot-learner', action: 'Нажмите /mistakes и ответьте 10:00. Откройте /progress; измените цель через /goal.', expected: 'Ошибка исчезает из очереди, успешные повторения растут. Первый результат не переписывается; смена цели не удаляет историю.' },
+    { id: 'delivery', title: 'Потерянный ответ и отписка', persona: 'ielts-bot-learner', action: 'Выберите тайм-аут доставки и нажмите /today. Верните успех и повторите тот же update, затем отправьте новый /today. Выберите «Не подписан» и /progress.', expected: 'Неопределённая доставка не повторяется вслепую; новый /today восстанавливает задание. Прогресс доступен после отписки, новые задания закрыты.' },
+    { id: 'isolation', title: 'Изоляция и отзыв', persona: 'ielts-bot-outsider', action: 'Запустите другого ученика. Вернитесь к первому, оставьте замечание. Начните новый запуск и затем продолжите прежний.', expected: 'Другой ученик и новый запуск имеют пустую историю. Прежний сохраняет ответы. Отзыв связан с ролью, шагом и версией.' },
+  ],
+}, {
+
   id: 'telegram-foundation-v1', title: 'Telegram: честные ответы и ручная публикация',
   purpose: 'Проверить исправленные входы IELTS/ЕНТ, запрет автопубликации непроверенных новостей и ручной пост с подтверждённой доставкой.',
   path: '/telegram-review',

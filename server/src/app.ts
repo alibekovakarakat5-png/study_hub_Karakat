@@ -25,6 +25,8 @@ import plansRoutes         from './routes/plans'
 import billingRoutes       from './routes/billing'
 import telegramRoutes      from './routes/telegram'
 import telegramReviewRoutes from './routes/telegramReview'
+import ieltsBotRoutes from './routes/ieltsBot'
+import ieltsBotReviewRoutes from './routes/ieltsBotReview'
 import uploadRoutes        from './routes/uploads'
 import studyAbroadRoutes   from './routes/studyAbroad'
 import courseGenerateRoutes from './routes/courseGenerate'
@@ -126,6 +128,8 @@ app.use('/api/plans',           plansRoutes)
 app.use('/api/billing',         billingRoutes)
 app.use('/api/telegram',        telegramRoutes)
 app.use('/api/telegram-review', telegramReviewRoutes)
+app.use('/api/ielts-bot', ieltsBotRoutes)
+app.use('/api/ielts-bot-review', ieltsBotReviewRoutes)
 app.use('/api/uploads',         uploadRoutes)
 app.use('/api/study-abroad',    studyAbroadRoutes)
 app.use('/api/courses',         courseGenerateRoutes) // adds /api/courses/generate

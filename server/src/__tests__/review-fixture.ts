@@ -7,6 +7,8 @@ import { isClassroomPersona, reviewClassroomId, reviewClassroomUserId } from '..
 import { createLearningRouter } from '../routes/learning'
 import { createModuleProgressRouter } from '../routes/moduleProgress'
 import { createTelegramReviewRouter } from '../routes/telegramReview'
+import { createIeltsBotReviewRouter } from '../routes/ieltsBotReview'
+import { memoryIeltsBotStore } from './ielts-bot-fixture'
 import type { LearningRecord, LearningRepository } from '../lib/learningRepository'
 
 export function memoryRepository(): LearningRepository {
@@ -39,6 +41,7 @@ export function reviewFixture() {
   app.use('/api/review', createReviewRouter({ repo, owner, persona: persona as never, auth }))
   app.use('/api/review-feed', createReviewFeed({ repo, owner }))
   app.use('/api/telegram-review', createTelegramReviewRouter(telegram, auth))
+  app.use('/api/ielts-bot-review', createIeltsBotReviewRouter(memoryIeltsBotStore(), auth))
   app.use('/api/learning', createLearningRouter(learning, async () => 'Synthetic feedback for browser verification only.', auth))
   // Real HTTP handler and authorization; only its database adapter is substituted.
   const db = { moduleProgress: {

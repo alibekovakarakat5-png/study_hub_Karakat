@@ -1,7 +1,7 @@
 {
-  "id": "telegram-foundation-2026-10-15",
+  "id": "ielts-bot-2026-10-16",
   "scenarios": [
-    "telegram-foundation-v1"
+    "ielts-bot-v1"
   ],
-  "summary": "Disable unverified automatic channel news; require durable manual publication confirmation and honest delivery status. Correct IELTS and ENT messaging and Telegram links. Add isolated owner review with persisted publication fixtures."
+  "summary": "Separate @SkyllaIELTS_bot with mandatory channel membership for practice, six original mini-lessons, saved goals and attempts, mistake review, idempotent updates and conservative delivery receipts. Add isolated per-run owner acceptance. Mini-practice is not an IELTS band assessment; no Writing/Speaking or reminders."
 }

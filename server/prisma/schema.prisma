@@ -321,6 +321,25 @@ model GrowthTask {
   @@index([deadline])
 }
 
+model IeltsBotAccount {
+  id        String @id
+  state     Json
+  revision  Int @default(0)
+  updatedAt DateTime @default(now()) @updatedAt
+  updates   IeltsBotUpdate[]
+}
+
+model IeltsBotUpdate {
+  accountId String
+  updateId  BigInt
+  reply     Json
+  status    String @default("prepared")
+  messageId Int?
+  createdAt DateTime @default(now())
+  account   IeltsBotAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  @@id([accountId, updateId])
+}
+
 model ContentIdea {
   id          String    @id @default(cuid())
   type        String    // 'post' | 'reels' | 'story' | 'scenario' | 'carousel'

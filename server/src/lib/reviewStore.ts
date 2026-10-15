@@ -13,7 +13,7 @@ export async function isReviewOwner(userId: string) {
   return user?.role === 'admin' && access?.data.enabled === true
 }
 export const fixtureId = (owner: string, persona: string) => TEST_USER_PREFIX + crypto.createHash('sha256').update(owner).digest('hex').slice(0, 20) + '_' + persona
-export const isAdmissionsPersona = (persona: string) => ['admissions-candidate', 'admissions-outsider', 'telegram-reviewer', 'telegram-outsider'].includes(persona)
+export const isAdmissionsPersona = (persona: string) => ['admissions-candidate', 'admissions-outsider', 'telegram-reviewer', 'telegram-outsider', 'ielts-bot-learner', 'ielts-bot-outsider'].includes(persona)
 export const admissionsFixtureId = (owner: string, runId: string, persona: string) => fixtureId(owner + ':' + runId, persona)
 export function allowedAdmissionsRequest(method: string, path: string, scope?: { ownerId: string; admissionsRunId?: string }, userId?: string) {
   if (!scope?.admissionsRunId || !['admissions-candidate', 'admissions-outsider'].some(p => admissionsFixtureId(scope.ownerId, scope.admissionsRunId!, p) === userId)) return false
@@ -54,6 +54,7 @@ export async function validReviewSession(ownerId: string, sessionId: string, use
 }
 
 export function allowedTestRequest(method: string, path: string) {
+  if (['GET', 'POST'].includes(method) && /^\/api\/ielts-bot-review(?:\/|$)/.test(path)) return true
   if (['GET', 'POST'].includes(method) && /^\/api\/telegram-review(?:\/|$)/.test(path)) return true
   if (path === '/api/auth/me' && method === 'GET') return true
   if (/^\/api\/learning(?:\/|$)/.test(path)) return true
