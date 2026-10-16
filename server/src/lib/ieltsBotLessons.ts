@@ -1,6 +1,8 @@
-// Original micro-practice material, not official IELTS exam questions or a band test.
-export type IeltsQuestion = { id: string; skill: 'reading' | 'vocabulary'; passage?: string; prompt: string; choices: string[]; correct: number; explanation: string }
+import { bookReadingQuestions } from './ieltsBotBooks'
+// Keep original IDs/order stable for saved learner attempts.
+export type IeltsQuestion = { id: string; skill: 'reading' | 'vocabulary'; passage?: string; prompt: string; choices: string[]; correct: number; explanation: string; source?: string }
 export const ieltsBotQuestions: IeltsQuestion[] = [
+  ...bookReadingQuestions,
   { id: 'library-time', skill: 'reading', passage: 'The town library opens at nine on weekdays. On Saturdays it opens one hour later. It is closed on Sundays.', prompt: 'When does the library open on Saturday?', choices: ['09:00', '10:00', '11:00'], correct: 1, explanation: 'One hour later относится к nine: 09:00 + один час = 10:00. Сначала найди время, затем условие.' },
   { id: 'library-sunday', skill: 'reading', passage: 'The town library opens at nine on weekdays. On Saturdays it opens one hour later. It is closed on Sundays.', prompt: 'The library is open every day. True, False or Not Given?', choices: ['True', 'False', 'Not Given'], correct: 1, explanation: 'Closed on Sundays прямо противоречит every day. Это False, а не отсутствие информации.' },
   { id: 'garden-reason', skill: 'reading', passage: 'Residents started a shared garden to grow vegetables near their homes. The council provided tools, but residents bought the seeds themselves.', prompt: 'Who paid for the seeds?', choices: ['The council', 'The residents', 'A local shop'], correct: 1, explanation: 'Residents bought the seeds themselves — жители сами купили семена. Не путай tools и seeds.' },
@@ -21,4 +23,5 @@ export const ieltsBotMissions = [
   { title: 'Язык изменений', ids: ['vocab-decline', 'vocab-steady'] },
   { title: 'Связки и осторожные выводы', ids: ['vocab-contrast', 'vocab-evidence'] },
   { title: 'Обязательное и необязательное', ids: ['museum-booking', 'museum-parking'] },
+  { title: 'Из книги · International English Students', ids: bookReadingQuestions.map(q => q.id) },
 ]
