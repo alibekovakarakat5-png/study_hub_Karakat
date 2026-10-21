@@ -1,7 +1,8 @@
 {
-  "id": "ielts-bot-2026-10-16",
+  "id": "ielts-reading-writing-2026-10-16",
   "scenarios": [
+    "ielts-reading-writing-v2",
     "ielts-bot-v1"
   ],
-  "summary": "Separate @SkyllaIELTS_bot with mandatory channel membership for practice, six original mini-lessons, saved goals and attempts, mistake review, idempotent updates and conservative delivery receipts. Add isolated per-run owner acceptance. Mini-practice is not an IELTS band assessment; no Writing/Speaking or reminders."
+  "summary": "Academic Reading/Writing choice; sourced book practice; versioned drafts and explicit per-version Groq consent; formative feedback, revision comparison and targeted grammar. Isolated owner-review fixtures cover success, outage, consent, persistence and account isolation. No schema migration. Live provider quality and deployed acceptance remain pending."
 }

@@ -6,7 +6,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "test:learning": "node --import tsx --test src/__tests__/learning-memory.test.ts src/__tests__/study-mentor.test.ts",
-    "test:review": "node --import tsx --test src/__tests__/owner-review.test.ts src/__tests__/admissions-review.test.ts src/__tests__/review-classroom.test.ts src/__tests__/auth-recovery.test.ts src/__tests__/telegram-recovery.test.ts src/__tests__/telegram-foundation.test.ts src/__tests__/ielts-bot.test.ts",
+    "test:review": "node --import tsx --test src/__tests__/owner-review.test.ts src/__tests__/admissions-review.test.ts src/__tests__/review-classroom.test.ts src/__tests__/auth-recovery.test.ts src/__tests__/telegram-recovery.test.ts src/__tests__/telegram-foundation.test.ts src/__tests__/ielts-bot.test.ts src/__tests__/ielts-writing.test.ts",
     "start": "prisma migrate deploy && node dist/index.js",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
@@ -14,7 +14,7 @@
     "test": "node --import tsx --test --test-concurrency=1 src/__tests__/multitenant.test.ts src/__tests__/e2e-center.test.ts src/__tests__/content-isolation.test.ts src/__tests__/from-text.test.ts src/__tests__/topic-matcher.test.ts src/__tests__/smart-assignment-content.test.ts src/__tests__/text-chunker.test.ts src/__tests__/ai-test-org.test.ts src/__tests__/preview-for-student.test.ts",
     "test:watch": "node --import tsx --test --watch --test-concurrency=1 src/__tests__/multitenant.test.ts src/__tests__/e2e-center.test.ts src/__tests__/content-isolation.test.ts src/__tests__/from-text.test.ts src/__tests__/topic-matcher.test.ts src/__tests__/smart-assignment-content.test.ts src/__tests__/text-chunker.test.ts src/__tests__/ai-test-org.test.ts src/__tests__/preview-for-student.test.ts",
     "test:telegram": "node --import tsx --test src/__tests__/telegram-foundation.test.ts src/__tests__/telegram-recovery.test.ts",
-    "test:ielts-bot": "node --import tsx --test src/__tests__/ielts-bot.test.ts"
+    "test:ielts-bot": "node --import tsx --test src/__tests__/ielts-bot.test.ts src/__tests__/ielts-writing.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
